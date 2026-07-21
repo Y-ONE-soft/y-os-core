@@ -72,3 +72,13 @@ PR / 다른 브랜치 push        → Vercel 프리뷰 배포 (자동, PR에 프
 - **배포 고유 URL·프리뷰 URL은 Vercel SSO 보호가 기본 적용**(302 → vercel.com/sso-api)되어 팀 멤버만 접근 가능하다. **프로덕션 별칭은 공개**다. Vercel 기본 보호 정책(Standard Protection)의 정상 동작이다.
 - 저장소가 public이므로 **비밀값(.env 등)은 절대 커밋 금지** — `.gitignore`에 `.env*`가 등록되어 있다.
 - 커스텀 도메인 연결은 Vercel 대시보드 → Project → Domains에서 추가하면 된다.
+
+## 6. 사후 검증 결과 (추록)
+
+이 문서는 커밋에 포함되어야 해서 푸시 전에 작성됐는데, 그 푸시 자체가 새 프로젝트의 첫 배포 트리거였다. 푸시 이후 확정된 검증 결과를 추록으로 기록한다.
+
+- 커밋 `5efd51b` 푸시 → `project-hosting-center/y-os-core` 첫 프로덕션 배포 **자동 트리거 확인** (파이프라인 엔드투엔드 동작 검증 완료)
+- 배포 상태: **● Ready** (2026-07-22 05:05 KST)
+- **프로덕션 URL 확정: https://y-os-core.vercel.app** — HTTP 200 확인. 이전 프로젝트 삭제로 반납됐던 별칭을 새 프로젝트가 예상대로 재획득함
+- 보조 별칭: `y-os-core-project-hosting-center.vercel.app`, `y-os-core-git-main-project-hosting-center.vercel.app`
+- 운영 참고: 이 프로젝트 디렉토리 밖 컨텍스트나 URL 단독 조회 시 `vercel inspect`가 CLI 기본 팀(`midacosmetics-4044s-projects`) 컨텍스트로 조회해 "deployment not found" 에러가 난다. **`--scope project-hosting-center`를 명시**해야 한다.
