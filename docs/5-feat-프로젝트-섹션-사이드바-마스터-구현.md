@@ -98,3 +98,8 @@ src/app/(main)/projects/page.tsx                    # /projects "작업 현황" 
 - dev 모드에서 Next.js dev tools 오버레이("N" 버튼)가 푸터 "데이터 초기화"의 아이콘 부분과 겹침 — 텍스트 영역 클릭은 정상, 프로덕션에는 오버레이 없음
 - 디자인의 Adding 프레임 헤더에 새 **Y.ONE 로고** 컴포넌트(네이비 스퀘어 + "Y.ONE" 텍스트, `92:158`)가 등장 — 현재는 기존 brand-mark.svg 유지 중이며, 로고 교체가 확정이면 별도 반영 필요
 - 그룹/프로젝트 이름 변경(rename)은 미구현 — 필요 시 컨텍스트 메뉴에 추가
+
+## 9. 사후 수정 (추록)
+
+- 이 태스크의 커밋(`9baef1e`)에 Claude Code 로컬 워크트리 디렉토리 `.claude/worktrees/parallel-work-setup`이 임베디드 git 저장소(gitlink)로 잘못 포함됨 — `git add -A`가 로컬 도구 산출물을 집어삼킨 실수.
+- 후속 커밋에서 `git rm --cached`로 인덱스에서 제거하고 `.gitignore`에 `.claude/worktrees/`를 등록해 재발 차단.
