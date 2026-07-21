@@ -42,3 +42,6 @@ next-env.d.ts
 
 # generated files (prisma client, etc.)
 /src/generated/
+
+.vercel
+.env*
