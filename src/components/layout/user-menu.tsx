@@ -1,0 +1,32 @@
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+const USER = { name: "노윤기", role: "대표", initial: "노" };
+
+export function UserMenu() {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger className="flex items-center gap-2.5 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <span className="flex size-8 items-center justify-center rounded-full bg-primary text-[13px] font-semibold text-primary-foreground">
+          {USER.initial}
+        </span>
+        <span className="flex flex-col items-start gap-px">
+          <span className="text-[13px] font-medium text-foreground">
+            {USER.name}
+          </span>
+          <span className="text-[11px] text-muted-foreground">{USER.role}</span>
+        </span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" sideOffset={8} className="w-[220px]">
+        <DropdownMenuItem>설정</DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem variant="destructive">로그아웃</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
