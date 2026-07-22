@@ -1,19 +1,12 @@
 import { cn } from "@/lib/utils";
-import { MyWorkCalendar } from "@/components/features/my-work/my-work-calendar";
+import { MyWorkCalendarPanel } from "@/components/features/my-work/my-work-calendar-panel";
 import { MyWorkRequests } from "@/components/features/my-work/my-work-requests";
 import { MyWorkBacklog } from "@/components/features/my-work/my-work-backlog";
-import {
-  CAL_MONTH_COUNT,
-  CAL_TITLE,
-} from "@/components/features/my-work/my-work-data";
 
 const VIEW_TABS = ["캘린더", "타임라인"] as const;
 const ACTIVE_VIEW = "캘린더";
 
 const FILTERS = ["🔍 필터", "담당자 1 ▾", "프로젝트 ▾"] as const;
-
-const RANGE_SEGMENTS = ["기간", "시작일", "종료일"] as const;
-const ACTIVE_SEGMENT = "기간";
 
 export function MyWorkPage() {
   return (
@@ -63,50 +56,7 @@ export function MyWorkPage() {
       </div>
       <div className="flex min-h-0 flex-1 items-stretch gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-3">
-          <div className="flex shrink-0 items-center gap-2.5">
-            <button
-              type="button"
-              aria-label="이전 달"
-              className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-            >
-              ◀
-            </button>
-            <h2 className="text-[15px] font-semibold">{CAL_TITLE}</h2>
-            <button
-              type="button"
-              aria-label="다음 달"
-              className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-            >
-              ▶
-            </button>
-            <p className="text-xs text-muted-foreground">
-              이 달 {CAL_MONTH_COUNT}건
-            </p>
-            <div className="ml-auto flex items-center rounded-[8px] border p-[3px]">
-              {RANGE_SEGMENTS.map((segment) => (
-                <button
-                  key={segment}
-                  type="button"
-                  aria-pressed={segment === ACTIVE_SEGMENT}
-                  className={cn(
-                    "rounded-[6px] px-2.5 py-[3px] text-xs font-medium transition-colors",
-                    segment === ACTIVE_SEGMENT
-                      ? "bg-accent text-accent-foreground"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
-                >
-                  {segment}
-                </button>
-              ))}
-            </div>
-            <button
-              type="button"
-              className="rounded-[8px] border px-2.5 py-[5px] text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-            >
-              오늘
-            </button>
-          </div>
-          <MyWorkCalendar />
+          <MyWorkCalendarPanel />
           <MyWorkRequests />
         </div>
         <MyWorkBacklog />
