@@ -1,4 +1,4 @@
-# 17. 프로젝트 상세 화면 Project Detail Layout 정합
+# 18. 프로젝트 상세 화면 Project Detail Layout 정합
 
 - **예정 커밋 메시지**: `feat: 프로젝트 상세 화면 Project Detail Layout 정합`
 - **작업일**: 2026-07-22
