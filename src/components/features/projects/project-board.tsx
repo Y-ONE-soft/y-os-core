@@ -135,7 +135,7 @@ export function ProjectBoard({
                     setDraggingStageId(stage.id);
                   }}
                   onDragEnd={endStageDrag}
-                  className="flex shrink-0 cursor-grab items-center gap-[7px] py-0.5 pl-1 pr-0.5 active:cursor-grabbing"
+                  className="group flex shrink-0 cursor-grab items-center gap-[7px] py-0.5 pl-1 pr-0.5 active:cursor-grabbing"
                 >
                   <span
                     aria-hidden
@@ -147,6 +147,20 @@ export function ProjectBoard({
                   </h3>
                   <span className="rounded-full bg-background px-[7px] py-0.5 text-[10.5px] text-muted-foreground">
                     {countLabel}
+                  </span>
+                  {/* data-column-child: 카드·버튼과 같이 컬럼 전체 강조를 끈다 */}
+                  <span data-column-child className="flex shrink-0">
+                    <RowActions
+                      label={stage.name}
+                      actions={[
+                        {
+                          label: "단계 삭제",
+                          destructive: true,
+                          onSelect: () =>
+                            boardActions.deleteStage(projectId, stage.id),
+                        },
+                      ]}
+                    />
                   </span>
                 </header>
               </ContextMenuTrigger>
