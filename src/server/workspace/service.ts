@@ -7,12 +7,18 @@ import type {
   Workspace,
 } from "@/types/workspace";
 import type {
+  Prisma,
   Stage,
   StageComment,
   Task,
 } from "@/generated/prisma/client";
 
 const ORDER = [{ createdAt: "asc" as const }, { id: "asc" as const }];
+/**
+ * 단계는 생성 시각이 아니라 명시적인 order로 정렬한다.
+ * 화면의 단계 번호(1, 2, 3…)가 곧 이 배열의 순서다.
+ */
+const STAGE_ORDER = [{ order: "asc" as const }, { id: "asc" as const }];
 
 function toTask(task: Task): BoardTask {
   return {
@@ -56,7 +62,7 @@ export async function getWorkspace(): Promise<Workspace> {
     db.projectGroup.findMany({ orderBy: ORDER }),
     db.project.findMany({ orderBy: ORDER }),
     db.stage.findMany({
-      orderBy: ORDER,
+      orderBy: STAGE_ORDER,
       include: {
         tasks: { orderBy: ORDER },
         comments: { orderBy: ORDER },
@@ -139,6 +145,32 @@ export function deleteProject(id: string, opts?: { ownerId?: string }) {
   });
 }
 
+/**
+ * 프로젝트의 단계 번호를 stageIds 순서대로 1..N으로 다시 매긴다.
+ * (projectId, order) 유니크 제약은 행마다 즉시 검사되므로 곧바로 최종 번호를 쓰면
+ * 교체 도중 값이 겹쳐 실패한다. 음수로 한 번 피신시킨 뒤 확정한다.
+ * projectId 조건을 함께 걸어 남의 프로젝트 단계 id가 섞여 들어와도 무시되게 한다.
+ */
+async function renumberStages(
+  tx: Prisma.TransactionClient,
+  projectId: string,
+  stageIds: string[],
+): Promise<void> {
+  for (const [index, id] of stageIds.entries()) {
+    await tx.stage.updateMany({
+      where: { id, projectId },
+      data: { order: -(index + 1) },
+    });
+  }
+  for (const [index, id] of stageIds.entries()) {
+    await tx.stage.updateMany({
+      where: { id, projectId },
+      data: { order: index + 1 },
+    });
+  }
+}
+
+/** 새 단계는 항상 맨 뒤 번호를 받는다 */
 export function createStage(input: {
   id: string;
   projectId: string;
@@ -148,7 +180,14 @@ export function createStage(input: {
   endDate?: string;
   showDeadline: boolean;
 }) {
-  return db.stage.create({ data: input });
+  return db.$transaction(async (tx) => {
+    const last = await tx.stage.findFirst({
+      where: { projectId: input.projectId },
+      orderBy: { order: "desc" },
+      select: { order: true },
+    });
+    return tx.stage.create({ data: { ...input, order: (last?.order ?? 0) + 1 } });
+  });
 }
 
 /**
@@ -170,7 +209,10 @@ export async function deleteStage(
 
   return db.$transaction(async (tx) => {
     // 가드를 통과하는 단계인지 먼저 확인 — 통과하지 못하면 아무것도 건드리지 않는다
-    const stage = await tx.stage.findFirst({ where, select: { id: true } });
+    const stage = await tx.stage.findFirst({
+      where,
+      select: { id: true, projectId: true },
+    });
     if (!stage) return { count: 0 };
 
     await tx.task.updateMany({
@@ -178,6 +220,18 @@ export async function deleteStage(
       data: { stageId: null },
     });
     const { count } = await tx.stage.deleteMany({ where: { id } });
+
+    // 지운 자리에 빈 번호가 남지 않도록 남은 단계를 1..N으로 다시 매긴다
+    const rest = await tx.stage.findMany({
+      where: { projectId: stage.projectId },
+      orderBy: STAGE_ORDER,
+      select: { id: true },
+    });
+    await renumberStages(
+      tx,
+      stage.projectId,
+      rest.map((row) => row.id),
+    );
     return { count };
   });
 }

@@ -4,6 +4,8 @@ import { db } from "@/server/db";
 import type { PresetDetail, PresetStage, PresetSummary } from "@/types/preset";
 
 const ORDER = [{ createdAt: "asc" as const }, { id: "asc" as const }];
+/** 단계는 명시적인 order로 정렬한다 — 프리셋도 화면에 보이던 순서 그대로 담아야 한다 */
+const STAGE_ORDER = [{ order: "asc" as const }, { id: "asc" as const }];
 
 const DAY_MS = 86_400_000;
 
@@ -43,7 +45,7 @@ export class PresetNotFoundError extends Error {
 async function snapshotProject(projectId: string) {
   const stages = await db.stage.findMany({
     where: { projectId },
-    orderBy: ORDER,
+    orderBy: STAGE_ORDER,
     include: { tasks: { orderBy: ORDER } },
   });
 
