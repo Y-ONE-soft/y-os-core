@@ -29,6 +29,11 @@ const HANDLE_PX = 8;
 
 export type StageDragPhase = "move" | "commit" | "cancel";
 
+/** 드래그 대상 — 단계는 이동·양끝 조절, 할일은 날짜 이동만 */
+export type DragTarget =
+  | { kind: "stage"; stageId: string; mode: DragMode }
+  | { kind: "task"; taskId: string };
+
 function laneTop(lane: number) {
   return DATE_ROW_PX + lane * LANE_PX;
 }
@@ -104,15 +109,11 @@ function ProjectBoxItem({
 function OverlayItem({
   overlay,
   onOpenStage,
-  onStageDragStart,
+  onDragStart,
 }: {
   overlay: PlacedOverlay;
   onOpenStage?: (projectId: string, stageId: string) => void;
-  onStageDragStart?: (
-    event: React.PointerEvent,
-    stageId: string,
-    mode: DragMode,
-  ) => void;
+  onDragStart?: (event: React.PointerEvent, target: DragTarget) => void;
 }) {
   const color = overlay.color;
   const text = shade(color, 0.6);
@@ -120,7 +121,7 @@ function OverlayItem({
   const width = colWidth(overlay.span);
 
   if (overlay.kind === "stage") {
-    const draggable = Boolean(onStageDragStart);
+    const draggable = Boolean(onDragStart);
     return (
       <div
         className="absolute"
@@ -134,7 +135,11 @@ function OverlayItem({
         <button
           type="button"
           onPointerDown={(event) =>
-            onStageDragStart?.(event, overlay.stageId, "move")
+            onDragStart?.(event, {
+              kind: "stage",
+              stageId: overlay.stageId,
+              mode: "move",
+            })
           }
           onClick={() => onOpenStage?.(overlay.project, overlay.stageId)}
           title={overlay.label}
@@ -176,7 +181,11 @@ function OverlayItem({
             role="presentation"
             aria-label={`${overlay.label} 시작일 조절`}
             onPointerDown={(event) =>
-              onStageDragStart?.(event, overlay.stageId, "start")
+              onDragStart?.(event, {
+                kind: "stage",
+                stageId: overlay.stageId,
+                mode: "start",
+              })
             }
             className="absolute inset-y-0 left-0 cursor-ew-resize rounded-l-[4px]"
             style={{ width: HANDLE_PX }}
@@ -187,7 +196,11 @@ function OverlayItem({
             role="presentation"
             aria-label={`${overlay.label} 종료일 조절`}
             onPointerDown={(event) =>
-              onStageDragStart?.(event, overlay.stageId, "end")
+              onDragStart?.(event, {
+                kind: "stage",
+                stageId: overlay.stageId,
+                mode: "end",
+              })
             }
             className="absolute inset-y-0 right-0 cursor-ew-resize rounded-r-[4px]"
             style={{ width: HANDLE_PX }}
@@ -199,7 +212,14 @@ function OverlayItem({
 
   return (
     <div
-      className="absolute flex items-center gap-1 overflow-hidden rounded-[4px] px-1"
+      title={overlay.label}
+      onPointerDown={(event) =>
+        onDragStart?.(event, { kind: "task", taskId: overlay.taskId })
+      }
+      className={cn(
+        "absolute flex items-center gap-1 overflow-hidden rounded-[4px] px-1",
+        onDragStart && "cursor-grab active:cursor-grabbing",
+      )}
       style={{
         left: `calc(${left} + 4px)`,
         width: `calc(${width} - 8px)`,
@@ -233,16 +253,15 @@ export function MyWorkCalendar({
   layouts,
   projects,
   onOpenStage,
-  onStageDrag,
+  onDrag,
 }: {
   grid: MonthGrid;
   layouts: WeekLayout[];
   projects: Record<string, CalendarProject>;
   onOpenStage?: (projectId: string, stageId: string) => void;
   /** 드래그 중(move)에는 미리보기, 손을 뗄 때(commit) 저장한다 */
-  onStageDrag?: (
-    stageId: string,
-    mode: DragMode,
+  onDrag?: (
+    target: DragTarget,
     deltaDays: number,
     phase: StageDragPhase,
   ) => void;
@@ -250,8 +269,7 @@ export function MyWorkCalendar({
   const rootRef = useRef<HTMLDivElement>(null);
   const weekRefs = useRef<(HTMLDivElement | null)[]>([]);
   const dragRef = useRef<{
-    stageId: string;
-    mode: DragMode;
+    target: DragTarget;
     pointerId: number;
     startDay: number;
     originX: number;
@@ -280,18 +298,13 @@ export function MyWorkCalendar({
     return Math.min(lastDay, Math.max(0, weekIndex * 7 + col));
   }
 
-  function handleStageDragStart(
-    event: React.PointerEvent,
-    stageId: string,
-    mode: DragMode,
-  ) {
-    if (!onStageDrag || event.button !== 0) return;
+  function handleDragStart(event: React.PointerEvent, target: DragTarget) {
+    if (!onDrag || event.button !== 0) return;
     event.stopPropagation();
     // 캡처는 임계값을 넘어 '드래그'로 확정될 때 건다. 여기서 바로 잡으면
     // click 이벤트가 캡처 대상(루트)으로 가버려 막대 클릭이 먹지 않는다.
     dragRef.current = {
-      stageId,
-      mode,
+      target,
       pointerId: event.pointerId,
       startDay: dayFromPointer(event.clientX, event.clientY),
       originX: event.clientX,
@@ -302,32 +315,32 @@ export function MyWorkCalendar({
 
   function handlePointerMove(event: React.PointerEvent) {
     const drag = dragRef.current;
-    if (!drag || !onStageDrag) return;
+    if (!drag || !onDrag) return;
     const far =
       Math.abs(event.clientX - drag.originX) > DRAG_THRESHOLD ||
       Math.abs(event.clientY - drag.originY) > DRAG_THRESHOLD;
     if (!far && !drag.moved) return;
     if (!drag.moved) {
-      // 막대 조각은 드래그 중 주 경계를 넘거나 사라질 수 있다. 그 순간 언마운트되면
-      // 조각에 건 캡처는 끊기므로, 안정적인 캘린더 루트로 캡처를 잡는다.
+      // 막대·칩은 드래그 중 주 경계를 넘거나 사라질 수 있다. 그 순간 언마운트되면
+      // 거기 건 캡처는 끊기므로, 안정적인 캘린더 루트로 캡처를 잡는다.
       rootRef.current?.setPointerCapture(drag.pointerId);
     }
     drag.moved = true;
     const delta = dayFromPointer(event.clientX, event.clientY) - drag.startDay;
-    onStageDrag(drag.stageId, drag.mode, delta, "move");
+    onDrag(drag.target, delta, "move");
   }
 
   function handlePointerUp(event: React.PointerEvent) {
     const drag = dragRef.current;
-    if (!drag || !onStageDrag) return;
+    if (!drag || !onDrag) return;
     dragRef.current = null;
     if (!drag.moved) {
       // 움직이지 않았으면 클릭 — 미리보기를 되돌리고 버튼 onClick에 맡긴다
-      onStageDrag(drag.stageId, drag.mode, 0, "cancel");
+      onDrag(drag.target, 0, "cancel");
       return;
     }
     const delta = dayFromPointer(event.clientX, event.clientY) - drag.startDay;
-    onStageDrag(drag.stageId, drag.mode, delta, "commit");
+    onDrag(drag.target, delta, "commit");
   }
 
   return (
@@ -402,7 +415,7 @@ export function MyWorkCalendar({
                 key={`${overlay.kind === "stage" ? overlay.stageId : overlay.taskId}:${overlay.col}`}
                 overlay={overlay}
                 onOpenStage={onOpenStage}
-                onStageDragStart={onStageDrag ? handleStageDragStart : undefined}
+                onDragStart={onDrag ? handleDragStart : undefined}
               />
             ))}
           </div>

@@ -325,12 +325,12 @@ export const boardActions = {
     }
     cache.persist(patchTaskApi(taskId, { done }));
   },
-  /** 작업 이름·내용 수정 (작업 상세 오버레이) */
+  /** 작업 이름·내용·예정일 수정 (작업 상세 오버레이, 캘린더 드래그) */
   updateTask(
     projectId: string | null,
     stageId: string | null,
     taskId: string,
-    patch: Partial<Pick<BoardTask, "name" | "description">>,
+    patch: Partial<Pick<BoardTask, "name" | "description" | "scheduledDate">>,
   ) {
     const apply = (task: BoardTask) =>
       task.id === taskId ? { ...task, ...patch } : task;
