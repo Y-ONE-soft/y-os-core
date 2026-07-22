@@ -36,7 +36,12 @@ function ProjectBoxItem({ box }: { box: ProjectBox }) {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute rounded-[2px] border"
+      className={cn(
+        "pointer-events-none absolute border",
+        // 주 경계에서 잘린 면은 열어 둬야 다음 주로 이어진 한 범위로 읽힌다
+        box.continuesLeft ? "border-l-0" : "rounded-l-[2px]",
+        box.continuesRight ? "border-r-0" : "rounded-r-[2px]",
+      )}
       style={{
         left: colLeft(box.col),
         width: colWidth(box.span),
