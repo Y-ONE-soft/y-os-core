@@ -36,6 +36,7 @@ import {
   ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import { useShell } from "@/components/layout/shell-context";
 import {
   PROJECT_COLORS,
@@ -58,9 +59,7 @@ const STAFF_WORKSPACE_ITEMS: WorkspaceItem[] = [
 ];
 
 type AddingState =
-  | { type: "project"; groupId: string }
-  | { type: "group" }
-  | null;
+  { type: "project"; groupId: string } | { type: "group" } | null;
 
 function InlineAddInput({
   placeholder,
@@ -113,7 +112,11 @@ function InlineAddInput({
         </span>
       </div>
       {color && onColorChange && (
-        <div className="flex flex-wrap items-center gap-1" role="group" aria-label="프로젝트 색">
+        <div
+          className="flex flex-wrap items-center gap-1"
+          role="group"
+          aria-label="프로젝트 색"
+        >
           {PROJECT_COLORS.map((option) => (
             <button
               key={option}
@@ -151,7 +154,11 @@ function ColorMenuSection({
       <p className="pb-1.5 text-[11px] font-medium text-muted-foreground">
         색 변경
       </p>
-      <div className="flex flex-wrap gap-1" role="group" aria-label="프로젝트 색 변경">
+      <div
+        className="flex flex-wrap gap-1"
+        role="group"
+        aria-label="프로젝트 색 변경"
+      >
         {PROJECT_COLORS.map((option) => (
           <button
             key={option}
@@ -236,31 +243,35 @@ export function ProjectsNav() {
             </p>
           )}
           <ul className="flex flex-col gap-0.5">
-            {(isMaster ? WORKSPACE_ITEMS : STAFF_WORKSPACE_ITEMS).map((item) => {
-              const active =
-                item.href === "/projects"
-                  ? pathname === "/projects"
-                  : pathname.startsWith(item.href);
-              return (
-                <li key={item.href}>
-                  <Link
-                    href={item.href}
-                    aria-current={active ? "page" : undefined}
-                    title={collapsed ? item.label : undefined}
-                    className={cn(
-                      "flex h-[38px] items-center gap-2.5 rounded-[10px] px-3 text-sm font-medium transition-colors",
-                      active
-                        ? "bg-accent text-accent-foreground"
-                        : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
-                      collapsed && "justify-center px-0",
-                    )}
-                  >
-                    <item.icon className="size-4 shrink-0" />
-                    {!collapsed && <span className="flex-1">{item.label}</span>}
-                  </Link>
-                </li>
-              );
-            })}
+            {(isMaster ? WORKSPACE_ITEMS : STAFF_WORKSPACE_ITEMS).map(
+              (item) => {
+                const active =
+                  item.href === "/projects"
+                    ? pathname === "/projects"
+                    : pathname.startsWith(item.href);
+                return (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      aria-current={active ? "page" : undefined}
+                      title={collapsed ? item.label : undefined}
+                      className={cn(
+                        "flex h-[38px] items-center gap-2.5 rounded-[10px] px-3 text-sm font-medium transition-colors",
+                        active
+                          ? "bg-accent text-accent-foreground"
+                          : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                        collapsed && "justify-center px-0",
+                      )}
+                    >
+                      <item.icon className="size-4 shrink-0" />
+                      {!collapsed && (
+                        <span className="flex-1">{item.label}</span>
+                      )}
+                    </Link>
+                  </li>
+                );
+              },
+            )}
           </ul>
         </div>
         {!collapsed && (
@@ -274,7 +285,10 @@ export function ProjectsNav() {
                   const href = `/projects/${project.id}`;
                   const selected = pathname === href;
                   return (
-                    <li key={project.id}>
+                    <li
+                      key={project.id}
+                      className="group relative flex items-center"
+                    >
                       {/* 스탭 목록은 자기가 작업자인 프로젝트만 담기므로(staffProjects)
                           여기 걸리는 행은 모두 삭제 권한이 있다. 서버도 ownerId로 재검증. */}
                       <ContextMenu>
@@ -283,7 +297,8 @@ export function ProjectsNav() {
                             href={href}
                             aria-current={selected ? "page" : undefined}
                             className={cn(
-                              "flex w-full items-center gap-2.5 rounded-[8px] px-3 py-2 transition-colors",
+                              // pr-9: 오른쪽 ⋮ 자리를 비워 긴 이름이 버튼 아래로 들어가지 않게
+                              "flex w-full items-center gap-2.5 rounded-[8px] py-2 pl-3 pr-9 transition-colors",
                               selected ? "bg-muted" : "hover:bg-accent/60",
                             )}
                           >
@@ -313,6 +328,18 @@ export function ProjectsNav() {
                           </ContextMenuItem>
                         </ContextMenuContent>
                       </ContextMenu>
+                      {/* Link 안에는 넣을 수 없다 — 앵커 중첩이자 누르면 이동한다 */}
+                      <RowActions
+                        label={project.name}
+                        className="absolute right-1.5"
+                        actions={[
+                          {
+                            label: "프로젝트 삭제",
+                            destructive: true,
+                            onSelect: () => deleteProject(groupId, project.id),
+                          },
+                        ]}
+                      />
                     </li>
                   );
                 })}
@@ -343,135 +370,151 @@ export function ProjectsNav() {
               )}
               {isMaster &&
                 groups.map((group) => {
-                const expanded = !collapsedGroupIds.has(group.id);
-                const groupRow = (
-                  <button
-                    type="button"
-                    onClick={() => toggleGroup(group.id)}
-                    aria-expanded={expanded}
-                    className="flex h-[34px] w-full items-center gap-2 rounded-[8px] pl-2 pr-3 transition-colors hover:bg-accent/60"
-                  >
-                    {expanded ? (
-                      <ChevronDown className="size-3 shrink-0 text-muted-foreground" />
-                    ) : (
-                      <ChevronRight className="size-3 shrink-0 text-muted-foreground" />
-                    )}
-                    <Folder className="size-4 shrink-0 text-muted-foreground" />
-                    <span className="min-w-0 flex-1 truncate text-left text-[13px] font-semibold text-foreground">
-                      {group.name}
-                    </span>
-                    <span className="text-xs font-medium text-muted-foreground">
-                      {group.projects.length}
-                    </span>
-                  </button>
-                );
-                return (
-                  <li key={group.id}>
-                    {isMaster ? (
-                      <ContextMenu>
-                        <ContextMenuTrigger asChild>
-                          {groupRow}
-                        </ContextMenuTrigger>
-                        <ContextMenuContent className="w-44">
-                          <ContextMenuItem
-                            variant="destructive"
-                            onSelect={() => deleteGroup(group.id)}
-                          >
-                            그룹 삭제
-                          </ContextMenuItem>
-                        </ContextMenuContent>
-                      </ContextMenu>
-                    ) : (
-                      groupRow
-                    )}
-                    {expanded && (
-                      <ul className="flex flex-col gap-0.5 pt-0.5">
-                        {group.projects.map((project) => {
-                          const href = `/projects/${project.id}`;
-                          const selected = pathname === href;
-                          const projectRow = (
-                            <Link
-                              href={href}
-                              aria-current={selected ? "page" : undefined}
-                              className={cn(
-                                "flex w-full items-center gap-2.5 rounded-[8px] py-2 pl-[34px] pr-3 transition-colors",
-                                selected
-                                  ? "bg-muted"
-                                  : "hover:bg-accent/60",
-                              )}
+                  const expanded = !collapsedGroupIds.has(group.id);
+                  const groupRow = (
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(group.id)}
+                      aria-expanded={expanded}
+                      className="flex h-[34px] w-full items-center gap-2 rounded-[8px] pl-2 pr-3 transition-colors hover:bg-accent/60"
+                    >
+                      {expanded ? (
+                        <ChevronDown className="size-3 shrink-0 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="size-3 shrink-0 text-muted-foreground" />
+                      )}
+                      <Folder className="size-4 shrink-0 text-muted-foreground" />
+                      <span className="min-w-0 flex-1 truncate text-left text-[13px] font-semibold text-foreground">
+                        {group.name}
+                      </span>
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {group.projects.length}
+                      </span>
+                    </button>
+                  );
+                  return (
+                    <li key={group.id}>
+                      {isMaster ? (
+                        <ContextMenu>
+                          <ContextMenuTrigger asChild>
+                            {groupRow}
+                          </ContextMenuTrigger>
+                          <ContextMenuContent className="w-44">
+                            <ContextMenuItem
+                              variant="destructive"
+                              onSelect={() => deleteGroup(group.id)}
                             >
-                              <span
-                                aria-hidden
-                                className="size-2 shrink-0 rounded-full"
-                                style={{ backgroundColor: project.color }}
-                              />
-                              <span className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-foreground">
-                                {project.name}
-                              </span>
-                            </Link>
-                          );
-                          return (
-                            <li key={project.id}>
-                              {isMaster ? (
-                                <ContextMenu>
-                                  <ContextMenuTrigger asChild>
-                                    {projectRow}
-                                  </ContextMenuTrigger>
-                                  <ContextMenuContent className="w-44">
-                                    <ColorMenuSection
-                                      current={project.color}
-                                      onPick={(color) =>
-                                        setProjectColor(project.id, color)
-                                      }
-                                    />
-                                    <ContextMenuSeparator />
-                                    <ContextMenuItem
-                                      variant="destructive"
-                                      onSelect={() =>
-                                        deleteProject(group.id, project.id)
-                                      }
-                                    >
-                                      프로젝트 삭제
-                                    </ContextMenuItem>
-                                  </ContextMenuContent>
-                                </ContextMenu>
+                              그룹 삭제
+                            </ContextMenuItem>
+                          </ContextMenuContent>
+                        </ContextMenu>
+                      ) : (
+                        groupRow
+                      )}
+                      {expanded && (
+                        <ul className="flex flex-col gap-0.5 pt-0.5">
+                          {group.projects.map((project) => {
+                            const href = `/projects/${project.id}`;
+                            const selected = pathname === href;
+                            const projectRow = (
+                              <Link
+                                href={href}
+                                aria-current={selected ? "page" : undefined}
+                                className={cn(
+                                  // pr-9: 오른쪽 ⋮ 자리 (마스터만 보이지만 정렬은 통일)
+                                  "flex w-full items-center gap-2.5 rounded-[8px] py-2 pl-[34px] pr-9 transition-colors",
+                                  selected ? "bg-muted" : "hover:bg-accent/60",
+                                )}
+                              >
+                                <span
+                                  aria-hidden
+                                  className="size-2 shrink-0 rounded-full"
+                                  style={{ backgroundColor: project.color }}
+                                />
+                                <span className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-foreground">
+                                  {project.name}
+                                </span>
+                              </Link>
+                            );
+                            return (
+                              <li
+                                key={project.id}
+                                className="group relative flex items-center"
+                              >
+                                {isMaster ? (
+                                  <ContextMenu>
+                                    <ContextMenuTrigger asChild>
+                                      {projectRow}
+                                    </ContextMenuTrigger>
+                                    <ContextMenuContent className="w-44">
+                                      <ColorMenuSection
+                                        current={project.color}
+                                        onPick={(color) =>
+                                          setProjectColor(project.id, color)
+                                        }
+                                      />
+                                      <ContextMenuSeparator />
+                                      <ContextMenuItem
+                                        variant="destructive"
+                                        onSelect={() =>
+                                          deleteProject(group.id, project.id)
+                                        }
+                                      >
+                                        프로젝트 삭제
+                                      </ContextMenuItem>
+                                    </ContextMenuContent>
+                                  </ContextMenu>
+                                ) : (
+                                  projectRow
+                                )}
+                                {isMaster && (
+                                  <RowActions
+                                    label={project.name}
+                                    className="absolute right-1.5"
+                                    actions={[
+                                      {
+                                        label: "프로젝트 삭제",
+                                        destructive: true,
+                                        onSelect: () =>
+                                          deleteProject(group.id, project.id),
+                                      },
+                                    ]}
+                                  />
+                                )}
+                              </li>
+                            );
+                          })}
+                          {isMaster && (
+                            <li>
+                              {adding?.type === "project" &&
+                              adding.groupId === group.id ? (
+                                <InlineAddInput
+                                  placeholder="새 프로젝트"
+                                  indented
+                                  color={newColor}
+                                  onColorChange={setNewColor}
+                                  onCommit={(name) => {
+                                    addProject(group.id, name, newColor);
+                                    setAdding(null);
+                                  }}
+                                  onCancel={() => setAdding(null)}
+                                />
                               ) : (
-                                projectRow
+                                <button
+                                  type="button"
+                                  onClick={() => openProjectAdd(group.id)}
+                                  className="flex h-[30px] w-full items-center rounded-[8px] pl-[34px] pr-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+                                >
+                                  +&nbsp;&nbsp;프로젝트 추가
+                                </button>
                               )}
                             </li>
-                          );
-                        })}
-                        {isMaster && (
-                          <li>
-                            {adding?.type === "project" &&
-                            adding.groupId === group.id ? (
-                              <InlineAddInput
-                                placeholder="새 프로젝트"
-                                indented
-                                color={newColor}
-                                onColorChange={setNewColor}
-                                onCommit={(name) => {
-                                  addProject(group.id, name, newColor);
-                                  setAdding(null);
-                                }}
-                                onCancel={() => setAdding(null)}
-                              />
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => openProjectAdd(group.id)}
-                                className="flex h-[30px] w-full items-center rounded-[8px] pl-[34px] pr-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-                              >
-                                +&nbsp;&nbsp;프로젝트 추가
-                              </button>
-                            )}
-                          </li>
-                        )}
-                      </ul>
-                    )}
-                  </li>
-                );
-              })}
+                          )}
+                        </ul>
+                      )}
+                    </li>
+                  );
+                })}
               {isMaster && (
                 <li>
                   {adding?.type === "group" ? (

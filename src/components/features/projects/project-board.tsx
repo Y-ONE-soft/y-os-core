@@ -10,6 +10,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import {
   boardActions,
   useProjectBoard,
@@ -134,7 +135,7 @@ export function ProjectBoard({
                     setDraggingStageId(stage.id);
                   }}
                   onDragEnd={endStageDrag}
-                  className="flex shrink-0 cursor-grab items-center gap-[7px] py-0.5 pl-1 pr-0.5 active:cursor-grabbing"
+                  className="group flex shrink-0 cursor-grab items-center gap-[7px] py-0.5 pl-1 pr-0.5 active:cursor-grabbing"
                 >
                   <span
                     aria-hidden
@@ -146,6 +147,20 @@ export function ProjectBoard({
                   </h3>
                   <span className="rounded-full bg-background px-[7px] py-0.5 text-[10.5px] text-muted-foreground">
                     {countLabel}
+                  </span>
+                  {/* data-column-child: 카드·버튼과 같이 컬럼 전체 강조를 끈다 */}
+                  <span data-column-child className="flex shrink-0">
+                    <RowActions
+                      label={stage.name}
+                      actions={[
+                        {
+                          label: "단계 삭제",
+                          destructive: true,
+                          onSelect: () =>
+                            boardActions.deleteStage(projectId, stage.id),
+                        },
+                      ]}
+                    />
                   </span>
                 </header>
               </ContextMenuTrigger>
@@ -185,7 +200,7 @@ export function ProjectBoard({
                         }
                       }}
                       className={cn(
-                        "flex w-full shrink-0 cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 transition-shadow outline-none",
+                        "group flex w-full shrink-0 cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 transition-shadow outline-none",
                         "hover:ring-2 hover:ring-primary/50 focus-visible:ring-2 focus-visible:ring-ring",
                         task.done
                           ? "bg-muted opacity-60"
@@ -200,7 +215,11 @@ export function ProjectBoard({
                           aria-label={`${task.name} 완료`}
                           checked={task.done}
                           onCheckedChange={() =>
-                            boardActions.toggleTask(projectId, stage.id, task.id)
+                            boardActions.toggleTask(
+                              projectId,
+                              stage.id,
+                              task.id,
+                            )
                           }
                           className="rounded-[4px] border-primary"
                         />
@@ -213,6 +232,17 @@ export function ProjectBoard({
                       >
                         {task.name}
                       </span>
+                      <RowActions
+                        label={task.name}
+                        actions={[
+                          {
+                            label: "할일 삭제",
+                            destructive: true,
+                            onSelect: () =>
+                              boardActions.deleteTask(projectId, task.id),
+                          },
+                        ]}
+                      />
                     </div>
                   </ContextMenuTrigger>
                   <ContextMenuContent className="w-44">
