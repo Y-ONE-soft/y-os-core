@@ -23,6 +23,14 @@ export async function fetchMe(): Promise<SessionUser | null> {
   }
 }
 
+/** 비밀번호 변경 — 성공하면 다른 기기의 세션은 모두 끊긴다 */
+export function changePasswordApi(input: {
+  currentPassword: string;
+  nextPassword: string;
+}) {
+  return api.patch<{ ok: boolean }>("/api/auth/password", input);
+}
+
 /** 내 정보 수정 — 수정된 세션 사용자를 그대로 돌려받아 컨텍스트를 갱신한다 */
 export async function updateMe(patch: ProfilePatch): Promise<SessionUser> {
   const { user } = await api.patch<{ user: SessionUser }>(
