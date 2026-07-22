@@ -60,3 +60,8 @@ src/components/ui/textarea.tsx · select.tsx               # shadcn CLI 추가
 - 산출물·연결·댓글·유형·난이도는 오버레이를 닫으면 초기화(로컬 상태) — DB 전환 시 영속화
 - 백로그 작업은 오버레이 미연결(단계 소속이 없어 세부 사항 구성이 다름) — 필요 시 후속 처리
 - 요청 모달의 "작업자 선택" 요약 박스는 표시 전용(체크리스트가 항상 펼쳐져 있는 디자인 구조 그대로)
+
+## 8. 사후 검증 결과 (추록)
+
+- push → Vercel 프리뷰 배포 **success(● Ready)**: https://y-os-core-fjqunrknf-project-hosting-center.vercel.app
+- PR: https://github.com/Y-ONE-soft/y-os-core/pull/13 — merge commit 방식으로 머지, 머지 시점 main(f368d11) 기준 docs 번호 충돌 없음(17 확정)
