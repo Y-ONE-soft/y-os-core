@@ -86,6 +86,49 @@ export async function logout(token: string): Promise<void> {
   await db.session.deleteMany({ where: { id: token } });
 }
 
+/**
+ * 비밀번호 최소 길이. 시드 계정이 4자(`1111`)라 우선 4로 둔다.
+ * 운영 전에는 반드시 올려야 한다 — docs 참고.
+ */
+export const PASSWORD_MIN_LENGTH = 4;
+
+/** 현재 비밀번호가 틀렸을 때 — 라우트가 400으로 변환한다 */
+export class WrongPasswordError extends Error {
+  constructor() {
+    super("현재 비밀번호가 올바르지 않습니다.");
+    this.name = "WrongPasswordError";
+  }
+}
+
+/**
+ * 비밀번호 변경.
+ *
+ * 현재 비밀번호를 반드시 확인한다 — 세션이 탈취된 상황에서 공격자가 비밀번호를
+ * 바꿔 계정을 통째로 가져가는 것을 막는 최소 방어다.
+ *
+ * 성공하면 **지금 쓰는 세션만 남기고 나머지를 지운다.** 비밀번호를 바꾸는 이유
+ * 자체가 "다른 데서 누가 내 계정을 쓰고 있다"인 경우가 있어, 바꿔도 기존 세션이
+ * 살아 있으면 목적을 달성하지 못한다.
+ */
+export async function changePassword(
+  userId: string,
+  currentPassword: string,
+  nextPassword: string,
+  keepToken: string,
+): Promise<void> {
+  const user = await db.user.findUnique({ where: { id: userId } });
+  if (!user) throw new WrongPasswordError();
+
+  const matches = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!matches) throw new WrongPasswordError();
+
+  const passwordHash = await bcrypt.hash(nextPassword, 10);
+  await db.$transaction([
+    db.user.update({ where: { id: userId }, data: { passwordHash } }),
+    db.session.deleteMany({ where: { userId, id: { not: keepToken } } }),
+  ]);
+}
+
 /** 세션 토큰을 검증해 사용자 정보를 돌려준다. 만료된 세션은 즉시 정리한다. */
 export async function getSessionUser(
   token: string,
