@@ -100,9 +100,15 @@ export function ProjectBoard({
               // 예정일은 assignTask가 max(단계 시작일, 오늘)로 잡아 준다.
               boardActions.assignTask(projectId, taskId, projectId, stage.id);
             }}
+            onClick={() => onOpenStage(stage.id)}
             className={cn(
-              "relative flex min-h-0 w-[260px] shrink-0 flex-col gap-1.5 rounded-[8px] bg-border p-2 transition-shadow",
-              dropStageId === stage.id && "ring-2 ring-primary ring-offset-1",
+              "relative flex min-h-0 w-[260px] shrink-0 cursor-pointer flex-col gap-1.5 rounded-[8px] bg-border p-2 transition-shadow",
+              // 컬럼 전체가 '단계' 컴포넌트다 — 호버하면 통째로 선택된 것처럼 보인다.
+              // 단, 안쪽 카드·버튼을 가리키는 동안에는 컬럼 강조를 끈다(has-*가
+              // :has() 특이도 덕에 hover 유틸리티를 순서와 무관하게 이긴다).
+              "hover:ring-2 hover:ring-primary/40 has-[[data-column-child]:hover]:ring-0",
+              dropStageId === stage.id &&
+                "ring-2 ring-primary ring-offset-1 has-[[data-column-child]:hover]:ring-2",
               draggingStageId === stage.id && "opacity-40",
             )}
           >
@@ -117,9 +123,10 @@ export function ProjectBoard({
                 컬럼 전체를 트리거로 잡으면 할일 카드 메뉴와 중첩되므로 헤더만 잡는다 */}
             <ContextMenu>
               <ContextMenuTrigger asChild>
-                {/* 헤더 어디를 눌러도 단계 상세가 열리고, 끌면 순서가 바뀐다.
-                    카드 영역까지 draggable로 잡으면 할일 카드 드래그와 겹치므로
-                    손잡이는 헤더로 한정한다 */}
+                {/* 순서 변경 손잡이 — 카드 영역까지 draggable로 잡으면 할일 카드
+                    드래그와 겹치므로 손잡이는 헤더로 한정한다.
+                    클릭·호버 반응은 주지 않는다: 상세 열기와 강조는 컬럼 전체가 맡고,
+                    헤더에만 배경이 깔리면 "헤더를 눌러야 하나"로 읽힌다 */}
                 <header
                   draggable
                   onDragStart={(event) => {
@@ -127,8 +134,7 @@ export function ProjectBoard({
                     setDraggingStageId(stage.id);
                   }}
                   onDragEnd={endStageDrag}
-                  onClick={() => onOpenStage(stage.id)}
-                  className="flex shrink-0 cursor-grab items-center gap-[7px] rounded-[6px] py-0.5 pl-1 pr-0.5 transition-colors hover:bg-background/60 active:cursor-grabbing"
+                  className="flex shrink-0 cursor-grab items-center gap-[7px] py-0.5 pl-1 pr-0.5 active:cursor-grabbing"
                 >
                   <span
                     aria-hidden
@@ -136,16 +142,7 @@ export function ProjectBoard({
                     style={{ backgroundColor: stage.color }}
                   />
                   <h3 className="min-w-0 flex-1 truncate text-[13px] font-semibold">
-                    <button
-                      type="button"
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onOpenStage(stage.id);
-                      }}
-                      className="max-w-full truncate text-left transition-colors hover:text-primary/80 hover:underline"
-                    >
-                      {stage.name}
-                    </button>
+                    {stage.name}
                   </h3>
                   <span className="rounded-full bg-background px-[7px] py-0.5 text-[10.5px] text-muted-foreground">
                     {countLabel}
@@ -166,16 +163,33 @@ export function ProjectBoard({
               {stage.tasks.map((task) => (
                 <ContextMenu key={task.id}>
                   <ContextMenuTrigger asChild>
-                    {/* 카드 어디를 눌러도 상세가 열린다 — 체크박스만 예외.
+                    {/* 카드 자체가 하나의 '할일' 컴포넌트 — 호버하면 선택된 것처럼
+                        보이고 어디를 눌러도 상세가 열린다(체크박스만 예외).
                         완료 카드는 컬럼 배경에 잠기고 그림자를 잃어 뒤로 물러난다 —
                         글자 취소선만으로는 한눈에 구분되지 않았다 */}
                     <div
-                      onClick={() => setDetailTaskId(task.id)}
+                      data-column-child
+                      role="button"
+                      tabIndex={0}
+                      onClick={(event) => {
+                        // 막지 않으면 컬럼까지 올라가 단계 상세가 같이 열린다
+                        event.stopPropagation();
+                        setDetailTaskId(task.id);
+                      }}
+                      onKeyDown={(event) => {
+                        // div라 기본 동작이 없으니 버튼 규약을 직접 지킨다
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setDetailTaskId(task.id);
+                        }
+                      }}
                       className={cn(
-                        "flex w-full shrink-0 cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 transition-colors",
+                        "flex w-full shrink-0 cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 transition-shadow outline-none",
+                        "hover:ring-2 hover:ring-primary/50 focus-visible:ring-2 focus-visible:ring-ring",
                         task.done
-                          ? "bg-muted opacity-60 hover:opacity-80"
-                          : "bg-background shadow-xs hover:bg-accent/40",
+                          ? "bg-muted opacity-60"
+                          : "bg-background shadow-xs",
                       )}
                     >
                       <span
@@ -191,19 +205,14 @@ export function ProjectBoard({
                           className="rounded-[4px] border-primary"
                         />
                       </span>
-                      <button
-                        type="button"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setDetailTaskId(task.id);
-                        }}
+                      <span
                         className={cn(
-                          "min-w-0 flex-1 truncate text-left text-[13px] font-medium leading-[18px] underline-offset-2 hover:underline",
+                          "min-w-0 flex-1 truncate text-left text-[13px] font-medium leading-[18px]",
                           task.done && "text-muted-foreground line-through",
                         )}
                       >
                         {task.name}
-                      </button>
+                      </span>
                     </div>
                   </ContextMenuTrigger>
                   <ContextMenuContent className="w-44">
@@ -219,7 +228,11 @@ export function ProjectBoard({
                 </ContextMenu>
               ))}
               {addingStageId === stage.id ? (
-                <div className="flex w-full shrink-0 items-center gap-2 rounded-[8px] border-[1.5px] border-primary bg-background px-2.5 py-2 shadow-xs">
+                <div
+                  data-column-child
+                  onClick={(event) => event.stopPropagation()}
+                  className="flex w-full shrink-0 items-center gap-2 rounded-[8px] border-[1.5px] border-primary bg-background px-2.5 py-2 shadow-xs"
+                >
                   <input
                     autoFocus
                     placeholder="할일명 입력 후 Enter"
@@ -246,7 +259,11 @@ export function ProjectBoard({
               ) : (
                 <button
                   type="button"
-                  onClick={() => setAddingStageId(stage.id)}
+                  data-column-child
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setAddingStageId(stage.id);
+                  }}
                   className="flex w-full shrink-0 items-center rounded-[8px] py-[5px] pl-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
                 >
                   ＋ 할일
