@@ -43,6 +43,12 @@ export const patchStageApi = (
   patch: Record<string, unknown>,
 ) => api.patch<{ ok: boolean }>(`/api/admin/stages/${stageId}`, patch);
 
+/** 단계 순서 변경 — 그 프로젝트의 단계 전체를 새 순서대로 보낸다 */
+export const reorderStagesApi = (projectId: string, stageIds: string[]) =>
+  api.patch<{ ok: boolean }>(`/api/admin/projects/${projectId}/stages/order`, {
+    stageIds,
+  });
+
 export const createStageCommentApi = (
   stageId: string,
   input: { id: string; text: string },
