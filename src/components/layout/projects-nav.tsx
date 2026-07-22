@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { STAFF_ASSIGNED_PROJECT_IDS } from "@/lib/constants";
 import { useSession } from "@/components/features/auth/session-context";
 import {
   ContextMenu,
@@ -105,13 +104,15 @@ export function ProjectsNav() {
   const { user } = useSession();
   const isMaster = user?.role === "MASTER";
 
-  // 스탭: 배정 프로젝트만 플랫 리스트로 (배정 도메인 도입 전 자리표시 상수 기준).
+  // 스탭: 자기가 작업자인 프로젝트만 플랫 리스트로.
   const staffProjects = groups.flatMap((group) =>
     group.projects
-      .filter((project) => STAFF_ASSIGNED_PROJECT_IDS.includes(project.id))
+      .filter((project) => !!user && project.ownerId === user.id)
       .map((project) => ({ project, groupId: group.id })),
   );
-  const staffGroupId = staffProjects[0]?.groupId ?? groups[0]?.id;
+  // 생성 시 소속 그룹은 서버가 세션 기준으로 강제한다. 여기서 넘기는 값은
+  // 낙관적 업데이트로 새 프로젝트를 어느 그룹에 끼울지 정하는 용도.
+  const staffGroupId = user?.groupId ?? undefined;
 
   const toggleGroup = (groupId: string) =>
     setCollapsedGroupIds((prev) => {

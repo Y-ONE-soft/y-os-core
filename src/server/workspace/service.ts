@@ -78,6 +78,7 @@ export async function getWorkspace(): Promise<Workspace> {
           id: project.id,
           name: project.name,
           color: project.color,
+          ownerId: project.ownerId,
         })),
     })),
     boards,

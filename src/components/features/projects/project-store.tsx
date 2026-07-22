@@ -16,6 +16,7 @@ import {
   resetWorkspaceApi,
 } from "@/lib/api/workspace";
 import * as cache from "@/components/features/projects/workspace-cache";
+import { useSession } from "@/components/features/auth/session-context";
 import type { ProjectGroup } from "@/types/workspace";
 
 // DB 전환 후에도 기존 소비자 호환을 위해 타입을 재노출한다
@@ -55,6 +56,7 @@ export function ProjectStoreProvider({
     cache.getSnapshot,
     cache.getServerSnapshot,
   );
+  const { user } = useSession();
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null,
   );
@@ -86,7 +88,14 @@ export function ProjectStoreProvider({
       cache.apply((prev) => ({
         groups: prev.groups.map((group) =>
           group.id === groupId
-            ? { ...group, projects: [...group.projects, { id, name, color }] }
+            ? {
+                ...group,
+                // 작업자는 서버가 "만든 사람"으로 정한다 — 낙관적 값도 동일하게 맞춘다
+                projects: [
+                  ...group.projects,
+                  { id, name, color, ownerId: user?.id ?? null },
+                ],
+              }
             : group,
         ),
         boards: { ...prev.boards, [id]: { stages: [], backlog: [] } },
