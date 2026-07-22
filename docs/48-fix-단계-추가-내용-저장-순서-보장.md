@@ -83,6 +83,7 @@ main의 시드 정책 변경(docs/46 — 그룹 골격만 남기고 프로젝트
 
 - 착수~머지 사이 main이 10커밋 전진. 유입분 중 `service.ts`·`project-roadmap.tsx`·`projects-nav.tsx` 등은 본 수정(`board-store.tsx`·`stage-add-overlay.tsx`)과 겹치지 않아 자동 병합
 - docs 번호: 47로 작성 → 머지 직전 main에 47이 2개(PR #44·#46) 유입 → **48**로 조정
+- **`stage-add-overlay.tsx` 충돌 해소** — PR #45(작업 미배정·예정일)가 같은 `submit()`에 "기간 미입력 시 오늘로 기본값" 로직을 넣으면서 충돌했다. 상대 변경은 **구 방식(addStage → updateStage 분리 호출)** 위에 얹혀 있었으므로, **기간 기본값은 유지하고 저장 경로만 `extra` 방식으로 통합**해 두 변경을 모두 살렸다. 해소 후 실제 생성 결과로 양쪽 동작을 확인했다 — `startDate=endDate=2026-07-22`(오늘 기본값) + `description="순서검증 내용 메모"`(순서 보장) 동시 저장
 
 ## 8. 교훈
 
