@@ -10,7 +10,7 @@ import { useProjectBoard } from "@/components/features/projects/board-store";
 import { ProjectRoadmap } from "@/components/features/projects/project-roadmap";
 import { ProjectBoard } from "@/components/features/projects/project-board";
 import { ProjectBacklog } from "@/components/features/projects/project-backlog";
-import { StageAddDialog } from "@/components/features/projects/stage-add-dialog";
+import { StageAddOverlay } from "@/components/features/projects/stage-add-overlay";
 import { StageDetailOverlay } from "@/components/features/projects/stage-detail-overlay";
 
 const TABS = ["보드", "작업", "리포트", "산출물", "메모", "문의"] as const;
@@ -107,8 +107,10 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
         </div>
         <ProjectBacklog projectId={projectId} />
       </div>
-      <StageAddDialog
+      <StageAddOverlay
         projectId={projectId}
+        projectName={project.name}
+        projectColor={project.color}
         open={stageDialogOpen}
         onOpenChange={setStageDialogOpen}
       />

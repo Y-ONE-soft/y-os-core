@@ -567,6 +567,16 @@ export function TaskDetailOverlay({
               🙋 도움 요청하기
             </Button>
             <div className="flex-1" />
+            <Button
+              variant="destructive"
+              className="w-full rounded-[8px]"
+              onClick={() => {
+                boardActions.deleteTask(project.id, task.id);
+                onClose();
+              }}
+            >
+              작업 삭제
+            </Button>
             <div className="text-[11px] leading-[1.6] text-muted-foreground">
               <p>변경사항은 즉시 저장됩니다</p>
               <p>생성 2026-07-22&nbsp;&nbsp;·&nbsp;&nbsp;수정 방금 전</p>

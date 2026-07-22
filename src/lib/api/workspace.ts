@@ -53,3 +53,6 @@ export const createTaskApi = (input: {
 
 export const patchTaskApi = (taskId: string, patch: Record<string, unknown>) =>
   api.patch<{ ok: boolean }>(`/api/admin/tasks/${taskId}`, patch);
+
+export const deleteTaskApi = (taskId: string) =>
+  api.del<{ ok: boolean }>(`/api/admin/tasks/${taskId}`);

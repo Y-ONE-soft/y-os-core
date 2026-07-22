@@ -5,11 +5,17 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { Project } from "@/components/features/projects/project-store";
-import { useBoardState } from "@/components/features/projects/board-store";
+import {
+  boardActions,
+  useBoardState,
+} from "@/components/features/projects/board-store";
 import {
   barRange,
+  dragStageDates,
   formatShort,
   hexToRgba,
+  type DragMode,
+  type StageDates,
 } from "@/components/features/projects/roadmap-utils";
 import {
   RANGE_OPTIONS,
@@ -23,6 +29,10 @@ import {
 const LABEL_WIDTH = 200;
 /** 스크롤 위치를 잡을 때 오늘을 왼쪽에서 이만큼 떨어뜨린다 */
 const TODAY_LEFT_INSET = 120;
+/** 클릭과 드래그를 가르는 이동량(px) — 이보다 덜 움직이면 클릭으로 본다 */
+const DRAG_THRESHOLD = 3;
+/** 막대 양 끝 리사이즈 손잡이 폭(px) */
+const HANDLE_WIDTH = 6;
 
 export type RoadmapSection = {
   key: string;
@@ -37,57 +47,194 @@ function Bar({
   startDate,
   endDate,
   label,
+  badge,
   onClick,
   title,
+  onCommit,
 }: {
   timeline: RoadmapTimeline;
   color: string;
   startDate: string;
   endDate?: string;
-  label: string;
+  /** 함수를 넘기면 드래그 미리보기 날짜로 라벨을 다시 그린다 */
+  label: string | ((start: string, end?: string) => string);
+  /** 단계 순번 — 내 작업 캘린더와 같은 원형 배지로 표시 */
+  badge?: number;
   onClick?: () => void;
   title?: string;
+  /** 드래그로 기간이 바뀌면 호출 — 넘기지 않으면 드래그 비활성 */
+  onCommit?: (patch: StageDates) => void;
 }) {
+  const rootRef = useRef<HTMLElement | null>(null);
+  const dragRef = useRef<{ mode: DragMode; x: number; moved: boolean } | null>(
+    null,
+  );
+  // 드래그였다면 뒤이어 오는 click(단계 상세 열기)을 한 번 삼킨다
+  const draggedRef = useRef(false);
+  // 드래그 중 미리보기 — 손을 뗄 때까지 서버로 보내지 않는다
+  const [draft, setDraft] = useState<StageDates | null>(null);
+
+  const draggable = Boolean(onCommit);
+
+  function computeDraft(mode: DragMode, delta: number) {
+    return dragStageDates(mode, startDate, endDate, delta);
+  }
+
+  function beginDrag(mode: DragMode, event: React.PointerEvent) {
+    if (!draggable) return;
+    // 손잡이에서 시작한 드래그가 막대 본체의 이동 드래그로 번지지 않게 한다
+    event.stopPropagation();
+    rootRef.current?.setPointerCapture(event.pointerId);
+    dragRef.current = { mode, x: event.clientX, moved: false };
+  }
+
+  function finishDrag(event: React.PointerEvent, commit: boolean) {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    setDraft(null);
+    if (!drag) return;
+    if (rootRef.current?.hasPointerCapture(event.pointerId)) {
+      rootRef.current.releasePointerCapture(event.pointerId);
+    }
+    if (!drag.moved) return;
+    draggedRef.current = true;
+    if (!commit) return;
+    // 미리보기 state가 아니라 최종 좌표에서 다시 계산한다 (stale 방지)
+    const delta = Math.round((event.clientX - drag.x) / timeline.dayWidth);
+    if (delta === 0) return;
+    onCommit?.(computeDraft(drag.mode, delta));
+  }
+
+  function handleBodyPointerDown(event: React.PointerEvent) {
+    beginDrag("move", event);
+  }
+
+  function handleStartHandlePointerDown(event: React.PointerEvent) {
+    beginDrag("start", event);
+  }
+
+  function handleEndHandlePointerDown(event: React.PointerEvent) {
+    beginDrag("end", event);
+  }
+
+  function handlePointerMove(event: React.PointerEvent) {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const dx = event.clientX - drag.x;
+    if (!drag.moved && Math.abs(dx) < DRAG_THRESHOLD) return;
+    drag.moved = true;
+    setDraft(computeDraft(drag.mode, Math.round(dx / timeline.dayWidth)));
+  }
+
+  function handlePointerUp(event: React.PointerEvent) {
+    finishDrag(event, true);
+  }
+
+  function handlePointerCancel(event: React.PointerEvent) {
+    finishDrag(event, false);
+  }
+
+  const handleClick = () => {
+    if (draggedRef.current) {
+      draggedRef.current = false;
+      return;
+    }
+    onClick?.();
+  };
+
+  const shownStart = draft ? draft.startDate : startDate;
+  const shownEnd = draft ? draft.endDate : endDate;
   const { startDay, days } = barRange(
     timeline.start,
     timeline.days,
-    startDate,
-    endDate,
+    shownStart,
+    shownEnd,
   );
   if (days <= 0) return null;
   const style = {
     left: startDay * timeline.dayWidth,
-    width: Math.max(days * timeline.dayWidth, 26),
+    // 배지가 있으면 배지(11) + 여백이 잘리지 않을 만큼 최소폭을 넓힌다
+    width: Math.max(days * timeline.dayWidth, badge === undefined ? 26 : 32),
     backgroundColor: hexToRgba(color, 0.12),
     borderColor: hexToRgba(color, 0.8),
   };
-  const className =
-    "absolute top-1 flex h-[18px] items-center overflow-hidden rounded-[6px] border pl-2 text-left";
-  const content = (
-    <span
-      className="whitespace-nowrap text-[10.5px] font-medium"
-      style={{ color }}
-    >
-      {label}
-    </span>
+  const className = cn(
+    "absolute top-1 flex h-[18px] items-center overflow-hidden rounded-[6px] border text-left",
+    badge === undefined ? "pl-2" : "gap-1 pl-1 pr-1.5",
+    // cursor-move: 손 모양(grab)은 "집는다"는 은유라 간트 막대엔 과하다.
+    // 이동은 move, 양 끝 리사이즈는 ew-resize로 커서만 보고도 구분되게 한다.
+    // touch-none: 터치로 막대를 끌 때 가로 스크롤이 같이 먹지 않게 한다
+    draggable && "cursor-move touch-none select-none",
+    draft && "z-10 shadow-sm",
   );
+  const handles = draggable && (
+    <>
+      <span
+        aria-hidden
+        onPointerDown={handleStartHandlePointerDown}
+        className="absolute inset-y-0 left-0 cursor-ew-resize"
+        style={{ width: HANDLE_WIDTH }}
+      />
+      <span
+        aria-hidden
+        onPointerDown={handleEndHandlePointerDown}
+        className="absolute inset-y-0 right-0 cursor-ew-resize"
+        style={{ width: HANDLE_WIDTH }}
+      />
+    </>
+  );
+  const dragProps = draggable
+    ? {
+        onPointerDown: handleBodyPointerDown,
+        onPointerMove: handlePointerMove,
+        onPointerUp: handlePointerUp,
+        onPointerCancel: handlePointerCancel,
+      }
+    : {};
+  const content = (
+    <>
+      {badge !== undefined && (
+        <span
+          aria-hidden
+          className="flex size-[11px] shrink-0 items-center justify-center rounded-full text-[7.5px] font-medium text-white"
+          style={{ backgroundColor: color }}
+        >
+          {badge}
+        </span>
+      )}
+      <span
+        className="whitespace-nowrap text-[10.5px] font-medium"
+        style={{ color }}
+      >
+        {typeof label === "function" ? label(shownStart, shownEnd) : label}
+      </span>
+    </>
+  );
+
+  const setRoot = (node: HTMLElement | null) => {
+    rootRef.current = node;
+  };
 
   if (!onClick) {
     return (
-      <div className={className} style={style}>
+      <div ref={setRoot} className={className} style={style} {...dragProps}>
         {content}
+        {handles}
       </div>
     );
   }
   return (
     <button
+      ref={setRoot}
       type="button"
-      onClick={onClick}
+      onClick={handleClick}
       title={title}
       className={cn(className, "transition-shadow hover:shadow-sm")}
       style={style}
+      {...dragProps}
     >
       {content}
+      {handles}
     </button>
   );
 }
@@ -319,7 +466,7 @@ export function WorkloadRoadmap({
                             )}
                           </div>
                         </div>
-                        {stages.map((stage) => {
+                        {stages.map((stage, stageIndex) => {
                           const done = stage.tasks.filter(
                             (task) => task.done,
                           ).length;
@@ -373,12 +520,20 @@ export function WorkloadRoadmap({
                                     color={stage.color}
                                     startDate={stage.startDate!}
                                     endDate={stage.endDate}
+                                    badge={stageIndex + 1}
                                     onClick={openStage}
-                                    title={`${stage.name} 단계 상세 열기`}
-                                    label={
-                                      stage.endDate
-                                        ? `${stagePercent}% · ${formatShort(stage.startDate!)}~${formatShort(stage.endDate)}`
-                                        : `${stagePercent}% · ${formatShort(stage.startDate!)}~`
+                                    onCommit={(patch) =>
+                                      boardActions.updateStage(
+                                        project.id,
+                                        stage.id,
+                                        patch,
+                                      )
+                                    }
+                                    title={`${stage.name} — 클릭하면 단계 상세, 양 끝을 끌면 기간 조절, 가운데를 끌면 이동`}
+                                    label={(start, end) =>
+                                      end
+                                        ? `${stagePercent}% · ${formatShort(start)}~${formatShort(end)}`
+                                        : `${stagePercent}% · ${formatShort(start)}~`
                                     }
                                   />
                                 )}

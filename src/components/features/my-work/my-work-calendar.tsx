@@ -36,7 +36,12 @@ function ProjectBoxItem({ box }: { box: ProjectBox }) {
   return (
     <div
       aria-hidden
-      className="pointer-events-none absolute rounded-[2px] border"
+      className={cn(
+        "pointer-events-none absolute border",
+        // 주 경계에서 잘린 면은 열어 둬야 다음 주로 이어진 한 범위로 읽힌다
+        box.continuesLeft ? "border-l-0" : "rounded-l-[2px]",
+        box.continuesRight ? "border-r-0" : "rounded-r-[2px]",
+      )}
       style={{
         left: colLeft(box.col),
         width: colWidth(box.span),
@@ -54,8 +59,8 @@ function ProjectBoxItem({ box }: { box: ProjectBox }) {
           {box.label}
         </span>
       )}
-      {/* 박스 안 줄 구분선 — 단계 줄과 할일 줄을 한 프로젝트 안에서 나눠 보여준다 */}
-      {Array.from({ length: box.lanes - 1 }, (_, index) => (
+      {/* 박스 안 줄 구분선 — 실제 할일 줄 위에만 긋는다. 빈 자리에는 선이 남지 않는다 */}
+      {Array.from({ length: box.taskLanes }, (_, index) => (
         <div
           key={index}
           className="absolute inset-x-0 h-px"

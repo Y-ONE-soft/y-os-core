@@ -9,6 +9,7 @@ import {
   createStageApi,
   createStageCommentApi,
   createTaskApi,
+  deleteTaskApi,
   patchStageApi,
   patchTaskApi,
 } from "@/lib/api/workspace";
@@ -46,7 +47,8 @@ export type NewStageInput = {
 };
 
 export const boardActions = {
-  addStage(projectId: string, input: NewStageInput) {
+  /** 생성된 단계 id를 돌려준다 — 생성 직후 상세 필드를 이어서 저장할 때 쓴다 */
+  addStage(projectId: string, input: NewStageInput): string {
     const id = `st-${crypto.randomUUID()}`;
     const count =
       cache.getSnapshot().boards[projectId]?.stages.length ?? 0;
@@ -81,6 +83,7 @@ export const boardActions = {
         showDeadline: input.showDeadline,
       }),
     );
+    return id;
   },
   updateStage(
     projectId: string,
@@ -239,6 +242,25 @@ export const boardActions = {
         scheduledDate,
       }),
     );
+  },
+  /** 작업 삭제 — 미배정이거나 백로그·단계 어디에 있든 제거한다 */
+  deleteTask(projectId: string | null, taskId: string) {
+    if (projectId === null) {
+      cache.apply((prev) => ({
+        ...prev,
+        unassigned: prev.unassigned.filter((task) => task.id !== taskId),
+      }));
+    } else {
+      updateBoard(projectId, (board) => ({
+        ...board,
+        backlog: board.backlog.filter((task) => task.id !== taskId),
+        stages: board.stages.map((stage) => ({
+          ...stage,
+          tasks: stage.tasks.filter((task) => task.id !== taskId),
+        })),
+      }));
+    }
+    cache.persist(deleteTaskApi(taskId));
   },
   toggleTask(projectId: string | null, stageId: string | null, taskId: string) {
     const snapshot = cache.getSnapshot();

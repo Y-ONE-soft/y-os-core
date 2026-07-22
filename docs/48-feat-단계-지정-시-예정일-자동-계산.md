@@ -1,9 +1,9 @@
-# 46. 단계 지정 시 예정일 자동 계산
+# 48. 단계 지정 시 예정일 자동 계산
 
 - **예정 커밋 메시지**: `feat: 단계 지정 시 예정일 자동 계산`
 - **작업일**: 2026-07-22
 - **작업 브랜치**: `작업-미배정-예정일` (워크트리 `.claude/worktrees/task-unassigned-schedule`, base: main `24ce0a8`)
-- **요청 사이클 태스크 3/3** — 태스크 1(docs/41, 모델·API)·태스크 2(docs/42, 미배정 UI)에 이어지는 마지막 태스크.
+- **요청 사이클 태스크 3/3** — 태스크 1(docs/46, 모델·API)·태스크 2(docs/47, 미배정 UI)에 이어지는 마지막 태스크.
 
 ---
 
@@ -34,7 +34,7 @@
 | `src/components/features/projects/roadmap-utils.ts` | `todayISO()`·`scheduleFor()` 추가 |
 | `src/components/features/projects/board-store.tsx` | `assignTask`가 예정일을 계산해 낙관적 반영 + PATCH에 포함 |
 | `src/components/features/projects/stage-add-dialog.tsx` | 날짜 미입력 시 시작·종료 모두 오늘로 |
-| `docs/46-…` | 이 문서 |
+| `docs/48-…` | 이 문서 |
 
 ## 4. 검증
 

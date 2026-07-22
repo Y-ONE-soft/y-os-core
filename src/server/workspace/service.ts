@@ -173,6 +173,10 @@ export type TaskPatch = Partial<{
   scheduledDate: string | null;
 }>;
 
+export function deleteTask(id: string) {
+  return db.task.deleteMany({ where: { id } });
+}
+
 export async function updateTask(id: string, patch: TaskPatch) {
   if (patch.projectId === undefined) {
     return db.task.updateMany({ where: { id }, data: patch });

@@ -3,9 +3,13 @@
 //
 // 규칙
 //  1. 프로젝트 하나가 박스 하나 — 그 프로젝트의 단계와 할일을 모두 감싼다.
-//  2. 단계 막대는 박스 안에서 한 줄로만 표현한다. 기간이 겹쳐도 나누지 않고 겹쳐 그린다.
-//  3. 할일 칩은 단계 줄 아래에 붙고, 서로 겹칠 때만 줄을 나눈다.
-//  4. 서로 다른 프로젝트는 열 범위가 겹칠 때만 위아래로 갈라진다.
+//  2. 박스 범위는 월 전체 기준으로 첫 항목 시작 ~ 마지막 항목 끝. 주 경계를 넘으면
+//     잘라서 다음 주로 이어 그린다 (캘린더 앱의 여러 날짜 일정과 같은 방식).
+//  3. 단계 줄은 단계 유무와 무관하게 항상 1줄 확보한다. 할일이 단계 자리로 올라오지 않는다.
+//  4. 단계 막대는 그 한 줄로만 표현한다. 기간이 겹쳐도 나누지 않고 겹쳐 그린다.
+//  5. 할일 칩은 단계 줄 아래에 붙고, 서로 겹칠 때만 줄을 나눈다.
+//  6. 박스는 최소 2줄 — 단계 막대 두 개 두께. 할일이 2줄 이상이면 그만큼 두꺼워진다.
+//  7. 레인은 주마다 채워지는 대로 쌓는다. 빈 레인을 예약하지 않는다.
 
 import {
   CAL_OVERLAYS,
@@ -14,7 +18,12 @@ import {
   type CalOverlay,
 } from "@/components/features/my-work/my-work-data";
 
+const DAYS_PER_WEEK = 7;
+
 type ColRange = { col: number; span: number };
+
+/** 월 전체 기준 절대 일자 구간 [start, end) — `주 × 7 + 열` */
+type DayRange = { start: number; end: number };
 
 export type PlacedOverlay = CalOverlay & { lane: number };
 
@@ -22,10 +31,14 @@ export type ProjectBox = ColRange & {
   project: string;
   /** 박스가 시작하는 레인 */
   lane: number;
-  /** 박스가 차지하는 레인 수 (단계 줄 + 할일 줄) */
+  /** 박스가 차지하는 레인 수 — 단계 줄 1 + 할일 줄, 최소 2 */
   lanes: number;
-  /** 단계 줄 수 — 0 또는 1. 박스 안 구분선 위치 계산에 쓴다. */
-  stageLanes: number;
+  /** 이 주의 할일 줄 수. 박스 안 구분선 위치 계산에 쓴다. */
+  taskLanes: number;
+  /** 앞 주에서 이어짐 — 왼쪽 면을 열어 둔다 */
+  continuesLeft: boolean;
+  /** 다음 주로 이어짐 — 오른쪽 면을 열어 둔다 */
+  continuesRight: boolean;
   label?: string;
 };
 
@@ -39,28 +52,49 @@ function overlaps(a: ColRange, b: ColRange) {
   return a.col < b.col + b.span && b.col < a.col + a.span;
 }
 
-function union(a: ColRange, b: ColRange): ColRange {
-  const col = Math.min(a.col, b.col);
-  const end = Math.max(a.col + a.span, b.col + b.span);
-  return { col, span: end - col };
+function dayStart(overlay: CalOverlay) {
+  return overlay.week * DAYS_PER_WEEK + overlay.col;
 }
+
+/** 단계 줄은 단계가 없어도 자리를 잡는다 — 할일이 단계 자리로 올라오지 않게. */
+const STAGE_LANES = 1;
+
+/** 박스 최소 높이 — 단계 막대 두 개 두께. */
+const MIN_BOX_LANES = 2;
 
 /** 렌더 순서 — 단계 → 할일. 같은 종류면 긴 막대를 먼저 그려야 짧은 막대가 위에 겹쳐 보인다. */
 const KIND_ORDER: Record<CalOverlay["kind"], number> = { stage: 0, task: 1 };
 
-function layoutWeek(weekIndex: number, overlays: CalOverlay[]): WeekLayout {
-  // 프로젝트별로 묶는다 — 등장 순서를 유지해야 배치가 데이터 순서와 어긋나지 않는다.
-  const projectOrder: string[] = [];
-  const members = new Map<string, CalOverlay[]>();
+/** 프로젝트별 전체 기간 — 단계든 할일이든 가장 이른 시작부터 가장 늦은 끝까지. */
+function collectProjectRanges(overlays: CalOverlay[]) {
+  const ranges = new Map<string, DayRange>();
   for (const overlay of overlays) {
-    const list = members.get(overlay.project);
-    if (list) {
-      list.push(overlay);
+    const start = dayStart(overlay);
+    const end = start + overlay.span;
+    const current = ranges.get(overlay.project);
+    if (!current) {
+      ranges.set(overlay.project, { start, end });
       continue;
     }
-    projectOrder.push(overlay.project);
-    members.set(overlay.project, [overlay]);
+    current.start = Math.min(current.start, start);
+    current.end = Math.max(current.end, end);
   }
+  return ranges;
+}
+
+const PROJECT_RANGES = collectProjectRanges(CAL_OVERLAYS);
+
+function layoutWeek(weekIndex: number, overlays: CalOverlay[]): WeekLayout {
+  const weekStart = weekIndex * DAYS_PER_WEEK;
+  const weekEnd = weekStart + DAYS_PER_WEEK;
+
+  // 이 주에 걸치는 프로젝트 — 항목이 이 주에 없어도 기간이 지나가면 박스가 이어진다.
+  // 시작이 이른 것부터, 같으면 긴 것부터 앉힌다 (데이터 순서와 무관하게 결과가 안정적이도록).
+  const active = [...PROJECT_RANGES.entries()]
+    .filter(([, range]) => range.start < weekEnd && weekStart < range.end)
+    .sort(
+      ([, a], [, b]) => a.start - b.start || b.end - b.start - (a.end - a.start),
+    );
 
   const lanes: ColRange[][] = [];
 
@@ -81,13 +115,12 @@ function layoutWeek(weekIndex: number, overlays: CalOverlay[]): WeekLayout {
   const boxes: ProjectBox[] = [];
   const overlayLane = new Map<CalOverlay, number>();
 
-  for (const project of projectOrder) {
-    const own = members.get(project)!;
+  for (const [project, projectRange] of active) {
+    const own = overlays.filter((overlay) => overlay.project === project);
     const stages = own.filter((overlay) => overlay.kind === "stage");
     const tasks = own.filter((overlay) => overlay.kind === "task");
 
     // 단계는 몇 개든 한 줄. 할일은 열이 겹칠 때만 줄을 나눈다.
-    const stageLanes = stages.length > 0 ? 1 : 0;
     const taskLanes: ColRange[][] = [];
     const taskLaneOf = new Map<CalOverlay, number>();
     for (const task of tasks) {
@@ -103,10 +136,16 @@ function layoutWeek(weekIndex: number, overlays: CalOverlay[]): WeekLayout {
       taskLaneOf.set(task, lane);
     }
 
-    const range = own
-      .map<ColRange>((overlay) => ({ col: overlay.col, span: overlay.span }))
-      .reduce(union);
-    const height = stageLanes + taskLanes.length;
+    // 프로젝트 기간을 이 주로 잘라낸다.
+    const clippedStart = Math.max(projectRange.start, weekStart);
+    const clippedEnd = Math.min(projectRange.end, weekEnd);
+    const range: ColRange = {
+      col: clippedStart - weekStart,
+      span: clippedEnd - clippedStart,
+    };
+
+    // 단계 줄 1 + 할일 줄, 단 단계 막대 두 개 두께(2줄)보다 얇아지지 않는다.
+    const height = Math.max(MIN_BOX_LANES, STAGE_LANES + taskLanes.length);
     const lane = placeBlock(range, height);
 
     boxes.push({
@@ -114,7 +153,9 @@ function layoutWeek(weekIndex: number, overlays: CalOverlay[]): WeekLayout {
       project,
       lane,
       lanes: height,
-      stageLanes,
+      taskLanes: taskLanes.length,
+      continuesLeft: projectRange.start < weekStart,
+      continuesRight: projectRange.end > weekEnd,
       label: PROJECT_BOX_LABELS.find(
         (entry) => entry.week === weekIndex && entry.project === project,
       )?.label,
@@ -122,7 +163,7 @@ function layoutWeek(weekIndex: number, overlays: CalOverlay[]): WeekLayout {
 
     for (const stage of stages) overlayLane.set(stage, lane);
     for (const task of tasks) {
-      overlayLane.set(task, lane + stageLanes + taskLaneOf.get(task)!);
+      overlayLane.set(task, lane + STAGE_LANES + taskLaneOf.get(task)!);
     }
   }
 
