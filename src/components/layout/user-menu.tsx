@@ -1,5 +1,7 @@
 "use client";
 
+import { ChevronDown } from "lucide-react";
+
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu,
@@ -31,13 +33,11 @@ export function UserMenu() {
   const { user, loading, signOut } = useSession();
 
   if (loading) {
+    // 트리거와 동일한 한 줄·32px 높이 — 로딩 → 로드 전환 시 헤더가 흔들리지 않도록
     return (
-      <div className="flex items-center gap-2.5">
-        <Skeleton className="size-8 rounded-full" />
-        <div className="flex flex-col gap-1">
-          <Skeleton className="h-3 w-14" />
-          <Skeleton className="h-2.5 w-10" />
-        </div>
+      <div className="flex h-8 items-center gap-2.5">
+        <Skeleton className="size-8 shrink-0 rounded-full" />
+        <Skeleton className="h-3.5 w-16" />
       </div>
     );
   }
@@ -51,30 +51,38 @@ export function UserMenu() {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center gap-2.5 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <span className="flex size-8 items-center justify-center rounded-full bg-primary text-[13px] font-semibold text-primary-foreground">
+      {/*
+        트리거는 아바타 높이(32px)에 맞춘 한 줄로 둔다.
+        - 이전에는 이름/역할 2줄이라 텍스트단(37px)이 아바타(32px)보다 커서 위아래로 삐져나오고,
+          좌측 정렬된 짧은 역할 텍스트가 헤더 우측 경계에서 최대 17px 파여 우측이 들쭉날쭉했다.
+        - 역할은 드롭다운 _Me 블록에 이름·이메일과 함께 이미 있으므로 트리거에서는 뺀다.
+        - 이름은 max-w + truncate로 길이 변동을 흡수한다(고정하지 않으면 이름 길이에 따라
+          트리거 좌측단이 움직여 헤더 우측 덩어리 위치가 흔들린다).
+      */}
+      <DropdownMenuTrigger className="flex h-8 items-center gap-2.5 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-[13px] font-semibold text-primary-foreground">
           {user.name.charAt(0)}
         </span>
-        <span className="flex flex-col items-start gap-px">
-          <span className="text-[13px] font-medium text-foreground">
-            {user.name}
-          </span>
-          <span className="text-[11px] text-muted-foreground">
-            {roleLabel(user)}
-          </span>
+        <span className="max-w-[140px] truncate text-[13px] font-medium text-foreground">
+          {user.name}
         </span>
+        <ChevronDown
+          aria-hidden
+          className="size-3.5 shrink-0 text-muted-foreground"
+        />
       </DropdownMenuTrigger>
       {/*
         Figma(187:821)의 패널 위치는 트리거가 아니라 헤더 기준이다.
         - 가로: 화면 우측 4px. 헤더 좌우 패딩이 24px이라 트리거 우측단보다 20px 바깥이므로
           alignOffset -20으로 밀고, 기본 충돌 패딩(10px)이 되밀지 않도록 collisionPadding을 4로 낮춘다.
-        - 세로: top 72px = 헤더 높이(64) + 8. 트리거는 헤더 안에서 세로 중앙 정렬이라 하단이 50px이므로
-          sideOffset은 8이 아니라 22여야 헤더 아래 8px에 걸린다(8이면 헤더를 6px 파고든다).
+        - 세로: top 72px = 헤더 높이(64) + 8. 트리거는 헤더 안에서 세로 중앙 정렬이라
+          하단이 48px(=(64-32)/2 + 32)이므로 sideOffset은 8이 아니라 24여야 헤더 아래 8px에 걸린다.
+          ※ 트리거 높이를 바꾸면 이 값도 함께 조정해야 한다 — 2줄(37px) 시절에는 22였다.
       */}
       <DropdownMenuContent
         align="end"
         alignOffset={-20}
-        sideOffset={22}
+        sideOffset={24}
         collisionPadding={4}
         className="flex w-[240px] flex-col gap-0.5 rounded-[8px] border p-1.5 shadow-[0_4px_8px_rgba(0,0,0,0.1)] ring-0"
       >
