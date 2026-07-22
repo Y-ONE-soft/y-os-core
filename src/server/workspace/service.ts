@@ -191,6 +191,50 @@ export function createStage(input: {
 }
 
 /**
+ * 단계 순서 변경 — stageIds에 준 순서대로 1..N을 다시 매긴다.
+ *
+ * 부분 목록을 받아 부분만 갱신하지 않는다. 요청한 순서가 그 프로젝트의 단계
+ * 집합과 정확히 일치할 때만 반영하고, 아니면 0건으로 거절한다. 클라이언트가
+ * 낡은 목록을 보내면(다른 세션이 그 사이 단계를 추가·삭제) 남은 단계가 빈
+ * 번호를 갖거나 순서가 뒤섞이는데, 그 상태를 만들 바에는 거절하고 새로고침
+ * 시 서버 값으로 되돌아가는 편이 낫다.
+ *
+ * opts.ownerId를 주면 해당 사용자가 작업자인 프로젝트만 바꾼다 (deleteStage와 동일한 스탭 가드).
+ */
+export async function reorderStages(
+  projectId: string,
+  stageIds: string[],
+  opts?: { ownerId?: string },
+): Promise<{ count: number }> {
+  return db.$transaction(async (tx) => {
+    const project = await tx.project.findFirst({
+      where: {
+        id: projectId,
+        ...(opts?.ownerId ? { ownerId: opts.ownerId } : {}),
+      },
+      select: { id: true },
+    });
+    if (!project) return { count: 0 };
+
+    const current = await tx.stage.findMany({
+      where: { projectId },
+      select: { id: true },
+    });
+    const requested = new Set(stageIds);
+    if (
+      requested.size !== stageIds.length ||
+      requested.size !== current.length ||
+      !current.every((stage) => requested.has(stage.id))
+    ) {
+      return { count: 0 };
+    }
+
+    await renumberStages(tx, projectId, stageIds);
+    return { count: stageIds.length };
+  });
+}
+
+/**
  * 단계 삭제 — 그 단계의 할일은 지우지 않고 백로그(stageId = null)로 옮긴다.
  * Task.stage가 onDelete: Cascade이므로 **반드시 할일을 먼저 떼어낸 뒤** 단계를
  * 지워야 한다. 순서가 뒤바뀌면 할일까지 함께 삭제된다.

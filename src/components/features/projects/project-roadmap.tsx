@@ -11,6 +11,11 @@ import {
 import { formatShort } from "@/components/features/projects/roadmap-utils";
 import { RoadmapBar } from "@/components/features/projects/roadmap-bar";
 import {
+  getStageDragData,
+  isStageDrag,
+  setStageDragData,
+} from "@/components/features/projects/stage-drag";
+import {
   RANGE_OPTIONS,
   boundsOfStages,
   buildTimeline,
@@ -20,6 +25,8 @@ import {
 } from "@/components/features/projects/roadmap-window";
 
 const LABEL_WIDTH = 180;
+/** 맨 뒤로 보내는 드롭 자리 — 단계 id와 겹치지 않는 표식 */
+const END_SLOT = "__end__";
 /** 스크롤 위치를 잡을 때 오늘을 왼쪽에서 이만큼 떨어뜨린다 */
 const TODAY_LEFT_INSET = 120;
 
@@ -38,6 +45,14 @@ export function ProjectRoadmap({
   const [range, setRange] = useState<RoadmapRange>("주");
   // 세션 로딩 이후 클라이언트에서만 첫 렌더되므로 지연 초기화가 안전하다
   const [today] = useState(todayISO);
+  // 단계 순서 변경 드래그 — 끌고 있는 행과 끼워 넣을 자리
+  const [draggingStageId, setDraggingStageId] = useState<string | null>(null);
+  const [orderTargetId, setOrderTargetId] = useState<string | null>(null);
+
+  const endStageDrag = () => {
+    setDraggingStageId(null);
+    setOrderTargetId(null);
+  };
 
   // 단계 기간이 기본 범위(앞뒤 2년) 밖이면 그 막대까지 스크롤해 갈 수 있어야 한다
   const timeline = buildTimeline(range, today, boundsOfStages(stages));
@@ -196,10 +211,49 @@ export function ProjectRoadmap({
             return (
               <div
                 key={stage.id}
-                className="flex h-[30px] items-stretch border-t"
+                onDragOver={(event) => {
+                  if (!isStageDrag(event)) return;
+                  event.preventDefault(); // 기본값은 '드롭 금지'라 막아줘야 놓을 수 있다
+                  event.dataTransfer.dropEffect = "move";
+                  setOrderTargetId(stage.id);
+                }}
+                onDragLeave={(event) => {
+                  // 자식 위로 옮겨갈 때도 leave가 뜨므로 행 밖으로 나갔을 때만 끈다
+                  if (event.currentTarget.contains(event.relatedTarget as Node))
+                    return;
+                  setOrderTargetId((prev) =>
+                    prev === stage.id ? null : prev,
+                  );
+                }}
+                onDrop={(event) => {
+                  const movedStageId = getStageDragData(event);
+                  endStageDrag();
+                  if (!movedStageId) return;
+                  event.preventDefault();
+                  // 끌어온 단계가 이 행 자리를 차지하고, 이 행부터 아래로 밀린다
+                  boardActions.moveStage(projectId, movedStageId, stage.id);
+                }}
+                className={cn(
+                  "relative flex h-[30px] items-stretch border-t",
+                  draggingStageId === stage.id && "opacity-40",
+                )}
               >
+                {/* 끼워 넣을 자리 — 이 행 위에 들어간다 */}
+                {orderTargetId === stage.id &&
+                  draggingStageId !== stage.id && (
+                    <span
+                      aria-hidden
+                      className="pointer-events-none absolute inset-x-0 -top-px z-40 h-[2px] bg-primary"
+                    />
+                  )}
                 <div
-                  className="sticky left-0 z-20 flex shrink-0 items-center gap-1.5 border-r bg-background pl-4 pr-2.5"
+                  draggable
+                  onDragStart={(event) => {
+                    setStageDragData(event, stage.id);
+                    setDraggingStageId(stage.id);
+                  }}
+                  onDragEnd={endStageDrag}
+                  className="sticky left-0 z-20 flex shrink-0 cursor-grab items-center gap-1.5 border-r bg-background pl-4 pr-2.5 active:cursor-grabbing"
                   style={{ width: LABEL_WIDTH }}
                 >
                   <span
@@ -243,7 +297,34 @@ export function ProjectRoadmap({
               </div>
             );
           })}
-          <div className="flex h-7 items-stretch border-t">
+          {/* 단계 추가 진입점 겸 맨 뒤로 보내는 드롭 자리 */}
+          <div
+            onDragOver={(event) => {
+              if (!isStageDrag(event)) return;
+              event.preventDefault();
+              event.dataTransfer.dropEffect = "move";
+              setOrderTargetId(END_SLOT);
+            }}
+            onDragLeave={(event) => {
+              if (event.currentTarget.contains(event.relatedTarget as Node))
+                return;
+              setOrderTargetId((prev) => (prev === END_SLOT ? null : prev));
+            }}
+            onDrop={(event) => {
+              const movedStageId = getStageDragData(event);
+              endStageDrag();
+              if (!movedStageId) return;
+              event.preventDefault();
+              boardActions.moveStage(projectId, movedStageId, null);
+            }}
+            className="relative flex h-7 items-stretch border-t"
+          >
+            {orderTargetId === END_SLOT && (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 -top-px z-40 h-[2px] bg-primary"
+              />
+            )}
             <button
               type="button"
               onClick={onAddStage}

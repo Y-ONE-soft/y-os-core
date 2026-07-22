@@ -16,6 +16,7 @@ import {
   deleteTaskApi,
   patchStageApi,
   patchTaskApi,
+  reorderStagesApi,
 } from "@/lib/api/workspace";
 import type {
   BoardStage,
@@ -134,6 +135,35 @@ export const boardActions = {
       };
     });
     cache.persist(deleteStageApi(stageId));
+  },
+  /**
+   * 단계를 targetId 자리로 옮긴다 — 배열 순서가 곧 화면의 단계 번호다.
+   * targetId가 null이면 맨 뒤로 보낸다.
+   */
+  moveStage(projectId: string, stageId: string, targetId: string | null) {
+    if (stageId === targetId) return;
+    const stages = cache.getSnapshot().boards[projectId]?.stages ?? [];
+    const from = stages.findIndex((stage) => stage.id === stageId);
+    if (from === -1) return;
+
+    // 대상 자리에 끼워 넣는다 — 대상과 그 뒤는 한 칸씩 밀린다
+    const rest = stages.filter((stage) => stage.id !== stageId);
+    const to =
+      targetId === null
+        ? rest.length
+        : rest.findIndex((stage) => stage.id === targetId);
+    if (to === -1) return;
+
+    const next = [...rest.slice(0, to), stages[from], ...rest.slice(to)];
+    // 순서가 그대로면 요청을 보내지 않는다 (제자리 드롭)
+    if (next.every((stage, index) => stage.id === stages[index].id)) return;
+    updateBoard(projectId, (board) => ({ ...board, stages: next }));
+    cache.persist(
+      reorderStagesApi(
+        projectId,
+        next.map((stage) => stage.id),
+      ),
+    );
   },
   updateStage(
     projectId: string,

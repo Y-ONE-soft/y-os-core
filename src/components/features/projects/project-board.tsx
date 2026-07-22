@@ -20,6 +20,14 @@ import {
   getTaskDragData,
   isTaskDrag,
 } from "@/components/features/projects/task-drag";
+import {
+  getStageDragData,
+  isStageDrag,
+  setStageDragData,
+} from "@/components/features/projects/stage-drag";
+
+/** 맨 뒤로 보내는 드롭 자리 — 단계 id와 겹치지 않는 표식 */
+const END_SLOT = "__end__";
 
 export function ProjectBoard({
   projectId,
@@ -35,6 +43,14 @@ export function ProjectBoard({
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   // 드롭 대상으로 잡힌 컬럼 — 어디에 놓이는지 보이게 하이라이트한다
   const [dropStageId, setDropStageId] = useState<string | null>(null);
+  // 단계 순서 변경 드래그 — 끌고 있는 컬럼과 끼워 넣을 자리
+  const [draggingStageId, setDraggingStageId] = useState<string | null>(null);
+  const [orderTargetId, setOrderTargetId] = useState<string | null>(null);
+
+  const endStageDrag = () => {
+    setDraggingStageId(null);
+    setOrderTargetId(null);
+  };
 
   return (
     <div className="flex min-h-0 flex-1 gap-2.5 overflow-x-auto">
@@ -47,6 +63,13 @@ export function ProjectBoard({
           <section
             key={stage.id}
             onDragOver={(event) => {
+              // 컬럼은 두 종류의 드래그를 받는다 — 할일은 편입, 단계는 순서 변경
+              if (isStageDrag(event)) {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = "move";
+                setOrderTargetId(stage.id);
+                return;
+              }
               if (!isTaskDrag(event)) return;
               event.preventDefault(); // 기본값은 '드롭 금지'라 막아줘야 놓을 수 있다
               event.dataTransfer.dropEffect = "move";
@@ -58,8 +81,17 @@ export function ProjectBoard({
                 return;
               }
               setDropStageId((prev) => (prev === stage.id ? null : prev));
+              setOrderTargetId((prev) => (prev === stage.id ? null : prev));
             }}
             onDrop={(event) => {
+              const movedStageId = getStageDragData(event);
+              if (movedStageId) {
+                event.preventDefault();
+                endStageDrag();
+                // 끌어온 단계가 이 컬럼 자리를 차지하고, 이 컬럼부터 뒤로 밀린다
+                boardActions.moveStage(projectId, movedStageId, stage.id);
+                return;
+              }
               const taskId = getTaskDragData(event);
               setDropStageId(null);
               if (!taskId) return;
@@ -69,18 +101,34 @@ export function ProjectBoard({
               boardActions.assignTask(projectId, taskId, projectId, stage.id);
             }}
             className={cn(
-              "flex min-h-0 w-[260px] shrink-0 flex-col gap-1.5 rounded-[8px] bg-border p-2 transition-shadow",
+              "relative flex min-h-0 w-[260px] shrink-0 flex-col gap-1.5 rounded-[8px] bg-border p-2 transition-shadow",
               dropStageId === stage.id && "ring-2 ring-primary ring-offset-1",
+              draggingStageId === stage.id && "opacity-40",
             )}
           >
+            {/* 끼워 넣을 자리 — 이 컬럼 왼쪽에 들어간다 */}
+            {orderTargetId === stage.id && draggingStageId !== stage.id && (
+              <span
+                aria-hidden
+                className="absolute inset-y-0 -left-[7px] w-[3px] rounded-full bg-primary"
+              />
+            )}
             {/* 단계 메뉴는 헤더 우클릭 — 할일 카드·프로젝트·백로그와 같은 방식.
                 컬럼 전체를 트리거로 잡으면 할일 카드 메뉴와 중첩되므로 헤더만 잡는다 */}
             <ContextMenu>
               <ContextMenuTrigger asChild>
-                {/* 헤더 어디를 눌러도 단계 상세가 열린다 */}
+                {/* 헤더 어디를 눌러도 단계 상세가 열리고, 끌면 순서가 바뀐다.
+                    카드 영역까지 draggable로 잡으면 할일 카드 드래그와 겹치므로
+                    손잡이는 헤더로 한정한다 */}
                 <header
+                  draggable
+                  onDragStart={(event) => {
+                    setStageDragData(event, stage.id);
+                    setDraggingStageId(stage.id);
+                  }}
+                  onDragEnd={endStageDrag}
                   onClick={() => onOpenStage(stage.id)}
-                  className="flex shrink-0 cursor-pointer items-center gap-[7px] rounded-[6px] py-0.5 pl-1 pr-0.5 transition-colors hover:bg-background/60"
+                  className="flex shrink-0 cursor-grab items-center gap-[7px] rounded-[6px] py-0.5 pl-1 pr-0.5 transition-colors hover:bg-background/60 active:cursor-grabbing"
                 >
                   <span
                     aria-hidden
@@ -208,11 +256,31 @@ export function ProjectBoard({
           </section>
         );
       })}
-      {/* Figma 113:452 "단계 추가 (대기)" — 마지막 컬럼 자리의 점선 진입점 */}
+      {/* Figma 113:452 "단계 추가 (대기)" — 마지막 컬럼 자리의 점선 진입점.
+          맨 뒤로 보내는 드롭 자리도 겸한다 */}
       <button
         type="button"
         onClick={onAddStage}
-        className="flex w-[260px] shrink-0 flex-col items-center justify-center rounded-[8px] border border-dashed p-2 text-center text-[12.5px] font-medium leading-5 text-muted-foreground transition-colors hover:border-muted-foreground/40 hover:text-foreground"
+        onDragOver={(event) => {
+          if (!isStageDrag(event)) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+          setOrderTargetId(END_SLOT);
+        }}
+        onDragLeave={() =>
+          setOrderTargetId((prev) => (prev === END_SLOT ? null : prev))
+        }
+        onDrop={(event) => {
+          const movedStageId = getStageDragData(event);
+          endStageDrag();
+          if (!movedStageId) return;
+          event.preventDefault();
+          boardActions.moveStage(projectId, movedStageId, null);
+        }}
+        className={cn(
+          "flex w-[260px] shrink-0 flex-col items-center justify-center rounded-[8px] border border-dashed p-2 text-center text-[12.5px] font-medium leading-5 text-muted-foreground transition-colors hover:border-muted-foreground/40 hover:text-foreground",
+          orderTargetId === END_SLOT && "border-primary text-foreground",
+        )}
       >
         <span aria-hidden>＋</span>
         단계 추가
