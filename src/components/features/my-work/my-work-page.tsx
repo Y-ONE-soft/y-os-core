@@ -1,14 +1,21 @@
+import Link from "next/link";
+
 import { cn } from "@/lib/utils";
 import { MyWorkCalendarPanel } from "@/components/features/my-work/my-work-calendar-panel";
+import { MyWorkTimelinePanel } from "@/components/features/my-work/my-work-timeline-panel";
 import { MyWorkRequests } from "@/components/features/my-work/my-work-requests";
 import { MyWorkBacklog } from "@/components/features/my-work/my-work-backlog";
 
-const VIEW_TABS = ["캘린더", "타임라인"] as const;
-const ACTIVE_VIEW = "캘린더";
+export type MyWorkView = "calendar" | "timeline";
+
+const VIEW_TABS: { key: MyWorkView; label: string; href: string }[] = [
+  { key: "calendar", label: "캘린더", href: "/projects/my-tasks" },
+  { key: "timeline", label: "타임라인", href: "/projects/my-tasks?view=timeline" },
+];
 
 const FILTERS = ["🔍 필터", "담당자 1 ▾", "프로젝트 ▾"] as const;
 
-export function MyWorkPage() {
+export function MyWorkPage({ view }: { view: MyWorkView }) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 px-6 pb-6 pt-5">
       <header className="flex shrink-0 flex-col gap-1.5">
@@ -20,21 +27,21 @@ export function MyWorkPage() {
       <nav aria-label="내 작업 뷰 전환" className="shrink-0">
         <ul className="flex items-center gap-1">
           {VIEW_TABS.map((tab) => {
-            const active = tab === ACTIVE_VIEW;
+            const active = tab.key === view;
             return (
-              <li key={tab}>
-                <button
-                  type="button"
+              <li key={tab.key}>
+                <Link
+                  href={tab.href}
                   aria-current={active ? "true" : undefined}
                   className={cn(
-                    "rounded-[8px] px-3 py-1.5 text-[13px] font-medium transition-colors",
+                    "block rounded-[8px] px-3 py-1.5 text-[13px] font-medium transition-colors",
                     active
                       ? "bg-accent text-accent-foreground"
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  {tab}
-                </button>
+                  {tab.label}
+                </Link>
               </li>
             );
           })}
@@ -56,7 +63,7 @@ export function MyWorkPage() {
       </div>
       <div className="flex min-h-0 flex-1 items-stretch gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-3">
-          <MyWorkCalendarPanel />
+          {view === "timeline" ? <MyWorkTimelinePanel /> : <MyWorkCalendarPanel />}
           <MyWorkRequests />
         </div>
         <MyWorkBacklog />
