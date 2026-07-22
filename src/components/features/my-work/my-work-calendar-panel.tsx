@@ -18,6 +18,7 @@ import {
   type StageDates,
 } from "@/components/features/projects/roadmap-utils";
 import { StageDetailOverlay } from "@/components/features/projects/stage-detail-overlay";
+import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
 import {
   MyWorkCalendar,
   type DragTarget,
@@ -201,6 +202,8 @@ export function MyWorkCalendarPanel() {
     projectId: string;
     stageId: string;
   } | null>(null);
+  // 할일 상세는 taskId만 있으면 된다 — TaskDetailOverlay가 스토어에서 위치를 찾는다
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
 
   const detailProject = detailStage
     ? myProjects.find((project) => project.id === detailStage.projectId)
@@ -270,6 +273,7 @@ export function MyWorkCalendarPanel() {
         onOpenStage={(projectId, stageId) =>
           setDetailStage({ projectId, stageId })
         }
+        onOpenTask={setDetailTaskId}
         onDrag={handleDrag}
       />
       {detailStage && (
@@ -283,6 +287,10 @@ export function MyWorkCalendarPanel() {
           }}
         />
       )}
+      <TaskDetailOverlay
+        taskId={detailTaskId}
+        onClose={() => setDetailTaskId(null)}
+      />
     </>
   );
 }

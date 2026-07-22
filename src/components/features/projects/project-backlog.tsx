@@ -62,7 +62,11 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
               draggable
               onDragStart={(event) => setTaskDragData(event, item.id)}
               title="단계 컬럼으로 끌어다 놓으면 편입됩니다"
-              className="flex shrink-0 cursor-grab items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2 active:cursor-grabbing"
+              className={cn(
+                "flex shrink-0 cursor-grab items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2 active:cursor-grabbing",
+                // 완료 항목은 행 전체를 흐린다 — 보드 카드·내 작업 백로그와 같은 규칙
+                item.done && "opacity-60",
+              )}
             >
               <Checkbox
                 aria-label={`${item.name} 완료`}

@@ -111,7 +111,16 @@ export function ProjectBoard({
               {stage.tasks.map((task) => (
                 <ContextMenu key={task.id}>
                   <ContextMenuTrigger asChild>
-                    <div className="flex w-full shrink-0 items-center gap-2 rounded-[8px] bg-background px-2.5 py-2 shadow-xs">
+                    {/* 완료 카드는 컬럼 배경에 잠기고 그림자를 잃어 뒤로 물러난다 —
+                        글자 취소선만으로는 한눈에 구분되지 않았다 */}
+                    <div
+                      className={cn(
+                        "flex w-full shrink-0 items-center gap-2 rounded-[8px] px-2.5 py-2",
+                        task.done
+                          ? "bg-muted opacity-60"
+                          : "bg-background shadow-xs",
+                      )}
+                    >
                       <Checkbox
                         aria-label={`${task.name} 완료`}
                         checked={task.done}
