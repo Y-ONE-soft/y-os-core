@@ -37,8 +37,9 @@ export function StageAddOverlay({
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+  // 단계는 항상 기간을 갖는다 — 세부 사항의 시작·종료일을 오늘로 채워 두고 시작한다
+  const [startDate, setStartDate] = useState(todayISO);
+  const [endDate, setEndDate] = useState(todayISO);
   const [showDeadline, setShowDeadline] = useState(true);
   const [collaborators, setCollaborators] = useState<string[]>([]);
   const [collabOpen, setCollabOpen] = useState(false);
@@ -50,8 +51,9 @@ export function StageAddOverlay({
     if (!next) {
       setName("");
       setDescription("");
-      setStartDate("");
-      setEndDate("");
+      // 다시 열었을 때도 오늘 기준으로 시작한다 (날짜가 바뀌었을 수 있으므로 재계산)
+      setStartDate(todayISO());
+      setEndDate(todayISO());
       setShowDeadline(true);
       setCollaborators([]);
       setCollabOpen(false);
