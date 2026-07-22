@@ -7,6 +7,8 @@ import {
   type TaskPatch,
 } from "@/server/workspace/service";
 
+// completedDate는 일부러 뺐다 — done 전환에 맞춰 서버(updateTask)가 채우는 값이라
+// 클라이언트가 직접 보내면 임의 날짜로 완료 기록을 위조할 수 있다.
 const PATCHABLE = [
   "name",
   "done",
