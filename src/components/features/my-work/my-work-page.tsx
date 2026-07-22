@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { MyWorkCalendar } from "@/components/features/my-work/my-work-calendar";
 import { MyWorkRequests } from "@/components/features/my-work/my-work-requests";
-import { MyWorkAside } from "@/components/features/my-work/my-work-aside";
+import { MyWorkBacklog } from "@/components/features/my-work/my-work-backlog";
 import {
   CAL_MONTH_COUNT,
   CAL_TITLE,
@@ -109,7 +109,7 @@ export function MyWorkPage() {
           <MyWorkCalendar />
           <MyWorkRequests />
         </div>
-        <MyWorkAside />
+        <MyWorkBacklog />
       </div>
     </div>
   );
