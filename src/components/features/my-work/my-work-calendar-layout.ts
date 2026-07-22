@@ -1,9 +1,9 @@
 // 내 작업 캘린더 오버레이의 레인(행) 배치 규칙.
-// 자리표시 데이터를 DB로 교체해도 이 배치 규칙은 그대로 재사용한다.
+// 데이터 출처와 무관한 순수 계산 — 어떤 소스가 오버레이를 만들든 같은 규칙을 쓴다.
 //
 // 규칙
 //  1. 프로젝트 하나가 박스 하나 — 그 프로젝트의 단계와 할일을 모두 감싼다.
-//  2. 박스 범위는 월 전체 기준으로 첫 항목 시작 ~ 마지막 항목 끝. 주 경계를 넘으면
+//  2. 박스 범위는 그리드 전체 기준으로 첫 항목 시작 ~ 마지막 항목 끝. 주 경계를 넘으면
 //     잘라서 다음 주로 이어 그린다 (캘린더 앱의 여러 날짜 일정과 같은 방식).
 //  3. 단계 줄은 단계 유무와 무관하게 항상 1줄 확보한다. 할일이 단계 자리로 올라오지 않는다.
 //  4. 단계 막대는 그 한 줄로만 표현한다. 기간이 겹쳐도 나누지 않고 겹쳐 그린다.
@@ -11,19 +11,32 @@
 //  6. 박스는 최소 2줄 — 단계 막대 두 개 두께. 할일이 2줄 이상이면 그만큼 두꺼워진다.
 //  7. 레인은 주마다 채워지는 대로 쌓는다. 빈 레인을 예약하지 않는다.
 
-import {
-  CAL_OVERLAYS,
-  PROJECT_BOX_LABELS,
-  WEEKS,
-  type CalOverlay,
-} from "@/components/features/my-work/my-work-data";
-
-const DAYS_PER_WEEK = 7;
+import { DAYS_PER_WEEK } from "@/components/features/my-work/my-work-month";
 
 type ColRange = { col: number; span: number };
 
-/** 월 전체 기준 절대 일자 구간 [start, end) — `주 × 7 + 열` */
+/** 그리드 전체 기준 절대 일자 구간 [start, end) — `주 × 7 + 열` */
 type DayRange = { start: number; end: number };
+
+type OverlayBase = {
+  week: number;
+  col: number;
+  span: number;
+  /** 박스를 묶는 키 = Project.id */
+  project: string;
+  color: string;
+  label: string;
+};
+
+export type CalOverlay =
+  | (OverlayBase & {
+      kind: "stage";
+      stageId: string;
+      count: number;
+      deadline?: boolean;
+    })
+  // 할일 칩 — Task에 예정일이 생기면 이 종류로 만든다.
+  | (OverlayBase & { kind: "task"; taskId: string; done?: boolean });
 
 export type PlacedOverlay = CalOverlay & { lane: number };
 
@@ -39,7 +52,6 @@ export type ProjectBox = ColRange & {
   continuesLeft: boolean;
   /** 다음 주로 이어짐 — 오른쪽 면을 열어 둔다 */
   continuesRight: boolean;
-  label?: string;
 };
 
 export type WeekLayout = {
@@ -82,15 +94,17 @@ function collectProjectRanges(overlays: CalOverlay[]) {
   return ranges;
 }
 
-const PROJECT_RANGES = collectProjectRanges(CAL_OVERLAYS);
-
-function layoutWeek(weekIndex: number, overlays: CalOverlay[]): WeekLayout {
+function layoutWeek(
+  weekIndex: number,
+  overlays: CalOverlay[],
+  projectRanges: Map<string, DayRange>,
+): WeekLayout {
   const weekStart = weekIndex * DAYS_PER_WEEK;
   const weekEnd = weekStart + DAYS_PER_WEEK;
 
   // 이 주에 걸치는 프로젝트 — 항목이 이 주에 없어도 기간이 지나가면 박스가 이어진다.
   // 시작이 이른 것부터, 같으면 긴 것부터 앉힌다 (데이터 순서와 무관하게 결과가 안정적이도록).
-  const active = [...PROJECT_RANGES.entries()]
+  const active = [...projectRanges.entries()]
     .filter(([, range]) => range.start < weekEnd && weekStart < range.end)
     .sort(
       ([, a], [, b]) => a.start - b.start || b.end - b.start - (a.end - a.start),
@@ -156,9 +170,6 @@ function layoutWeek(weekIndex: number, overlays: CalOverlay[]): WeekLayout {
       taskLanes: taskLanes.length,
       continuesLeft: projectRange.start < weekStart,
       continuesRight: projectRange.end > weekEnd,
-      label: PROJECT_BOX_LABELS.find(
-        (entry) => entry.week === weekIndex && entry.project === project,
-      )?.label,
     });
 
     for (const stage of stages) overlayLane.set(stage, lane);
@@ -175,9 +186,16 @@ function layoutWeek(weekIndex: number, overlays: CalOverlay[]): WeekLayout {
 }
 
 /** 주차별 배치 결과 — 캘린더는 이 값만 읽는다. */
-export const CAL_WEEK_LAYOUTS: WeekLayout[] = WEEKS.map((_, weekIndex) =>
-  layoutWeek(
-    weekIndex,
-    CAL_OVERLAYS.filter((overlay) => overlay.week === weekIndex),
-  ),
-);
+export function buildWeekLayouts(
+  overlays: CalOverlay[],
+  weekCount: number,
+): WeekLayout[] {
+  const projectRanges = collectProjectRanges(overlays);
+  return Array.from({ length: weekCount }, (_, weekIndex) =>
+    layoutWeek(
+      weekIndex,
+      overlays.filter((overlay) => overlay.week === weekIndex),
+      projectRanges,
+    ),
+  );
+}
