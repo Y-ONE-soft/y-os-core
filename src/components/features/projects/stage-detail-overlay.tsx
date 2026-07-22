@@ -1,15 +1,19 @@
 "use client";
 
 import { useState } from "react";
-import { Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { useSession } from "@/components/features/auth/session-context";
 import {
   boardActions,
@@ -17,26 +21,8 @@ import {
 } from "@/components/features/projects/board-store";
 import { CollaboratorRequestDialog } from "@/components/features/projects/collaborator-request-dialog";
 
-function DescriptionEditor({
-  initial,
-  onSave,
-}: {
-  initial: string;
-  onSave: (value: string) => void;
-}) {
-  const [value, setValue] = useState(initial);
-  return (
-    <textarea
-      value={value}
-      placeholder="작업 내용, 요구사항, 진행 메모 등을 자세히 작성하세요..."
-      onChange={(event) => setValue(event.target.value)}
-      onBlur={() => {
-        if (value !== initial) onSave(value);
-      }}
-      className="h-[256px] w-full resize-none rounded-[10px] border bg-background px-3.5 py-3 text-sm leading-relaxed outline-none placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
-    />
-  );
-}
+// 레이아웃·타이포·컬러는 작업 상세 오버레이(task-detail-overlay)와 통일한다.
+// 단계에만 있는 항목(기간·데드라인 표시)과 작업에만 있는 항목(유형·난이도)만 다르다.
 
 function formatRelative(iso?: string) {
   if (!iso) return "—";
@@ -70,145 +56,169 @@ export function StageDetailOverlay({
 
   if (!stage) return null;
 
-  const patch = (
-    partial: Parameters<typeof boardActions.updateStage>[2],
-  ) => boardActions.updateStage(projectId, stage.id, partial);
+  const patch = (partial: Parameters<typeof boardActions.updateStage>[2]) =>
+    boardActions.updateStage(projectId, stage.id, partial);
 
   const comments = stage.comments ?? [];
+  const stageIndex = stages.findIndex((candidate) => candidate.id === stage.id);
+  const collaboratorCount = stage.requestedCollaborators?.length ?? 0;
 
   const submitComment = () => {
     const text = comment.trim();
     if (!text) return;
-    boardActions.addComment(
-      projectId,
-      stage.id,
-      user?.name ?? "알 수 없음",
-      text,
-    );
+    boardActions.addComment(projectId, stage.id, user?.name ?? "알 수 없음", text);
     setComment("");
   };
 
   return (
     <Dialog open={stageId !== null} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[87dvh] w-[92vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[1280px]">
-        <header className="flex h-[68px] shrink-0 items-center gap-3 border-b px-7">
-          <span className="rounded-[6px] bg-muted px-2.5 py-1 text-xs font-medium">
-            단계
-          </span>
-          <p className="text-[13px] text-muted-foreground">
-            {projectName} · 로드맵
-          </p>
+      <DialogContent
+        showCloseButton={false}
+        className="flex h-[min(780px,calc(100vh-48px))] w-[min(1280px,calc(100vw-48px))] flex-col gap-0 overflow-hidden rounded-[16px] p-0 sm:max-w-none"
+      >
+        <header className="flex shrink-0 items-center justify-between border-b py-3.5 pl-7 pr-5">
+          <div className="flex items-center gap-3">
+            <span className="rounded-[6px] border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+              단계 {stageIndex + 1}
+            </span>
+            <span className="text-[13px] text-muted-foreground">
+              {projectName}&nbsp;&nbsp;·&nbsp;&nbsp;로드맵
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <DialogClose
+              aria-label="닫기"
+              className="flex size-9 items-center justify-center rounded-[8px] text-base text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              ✕
+            </DialogClose>
+          </div>
         </header>
-        <div className="flex min-h-0 flex-1 items-stretch">
+        <div className="flex min-h-0 flex-1">
           <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-10 py-8">
-            <div className="flex items-center gap-3.5">
+            <div className="flex shrink-0 items-center gap-3.5">
               <Checkbox
+                aria-label={`${stage.name} 완료`}
                 checked={stage.done ?? false}
                 onCheckedChange={(checked) => patch({ done: checked === true })}
-                aria-label="단계 완료"
-                className="size-[22px] rounded-[6px] border-primary"
+                className="size-[22px] rounded-[6px] border-primary [&_svg]:size-4"
               />
               <DialogTitle
                 className={cn(
-                  "text-2xl font-bold tracking-tight",
+                  "text-[30px] leading-tight font-semibold",
                   stage.done && "text-muted-foreground line-through",
                 )}
               >
                 {stage.name}
               </DialogTitle>
             </div>
-            <section className="flex flex-col gap-2">
-              <h3 className="text-[13px] font-semibold">내용</h3>
-              <DescriptionEditor
+            <section className="flex shrink-0 flex-col gap-2.5">
+              <h3 className="text-sm font-semibold">내용</h3>
+              <Textarea
                 key={stage.id}
-                initial={stage.description ?? ""}
-                onSave={(value) => patch({ description: value })}
+                defaultValue={stage.description ?? ""}
+                onBlur={(event) => {
+                  if (event.target.value !== (stage.description ?? "")) {
+                    patch({ description: event.target.value });
+                  }
+                }}
+                placeholder="작업 내용, 요구사항, 진행 메모 등을 자세히 작성하세요…"
+                className="min-h-[160px] rounded-[8px] px-3 py-3"
               />
             </section>
-            <section className="flex flex-col gap-2">
-              <h3 className="text-[13px] font-semibold">산출물 · 0</h3>
-              <div className="flex h-[57px] items-center justify-center rounded-[10px] border border-dashed bg-muted/50 text-[13px] text-muted-foreground">
-                파일을 끌어다 놓거나&nbsp;
-                <span className="font-medium text-foreground">찾아보기</span>
+            <section className="flex shrink-0 flex-col gap-2.5">
+              <h3 className="text-sm font-semibold">
+                산출물&nbsp;&nbsp;·&nbsp;&nbsp;0
+              </h3>
+              <div className="flex w-full items-center justify-center gap-1 rounded-[10px] border border-dashed bg-muted py-5 text-sm">
+                <span className="text-muted-foreground">
+                  단계 산출물은 작업에 첨부합니다
+                </span>
               </div>
             </section>
-            <section className="flex flex-col gap-1.5">
-              <h3 className="text-[13px] font-semibold">연결 티켓·위키 · 0</h3>
+            <section className="flex shrink-0 flex-col gap-1.5">
+              <h3 className="text-sm font-semibold">
+                연결 티켓·위키&nbsp;&nbsp;·&nbsp;&nbsp;0
+              </h3>
               <button
                 type="button"
-                className="flex h-8 w-full items-center rounded-[8px] px-2.5 text-left text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+                className="flex w-full items-center rounded-[8px] px-2.5 py-2 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
               >
-                ＋ 티켓 번호·제목 또는 위키 문서 검색해 연결
+                ＋&nbsp;&nbsp;티켓 번호·제목 또는 위키 문서 검색해 연결
               </button>
             </section>
-            <section className="flex flex-col gap-2">
-              <h3 className="text-[13px] font-semibold">
-                댓글 · {comments.length}
+            <section className="flex shrink-0 flex-col gap-3 pb-2">
+              <h3 className="text-sm font-semibold">
+                댓글&nbsp;&nbsp;·&nbsp;&nbsp;{comments.length}
               </h3>
               {comments.length === 0 ? (
-                <p className="text-[13px] text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   아직 댓글이 없습니다. 첫 댓글을 남겨보세요.
                 </p>
               ) : (
-                <ul className="flex flex-col gap-2.5">
-                  {comments.map((item) => (
-                    <li key={item.id} className="flex items-start gap-2.5">
-                      <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
-                        {item.author.charAt(0)}
+                comments.map((item) => (
+                  <div key={item.id} className="flex items-start gap-2.5">
+                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium">
+                      {item.author.charAt(0)}
+                    </span>
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-xs font-medium">
+                        {item.author}
+                        <span className="ml-1.5 font-normal text-muted-foreground">
+                          {formatRelative(item.at)}
+                        </span>
                       </span>
-                      <div className="flex min-w-0 flex-col gap-0.5">
-                        <p className="text-xs">
-                          <span className="font-semibold">{item.author}</span>
-                          <span className="ml-1.5 text-muted-foreground">
-                            {formatRelative(item.at)}
-                          </span>
-                        </p>
-                        <p className="text-[13px] leading-relaxed">
-                          {item.text}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                      <p className="text-sm break-words">{item.text}</p>
+                    </div>
+                  </div>
+                ))
               )}
               <div className="flex items-center gap-2.5">
-                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-[10px] font-medium">
                   {user?.name.charAt(0)}
                 </span>
                 <Input
                   value={comment}
-                  placeholder="댓글 남기기..."
                   onChange={(event) => setComment(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") submitComment();
                   }}
-                  className="flex-1"
+                  placeholder="댓글 남기기…"
+                  className="h-9 rounded-[8px] px-3"
                 />
-                <Button onClick={submitComment} disabled={!comment.trim()}>
+                <Button
+                  size="lg"
+                  onClick={submitComment}
+                  className="rounded-[8px]"
+                >
                   등록
                 </Button>
               </div>
             </section>
           </div>
-          <aside className="flex w-[330px] shrink-0 flex-col gap-5 overflow-y-auto border-l px-7 py-8">
-            <h3 className="text-[13px] font-semibold">세부 사항</h3>
-            <div className="flex flex-col gap-1.5">
+          <div aria-hidden className="w-px shrink-0 bg-border" />
+          <aside className="flex w-[330px] shrink-0 flex-col gap-5 overflow-y-auto bg-muted px-7 py-8">
+            <h3 className="text-sm font-semibold">세부 사항</h3>
+            <div className="flex flex-col gap-2">
               <p className="text-xs font-medium text-muted-foreground">
                 프로젝트
               </p>
-              <p className="flex items-center gap-2 text-[13px] font-medium">
+              <div className="flex h-9 items-center gap-2 rounded-[8px] border bg-background px-3 text-[13px]">
                 <span
                   aria-hidden
-                  className="size-2.5 rounded-full"
+                  className="size-2 shrink-0 rounded-full"
                   style={{ backgroundColor: projectColor }}
                 />
-                {projectName}
-              </p>
+                <span className="min-w-0 truncate">{projectName}</span>
+              </div>
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="stage-detail-start" className="text-xs">
+              <label
+                htmlFor="stage-detail-start"
+                className="text-xs font-medium text-muted-foreground"
+              >
                 시작일
-              </Label>
+              </label>
               <Input
                 id="stage-detail-start"
                 type="date"
@@ -216,12 +226,16 @@ export function StageDetailOverlay({
                 onChange={(event) =>
                   patch({ startDate: event.target.value || undefined })
                 }
+                className="h-9 rounded-[8px] bg-background"
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="stage-detail-end" className="text-xs">
+              <label
+                htmlFor="stage-detail-end"
+                className="text-xs font-medium text-muted-foreground"
+              >
                 종료일
-              </Label>
+              </label>
               <Input
                 id="stage-detail-end"
                 type="date"
@@ -229,26 +243,26 @@ export function StageDetailOverlay({
                 onChange={(event) =>
                   patch({ endDate: event.target.value || undefined })
                 }
+                className="h-9 rounded-[8px] bg-background"
               />
             </div>
+            <div aria-hidden className="h-px w-full bg-border" />
             <Button
               variant="outline"
-              className="w-full"
+              className="w-full rounded-[8px] bg-background"
               onClick={() => setCollabOpen(true)}
             >
-              <Users className="size-4" />
-              공동 작업자 지정 요청
-              {(stage.requestedCollaborators?.length ?? 0) > 0 &&
-                ` · ${stage.requestedCollaborators!.length}`}
+              👥 공동 작업자 지정 요청
+              {collaboratorCount > 0 && ` · ${collaboratorCount}`}
             </Button>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-3">
               <div className="flex flex-col gap-[3px]">
-                <Label
+                <label
                   htmlFor="stage-detail-deadline"
                   className="text-[13px] font-medium"
                 >
                   데드라인 표시
-                </Label>
+                </label>
                 <p className="text-[11px] text-muted-foreground">
                   로드맵·보드에 마감 표시
                 </p>
@@ -259,12 +273,12 @@ export function StageDetailOverlay({
                 onCheckedChange={(checked) => patch({ showDeadline: checked })}
               />
             </div>
-            <div className="border-t" />
-            <div className="mt-auto flex flex-col gap-1 text-[11px] text-muted-foreground">
+            <div className="flex-1" />
+            <div className="text-[11px] leading-[1.6] text-muted-foreground">
               <p>변경사항은 즉시 저장됩니다</p>
               <p>
-                생성 {stage.createdAt ? stage.createdAt.slice(0, 10) : "—"} ·
-                수정 {formatRelative(stage.updatedAt)}
+                생성 {stage.createdAt ? stage.createdAt.slice(0, 10) : "—"}
+                &nbsp;&nbsp;·&nbsp;&nbsp;수정 {formatRelative(stage.updatedAt)}
               </p>
             </div>
           </aside>
