@@ -85,6 +85,12 @@ npm run build             # 성공 — Compiled successfully
 - **단계 막대는 드래그할 수 없다.** 할일 막대는 끌어서 예정일을 옮길 수 있지만 단계 막대는 클릭만 된다. 프로젝트 상세 로드맵은 단계 드래그가 되므로 여기서도 되는 게 자연스럽지만, 이번 요청 범위 밖이라 남긴다.
 - 프로젝트 행의 `전체 N%`와 진행률 계산 방식은 그대로다.
 
+## 사후 검증 결과 (추록)
+
+- **PR**: [#92](https://github.com/Y-ONE-soft/y-os-core/pull/92)
+- **프리뷰 배포**: `● Ready` — https://y-os-core-5damhjdne-project-hosting-center.vercel.app
+- **PR 체크**: `Vercel` pass, `Vercel Preview Comments` pass
+
 ## 병렬 작업 메모
 
 착수 시점 main = `2e4c560`. `my-work-timeline-panel.tsx`를 만지는 세션이 없음을 확인하고 진행했다(`calendar-spacing`·`status-cal-reuse`는 캘린더, `project-create-from-preset`은 `my-work-page.tsx`). 문서 번호는 착수 시 98까지였으나 작업 중 다른 세션이 99를 선점해 109로 조정했다.
