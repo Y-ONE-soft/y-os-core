@@ -1,4 +1,4 @@
-# 99. feat: 내 할일 타임라인에 단계 행 추가 및 할일 계층화
+# 109. feat: 내 할일 타임라인에 단계 행 추가 및 할일 계층화
 
 ## 작업 요약
 
@@ -87,4 +87,4 @@ npm run build             # 성공 — Compiled successfully
 
 ## 병렬 작업 메모
 
-착수 시점 main = `2e4c560`. `my-work-timeline-panel.tsx`를 만지는 세션이 없음을 확인하고 진행했다(`calendar-spacing`·`status-cal-reuse`는 캘린더, `project-create-from-preset`은 `my-work-page.tsx`). 문서 번호는 98까지 사용되어 99로 잡았다.
+착수 시점 main = `2e4c560`. `my-work-timeline-panel.tsx`를 만지는 세션이 없음을 확인하고 진행했다(`calendar-spacing`·`status-cal-reuse`는 캘린더, `project-create-from-preset`은 `my-work-page.tsx`). 문서 번호는 착수 시 98까지였으나 작업 중 다른 세션이 99를 선점해 109로 조정했다.
