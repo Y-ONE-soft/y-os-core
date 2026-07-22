@@ -114,6 +114,21 @@ export function createProject(input: {
 }
 
 /**
+ * 프로젝트 수정 — 현재는 색만. ownerId 가드는 deleteProject와 동일하게 동작한다.
+ * 반환값 count로 호출부가 "권한 없음/이미 없음"을 판별한다.
+ */
+export function updateProject(
+  id: string,
+  patch: { color?: string },
+  opts?: { ownerId?: string },
+) {
+  return db.project.updateMany({
+    where: { id, ...(opts?.ownerId ? { ownerId: opts.ownerId } : {}) },
+    data: patch,
+  });
+}
+
+/**
  * 프로젝트 삭제. ownerId를 주면 그 작업자의 프로젝트만 지운다 — 스탭이 남의
  * 프로젝트 id를 직접 호출해도 조건에서 걸러지도록 쿼리 레벨에서 막는다.
  * 반환값 count로 호출부가 "권한 없음/이미 없음"을 판별한다.

@@ -33,10 +33,14 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { useShell } from "@/components/layout/shell-context";
-import { useProjectStore } from "@/components/features/projects/project-store";
+import {
+  PROJECT_COLORS,
+  useProjectStore,
+} from "@/components/features/projects/project-store";
 
 type WorkspaceItem = { label: string; href: string; icon: LucideIcon };
 
@@ -61,19 +65,34 @@ type AddingState =
 function InlineAddInput({
   placeholder,
   indented,
+  color,
+  onColorChange,
   onCommit,
   onCancel,
 }: {
   placeholder: string;
   indented: boolean;
+  /** 지정하면 이름 입력 아래에 색 팔레트를 노출한다 (프로젝트 추가용) */
+  color?: string;
+  onColorChange?: (color: string) => void;
   onCommit: (name: string) => void;
   onCancel: () => void;
 }) {
   return (
     <div
-      className={cn("flex w-full py-0.5 pr-3", indented ? "pl-[34px]" : "pl-2")}
+      className={cn(
+        "flex w-full flex-col gap-1.5 py-0.5 pr-3",
+        indented ? "pl-[34px]" : "pl-2",
+      )}
     >
-      <div className="flex h-8 min-w-0 flex-1 items-center gap-1.5 rounded-[8px] border-[1.5px] border-primary bg-background px-2.5">
+      <div className="flex h-8 min-w-0 items-center gap-1.5 rounded-[8px] border-[1.5px] border-primary bg-background px-2.5">
+        {color && (
+          <span
+            aria-hidden
+            className="size-2 shrink-0 rounded-full"
+            style={{ backgroundColor: color }}
+          />
+        )}
         <input
           autoFocus
           placeholder={placeholder}
@@ -93,6 +112,63 @@ function InlineAddInput({
           ↵
         </span>
       </div>
+      {color && onColorChange && (
+        <div className="flex flex-wrap items-center gap-1" role="group" aria-label="프로젝트 색">
+          {PROJECT_COLORS.map((option) => (
+            <button
+              key={option}
+              type="button"
+              aria-label={`색 ${option}`}
+              aria-pressed={option === color}
+              // 스와치를 눌러도 이름 입력의 blur(취소)가 걸리지 않게 한다
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => onColorChange(option)}
+              className={cn(
+                "size-4 rounded-full transition-transform",
+                option === color
+                  ? "ring-2 ring-foreground ring-offset-1 ring-offset-background"
+                  : "hover:scale-110",
+              )}
+              style={{ backgroundColor: option }}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 우클릭 메뉴의 색 변경 — 프로젝트 색을 바꾸면 단계·할일 색도 파생으로 함께 바뀐다 */
+function ColorMenuSection({
+  current,
+  onPick,
+}: {
+  current: string;
+  onPick: (color: string) => void;
+}) {
+  return (
+    <div className="px-2 py-1.5">
+      <p className="pb-1.5 text-[11px] font-medium text-muted-foreground">
+        색 변경
+      </p>
+      <div className="flex flex-wrap gap-1" role="group" aria-label="프로젝트 색 변경">
+        {PROJECT_COLORS.map((option) => (
+          <button
+            key={option}
+            type="button"
+            aria-label={`색 ${option}`}
+            aria-pressed={option === current}
+            onClick={() => onPick(option)}
+            className={cn(
+              "size-4 rounded-full transition-transform",
+              option === current
+                ? "ring-2 ring-foreground ring-offset-1 ring-offset-popover"
+                : "hover:scale-110",
+            )}
+            style={{ backgroundColor: option }}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -104,6 +180,7 @@ export function ProjectsNav() {
     groups,
     addGroup,
     addProject,
+    setProjectColor,
     deleteGroup,
     deleteProject,
     resetData,
@@ -112,9 +189,21 @@ export function ProjectsNav() {
     new Set(),
   );
   const [adding, setAdding] = useState<AddingState>(null);
+  // 프로젝트 추가 중 고른 색 — 추가 행을 열 때 팔레트 순번으로 초기화한다
+  const [newColor, setNewColor] = useState<string>(PROJECT_COLORS[0]);
 
   const { user } = useSession();
   const isMaster = user?.role === "MASTER";
+
+  const totalProjects = groups.reduce(
+    (sum, group) => sum + group.projects.length,
+    0,
+  );
+  /** 추가 행을 열 때: 색은 팔레트 순번을 기본값으로 제시하고 사용자가 바꿀 수 있게 한다 */
+  const openProjectAdd = (groupId: string) => {
+    setNewColor(PROJECT_COLORS[totalProjects % PROJECT_COLORS.length]);
+    setAdding({ type: "project", groupId });
+  };
 
   // 스탭: 자기가 작업자인 프로젝트만 플랫 리스트로.
   const staffProjects = groups.flatMap((group) =>
@@ -209,6 +298,13 @@ export function ProjectsNav() {
                           </Link>
                         </ContextMenuTrigger>
                         <ContextMenuContent className="w-44">
+                          <ColorMenuSection
+                            current={project.color}
+                            onPick={(color) =>
+                              setProjectColor(project.id, color)
+                            }
+                          />
+                          <ContextMenuSeparator />
                           <ContextMenuItem
                             variant="destructive"
                             onSelect={() => deleteProject(groupId, project.id)}
@@ -226,8 +322,10 @@ export function ProjectsNav() {
                     <InlineAddInput
                       placeholder="새 프로젝트"
                       indented={false}
+                      color={newColor}
+                      onColorChange={setNewColor}
                       onCommit={(name) => {
-                        addProject(staffGroupId, name);
+                        addProject(staffGroupId, name, newColor);
                         setAdding(null);
                       }}
                       onCancel={() => setAdding(null)}
@@ -235,9 +333,7 @@ export function ProjectsNav() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() =>
-                        setAdding({ type: "project", groupId: staffGroupId })
-                      }
+                      onClick={() => openProjectAdd(staffGroupId)}
                       className="flex h-[30px] w-full items-center rounded-[8px] px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
                     >
                       +&nbsp;&nbsp;프로젝트 추가
@@ -322,6 +418,13 @@ export function ProjectsNav() {
                                     {projectRow}
                                   </ContextMenuTrigger>
                                   <ContextMenuContent className="w-44">
+                                    <ColorMenuSection
+                                      current={project.color}
+                                      onPick={(color) =>
+                                        setProjectColor(project.id, color)
+                                      }
+                                    />
+                                    <ContextMenuSeparator />
                                     <ContextMenuItem
                                       variant="destructive"
                                       onSelect={() =>
@@ -345,8 +448,10 @@ export function ProjectsNav() {
                               <InlineAddInput
                                 placeholder="새 프로젝트"
                                 indented
+                                color={newColor}
+                                onColorChange={setNewColor}
                                 onCommit={(name) => {
-                                  addProject(group.id, name);
+                                  addProject(group.id, name, newColor);
                                   setAdding(null);
                                 }}
                                 onCancel={() => setAdding(null)}
@@ -354,12 +459,7 @@ export function ProjectsNav() {
                             ) : (
                               <button
                                 type="button"
-                                onClick={() =>
-                                  setAdding({
-                                    type: "project",
-                                    groupId: group.id,
-                                  })
-                                }
+                                onClick={() => openProjectAdd(group.id)}
                                 className="flex h-[30px] w-full items-center rounded-[8px] pl-[34px] pr-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
                               >
                                 +&nbsp;&nbsp;프로젝트 추가

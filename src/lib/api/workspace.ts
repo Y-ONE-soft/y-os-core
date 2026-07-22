@@ -19,6 +19,9 @@ export const createProjectApi = (input: {
   color: string;
 }) => api.post<{ ok: boolean }>("/api/admin/projects", input);
 
+export const patchProjectApi = (projectId: string, patch: { color: string }) =>
+  api.patch<{ ok: boolean }>(`/api/admin/projects/${projectId}`, patch);
+
 export const deleteProjectApi = (projectId: string) =>
   api.del<{ ok: boolean }>(`/api/admin/projects/${projectId}`);
 
