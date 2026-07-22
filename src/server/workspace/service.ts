@@ -307,16 +307,36 @@ export function createStageComment(input: {
   return db.stageComment.create({ data: input });
 }
 
-export function createTask(input: {
+/**
+ * 할일 생성. 담당자를 지정하지 않으면 **프로젝트 소유자 → 없으면 만든 사람**으로
+ * 채운다 — "내 프로젝트에 등록한 할일은 내 담당"이 기본값이어야 한다.
+ * 명시적으로 `assigneeId: null`을 보내면 미배정을 뜻하므로 기본값을 적용하지 않는다.
+ * (기본값은 서버에서 정한다 — 클라이언트가 빠뜨려도 미배정으로 새지 않도록)
+ */
+export async function createTask(input: {
   id: string;
   /** null = 미배정 — 내 할일에서 만든 할일의 기본 상태 */
   projectId: string | null;
   stageId: string | null;
   name: string;
-  /** null = 미배정 */
+  /** 생략 = 기본값 규칙 적용, null = 미배정으로 명시 */
   assigneeId?: string | null;
+  /** 기본값의 최후 후보 — 요청한 사용자 */
+  createdById: string;
 }) {
-  return db.task.create({ data: input });
+  const { createdById, ...data } = input;
+  if (data.assigneeId !== undefined) {
+    return db.task.create({ data });
+  }
+  const owner = data.projectId
+    ? (
+        await db.project.findUnique({
+          where: { id: data.projectId },
+          select: { ownerId: true },
+        })
+      )?.ownerId
+    : null;
+  return db.task.create({ data: { ...data, assigneeId: owner ?? createdById } });
 }
 
 export type TaskPatch = Partial<{

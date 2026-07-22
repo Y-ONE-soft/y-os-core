@@ -77,6 +77,9 @@ export async function createProjectFromPreset(
             projectId: input.projectId,
             stageId,
             name: task.name,
+            // 프리셋으로 만든 할일도 담당자 기본값 규칙을 따른다 —
+            // 이 프로젝트의 소유자가 곧 만든 사람이다
+            assigneeId: input.ownerId,
             scheduledDate:
               task.offsetDays === undefined
                 ? null

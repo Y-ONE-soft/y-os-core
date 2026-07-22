@@ -27,7 +27,15 @@ export async function POST(request: Request) {
     projectId: isName(body.projectId) ? body.projectId : null,
     stageId: isName(body.stageId) ? body.stageId : null,
     name: body.name.trim(),
-    assigneeId: isName(body.assigneeId) ? body.assigneeId : null,
+    // 키를 아예 안 보내면 기본값 규칙(프로젝트 소유자 → 만든 사람)에 맡기고,
+    // null을 명시해 보내면 미배정을 뜻한다 — 둘을 구분해야 한다
+    assigneeId:
+      body.assigneeId === undefined
+        ? undefined
+        : isName(body.assigneeId)
+          ? body.assigneeId
+          : null,
+    createdById: user.id,
   });
   return NextResponse.json({ ok: true });
 }

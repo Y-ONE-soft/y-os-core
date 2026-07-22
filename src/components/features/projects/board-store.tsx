@@ -221,7 +221,8 @@ export const boardActions = {
           : stage,
       ),
     }));
-    cache.persist(createTaskApi({ id, projectId, stageId, name }));
+    // 담당자 기본값은 서버가 채운다 — 응답 후 서버 값으로 맞춘다
+    cache.persistAndSync(createTaskApi({ id, projectId, stageId, name }));
   },
   addBacklogTask(projectId: string, name: string) {
     const id = `tk-${crypto.randomUUID()}`;
@@ -229,7 +230,7 @@ export const boardActions = {
       ...board,
       backlog: [...board.backlog, { id, name, done: false }],
     }));
-    cache.persist(createTaskApi({ id, projectId, stageId: null, name }));
+    cache.persistAndSync(createTaskApi({ id, projectId, stageId: null, name }));
   },
   /** 프로젝트 없이 할일을 만든다 — 내 할일 백로그의 기본 생성 경로 */
   addUnassignedTask(name: string) {
@@ -238,7 +239,9 @@ export const boardActions = {
       ...prev,
       unassigned: [...prev.unassigned, { id, name, done: false }],
     }));
-    cache.persist(createTaskApi({ id, projectId: null, stageId: null, name }));
+    cache.persistAndSync(
+      createTaskApi({ id, projectId: null, stageId: null, name }),
+    );
   },
   /**
    * 할일의 소속(프로젝트·단계)을 한 번에 지정한다. 프로젝트 `null`은 미배정,
