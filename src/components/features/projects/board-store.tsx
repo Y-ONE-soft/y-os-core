@@ -147,31 +147,44 @@ export const boardActions = {
     }));
     cache.persist(createTaskApi({ id, projectId, stageId: null, name }));
   },
+  /** 단계 간 이동 — `null`은 백로그를 뜻한다 (백로그 ↔ 단계 이동 포함) */
   moveTask(
     projectId: string,
-    fromStageId: string,
-    toStageId: string,
+    fromStageId: string | null,
+    toStageId: string | null,
     taskId: string,
   ) {
     if (fromStageId === toStageId) return;
     updateBoard(projectId, (board) => {
-      const task = board.stages
-        .find((stage) => stage.id === fromStageId)
-        ?.tasks.find((candidate) => candidate.id === taskId);
+      const task =
+        fromStageId === null
+          ? board.backlog.find((candidate) => candidate.id === taskId)
+          : board.stages
+              .find((stage) => stage.id === fromStageId)
+              ?.tasks.find((candidate) => candidate.id === taskId);
       if (!task) return board;
-      return {
-        ...board,
-        stages: board.stages.map((stage) =>
-          stage.id === fromStageId
-            ? {
-                ...stage,
-                tasks: stage.tasks.filter((item) => item.id !== taskId),
-              }
-            : stage.id === toStageId
-              ? { ...stage, tasks: [...stage.tasks, task] }
-              : stage,
-        ),
-      };
+
+      const backlog =
+        fromStageId === null
+          ? board.backlog.filter((item) => item.id !== taskId)
+          : board.backlog;
+      const stages = board.stages.map((stage) =>
+        stage.id === fromStageId
+          ? { ...stage, tasks: stage.tasks.filter((item) => item.id !== taskId) }
+          : stage,
+      );
+
+      return toStageId === null
+        ? { ...board, stages, backlog: [...backlog, task] }
+        : {
+            ...board,
+            backlog,
+            stages: stages.map((stage) =>
+              stage.id === toStageId
+                ? { ...stage, tasks: [...stage.tasks, task] }
+                : stage,
+            ),
+          };
     });
     cache.persist(patchTaskApi(taskId, { stageId: toStageId }));
   },

@@ -35,6 +35,9 @@ import {
 } from "@/components/features/projects/board-store";
 import { TEAM_MEMBERS } from "@/components/features/projects/project-detail-data";
 
+// 단계 Select에서 백로그(stageId = null)를 가리키는 센티널 — Radix Select는 빈 문자열 값을 허용하지 않는다
+const BACKLOG_VALUE = "__backlog__";
+
 // 자리표시 상수 — 키 체계·유형·난이도는 DB 도메인 태스크에서 실데이터로 교체
 const TASK_TYPES = ["문서", "개발", "디자인", "기획", "기타"];
 const DIFFICULTIES = ["—", "쉬움", "보통", "어려움"];
@@ -76,7 +79,7 @@ export function TaskDetailOverlay({
 }) {
   const { user } = useSession();
   const { groups } = useProjectStore();
-  const { stages } = useProjectBoard(projectId);
+  const { stages, backlog } = useProjectBoard(projectId);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [taskType, setTaskType] = useState(TASK_TYPES[0]);
@@ -92,12 +95,18 @@ export function TaskDetailOverlay({
   const project = groups
     .flatMap((group) => group.projects)
     .find((candidate) => candidate.id === projectId);
+  // 단계에 편성된 작업과 백로그 작업(stageId = null) 모두 지원한다
   const stage = stages.find((candidate) =>
     candidate.tasks.some((item) => item.id === taskId),
   );
-  const task = stage?.tasks.find((item) => item.id === taskId);
+  const task = stage
+    ? stage.tasks.find((item) => item.id === taskId)
+    : backlog.find((item) => item.id === taskId);
 
-  if (!taskId || !project || !stage || !task) return null;
+  if (!taskId || !project || !task) return null;
+
+  const stageId = stage?.id ?? null;
+  const stageLabel = stage?.name ?? "백로그";
 
   const keyPrefix =
     project.name.replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 3) || "YOS";
@@ -177,7 +186,7 @@ export function TaskDetailOverlay({
               {taskKey}
             </span>
             <span className="text-[13px] text-muted-foreground">
-              {project.name}&nbsp;&nbsp;·&nbsp;&nbsp;{stage.name}
+              {project.name}&nbsp;&nbsp;·&nbsp;&nbsp;{stageLabel}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -199,7 +208,7 @@ export function TaskDetailOverlay({
                 aria-label={`${task.name} 완료`}
                 checked={task.done}
                 onCheckedChange={() =>
-                  boardActions.toggleTask(projectId, stage.id, task.id)
+                  boardActions.toggleTask(projectId, stageId, task.id)
                 }
                 className="size-[22px] rounded-[6px] border-primary [&_svg]:size-4"
               />
@@ -218,7 +227,7 @@ export function TaskDetailOverlay({
                 key={task.id}
                 defaultValue={task.description ?? ""}
                 onBlur={(event) =>
-                  boardActions.updateTask(projectId, stage.id, task.id, {
+                  boardActions.updateTask(projectId, stageId, task.id, {
                     description: event.target.value,
                   })
                 }
@@ -425,15 +434,21 @@ export function TaskDetailOverlay({
             <div className="flex flex-col gap-2">
               <p className="text-xs font-medium text-muted-foreground">단계</p>
               <Select
-                value={stage.id}
+                value={stageId ?? BACKLOG_VALUE}
                 onValueChange={(next) =>
-                  boardActions.moveTask(projectId, stage.id, next, task.id)
+                  boardActions.moveTask(
+                    projectId,
+                    stageId,
+                    next === BACKLOG_VALUE ? null : next,
+                    task.id,
+                  )
                 }
               >
                 <SelectTrigger className="h-9 w-full rounded-[8px] bg-background">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={BACKLOG_VALUE}>백로그</SelectItem>
                   {stages.map((candidate) => (
                     <SelectItem key={candidate.id} value={candidate.id}>
                       {candidate.name}
