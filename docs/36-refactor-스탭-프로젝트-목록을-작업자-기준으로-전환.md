@@ -159,3 +159,40 @@ curl -b step.txt -X POST /api/admin/projects \
 ### 공유 개발 DB 상태
 
 2번 태스크 문서에 적은 대로, 검증 중 시드 프로젝트 `p-cms`·`p-wise`가 외부 요인으로 삭제된 상태였다. 이번 검증은 남아 있는 `p-yos`·`p-contents`와 새로 만든 프로젝트로 수행했으며 결론에 영향은 없다.
+
+---
+
+## 사후 검증 결과 (추록)
+
+push 이후에만 확정되는 항목을 보완한다. 이 요청 사이클(브랜치 `스탭-프로젝트-생성`) 전체에 해당한다.
+
+### 최신 main 리베이스
+
+PR 생성 직전 확인 시 main이 `60b712d`(PR #24) → `2ff02ce`(PR #28)로 앞서가 있었다. 병렬 세션의 PR #25~#28이 먼저 머지된 결과다.
+
+- `git rebase origin/main` — **충돌 없이 성공**. 특히 `src/server/workspace/service.ts`는 다른 세션이 `updateTask`를 재작성했고 이 브랜치는 `createProject`·`getWorkspace`를 수정했는데, 함수가 분리돼 있어 자동 병합됐다.
+- 리베이스 후 `npm install` → `npx prisma generate` → `npm run build` 성공, `npm run lint` 경고 0
+- 리베이스 후 런타임 재검증: 스탭 생성 → 워크스페이스 응답에 `ownerId` 포함, 소속 그룹 `g-soft`에 배치 확인
+
+### 문서 번호 재조정
+
+PR #25~#28이 `docs/30`~`docs/33`을 선점해, "나중에 머지되는 쪽이 번호를 올린다"는 규칙에 따라 `30~32` → `34~36`으로 조정했다(별도 docs 커밋).
+
+### 프리뷰 배포
+
+- 커밋 `5766b37` 기준 Vercel 체크 **pass** (`Deployment has completed`)
+- 프리뷰 URL: `https://y-os-core-8tm0yvnck-project-hosting-center.vercel.app`
+- **주의**: 프리뷰 배포는 Vercel Authentication(SSO)이 켜져 있어 외부에서 API를 직접 호출할 수 없다(`401 Protected deployment`). 따라서 프리뷰에서의 기능 검증은 수행하지 못했고, 빌드 성공까지만 확인했다. 기능 검증은 로컬 dev 서버(포트 3011) 결과로 갈음한다.
+
+### 프로덕션 DB 마이그레이션 적용 여부 (중요)
+
+빌드 스크립트는 `prebuild: prisma generate`만 실행하며 **`prisma migrate deploy`를 하지 않는다.** 따라서 프로덕션이 별도 DB였다면 머지 즉시 `User.groupId`/`Project.ownerId` 부재로 런타임이 깨진다. 다음을 확인했다.
+
+- Vercel의 `DATABASE_URL`·`DATABASE_URL_UNPOOLED` 등은 **Production·Preview·Development 공용 단일 값**으로 설정돼 있다
+- `vercel env pull`로 받은 로컬 값의 호스트가 `ep-red-breeze-awsaj2pk`이며, 이 DB에 1번 태스크의 마이그레이션을 이미 적용했다(`migrate status` = up to date)
+
+즉 프로덕션은 마이그레이션이 적용된 동일 DB를 바라보므로 추가 조치가 필요 없다. **다만 이는 현재 환경 구성에 의존한 결론이다.** 운영 DB를 분리하는 시점에는 배포 파이프라인에 `prisma migrate deploy` 단계를 반드시 추가해야 한다.
+
+### 머지 후 프로덕션 배포
+
+머지가 트리거한 프로덕션 배포 결과는 아래 "머지 후 프로덕션 배포 확인" 절에 기록한다.
