@@ -149,3 +149,14 @@ GET   /api/admin/workspace → 2026-07-20 ~ 2026-07-24                  (원복 
 - `작업-현황-작업버튼-제거` 브랜치와 같은 화면을 건드리나 파일이 갈린다(그쪽은 `task-status-page.tsx` 추정, 이쪽은 `workload-roadmap.tsx`·`roadmap-utils.ts`·`roadmap-window.ts`). 머지 순서에 따라 리베이스한다.
 - `roadmap-window.ts`·`roadmap-utils.ts`는 프로젝트 상세 로드맵도 함께 쓰는 공용 모듈이다. 이번 변경은 **기존 export를 지우지 않고 추가만** 했고 `roadmap-window`의 동작도 그대로라, 이 모듈을 쓰는 다른 브랜치가 있어도 깨지지 않는다. (main 빌드가 깨졌던 docs/13 사례가 export 제거였다.)
 - 스키마·마이그레이션 변경 없음.
+
+## 사후 검증 결과 (추록)
+
+푸시 이후 확정된 내용을 보완한다.
+
+- **PR**: [#34](https://github.com/Y-ONE-soft/y-os-core/pull/34)
+- **최종 커밋**: `de0ce90` (최신 main `ebc05e7` 리베이스 후 해시 변경, 리베이스 전 `7bb192b`)
+- **문서 번호**: `34 → 40`으로 조정했다 (커밋 `56c71a2`).
+- **리베이스 결과**: main이 `236e3f0 → ebc05e7`로 앞서 나간 뒤(보드 단계 추가 컬럼 #29, 스탭 프로젝트 생성 #31, docs 번호 정리 #32 머지) 리베이스했으나 **충돌 없음**. 리베이스 후 `npm run lint` · `npm run build` 재확인 통과. 공용 모듈(`roadmap-utils`·`roadmap-window`)을 건드렸지만 export를 지우지 않고 추가만 해서 교차 의존이 깨지지 않았다.
+- **프리뷰 배포**: Vercel 체크 `pass`, `mergeable: MERGEABLE / CLEAN`.
+- **포인터 조작 육안 확인은 프리뷰로도 불가.** 프리뷰가 `302` SSO 리다이렉트로 막히고, 한글 브랜치 별칭이 공유형이라 대상 배포를 특정하기도 어렵다. 손잡이 히트박스·캡처 유지·클릭 삼키기 검증은 **로컬 dev 서버 또는 머지 후 프로덕션**에서 실제로 끌어봐야 한다. 날짜 계산과 저장 경로는 본문 검증 절대로 실측을 마쳤다.

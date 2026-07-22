@@ -76,3 +76,13 @@
 - 같은 작업 현황 페이지를 건드리는 `작업-현황-작업버튼-제거` 브랜치가 진행 중이다. 다만 그쪽은 [`task-status-page.tsx`](../src/components/features/projects/task-status-page.tsx)의 버튼이 대상으로 보이고 이 커밋은 [`workload-roadmap.tsx`](../src/components/features/projects/workload-roadmap.tsx) 단일 파일만 바꿔 충돌 가능성은 낮다. 머지 순서에 따라 리베이스로 대응한다.
 - 참조 대상인 내 작업 캘린더는 `내-작업-프로젝트-박스-레이아웃`에서 개편됐으나(PR #27), 본 작업은 배지 **스타일만 이식**하고 해당 파일은 수정하지 않았다.
 - 문서 번호: 병렬 브랜치에 미커밋 `31`·`32`가 존재해 충돌 시 나중 머지 쪽이 번호를 올린다.
+
+## 사후 검증 결과 (추록)
+
+푸시 이후 확정된 내용을 보완한다.
+
+- **PR**: [#34](https://github.com/Y-ONE-soft/y-os-core/pull/34)
+- **최종 커밋**: `9ce927f` (최신 main `ebc05e7` 리베이스 후 해시 변경, 리베이스 전 `26c63fe`)
+- **문서 번호**: 병렬 브랜치가 33~38을 먼저 점유해 `33 → 39`로 조정했다 (커밋 `56c71a2`).
+- **프리뷰 배포**: Vercel 체크 `pass`, `mergeable: MERGEABLE / CLEAN`.
+- **육안 확인은 프리뷰로도 불가.** 프리뷰 URL(`.../projects`)이 `302`로 SSO 리다이렉트된다. 게다가 한글 브랜치라 별칭이 `y-os-core-git-project-hosting-center`로 뭉뚱그려져 다른 브랜치 배포를 가리킬 수 있다. 배지 렌더 형태 확인은 **로컬 dev 서버 또는 머지 후 프로덕션**에서 해야 한다.
