@@ -28,7 +28,7 @@ import {
 import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
 import type { BoardStage, BoardTask } from "@/types/workspace";
 
-// 내 작업 타임라인 — Figma "My Work Layout — Timeline"(199:1139).
+// 내 할일 타임라인 — Figma "My Work Layout — Timeline"(199:1139).
 // 표 구조(라벨 컬럼 + 기간 축 + 오늘선)와 막대는 작업 현황 로드맵과 같은
 // 컴포넌트(buildTimeline·RoadmapBar)를 써서 두 화면의 조작감을 맞춘다.
 
@@ -48,7 +48,7 @@ export function MyWorkTimelinePanel() {
   const [today] = useState(todayISO);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
 
-  // 캘린더 뷰와 같은 "내 작업" 기준 — 내가 소유한 프로젝트
+  // 캘린더 뷰와 같은 "내 할일" 기준 — 내가 소유한 프로젝트
   const myProjects = useMemo(
     () =>
       groups
