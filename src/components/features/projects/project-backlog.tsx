@@ -6,6 +6,12 @@ import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -49,67 +55,81 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
         />
       </div>
       {backlog.map((item) => (
-        <div
-          key={item.id}
-          className="flex shrink-0 items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2"
-        >
-          <Checkbox
-            aria-label={`${item.name} 완료`}
-            checked={item.done}
-            onCheckedChange={() =>
-              boardActions.toggleTask(projectId, null, item.id)
-            }
-            className="rounded-[4px] border-primary bg-background"
-          />
-          <button
-            type="button"
-            onClick={() => setDetailTaskId(item.id)}
-            className={cn(
-              "min-w-0 flex-1 truncate text-left text-[13px] font-medium leading-[18px] underline-offset-2 hover:underline",
-              item.done && "text-muted-foreground line-through",
-            )}
-          >
-            {item.name}
-          </button>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              aria-label={`${item.name} 단계 지정`}
-              className="flex max-w-[104px] shrink-0 items-center gap-1 rounded-[6px] border bg-background px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
-            >
-              <span className="truncate">백로그</span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem
-                onSelect={() =>
-                  boardActions.assignTask(projectId, item.id, projectId, null)
+        <ContextMenu key={item.id}>
+          <ContextMenuTrigger asChild>
+            <div className="flex shrink-0 items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2">
+              <Checkbox
+                aria-label={`${item.name} 완료`}
+                checked={item.done}
+                onCheckedChange={() =>
+                  boardActions.toggleTask(projectId, null, item.id)
                 }
+                className="rounded-[4px] border-primary bg-background"
+              />
+              <button
+                type="button"
+                onClick={() => setDetailTaskId(item.id)}
+                className={cn(
+                  "min-w-0 flex-1 truncate text-left text-[13px] font-medium leading-[18px] underline-offset-2 hover:underline",
+                  item.done && "text-muted-foreground line-through",
+                )}
               >
-                백로그
-                <Check aria-hidden className="ml-auto size-3.5" />
-              </DropdownMenuItem>
-              {stages.map((stage) => (
-                <DropdownMenuItem
-                  key={stage.id}
-                  onSelect={() =>
-                    boardActions.assignTask(
-                      projectId,
-                      item.id,
-                      projectId,
-                      stage.id,
-                    )
-                  }
+                {item.name}
+              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  aria-label={`${item.name} 단계 지정`}
+                  className="flex max-w-[104px] shrink-0 items-center gap-1 rounded-[6px] border bg-background px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  <span
-                    aria-hidden
-                    className="size-1.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: stage.color }}
-                  />
-                  <span className="truncate">{stage.name}</span>
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+                  <span className="truncate">백로그</span>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem
+                    onSelect={() =>
+                      boardActions.assignTask(
+                        projectId,
+                        item.id,
+                        projectId,
+                        null,
+                      )
+                    }
+                  >
+                    백로그
+                    <Check aria-hidden className="ml-auto size-3.5" />
+                  </DropdownMenuItem>
+                  {stages.map((stage) => (
+                    <DropdownMenuItem
+                      key={stage.id}
+                      onSelect={() =>
+                        boardActions.assignTask(
+                          projectId,
+                          item.id,
+                          projectId,
+                          stage.id,
+                        )
+                      }
+                    >
+                      <span
+                        aria-hidden
+                        className="size-1.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: stage.color }}
+                      />
+                      <span className="truncate">{stage.name}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </ContextMenuTrigger>
+          <ContextMenuContent className="w-44">
+            <ContextMenuItem
+              variant="destructive"
+              onSelect={() => boardActions.deleteTask(projectId, item.id)}
+            >
+              작업 삭제
+            </ContextMenuItem>
+          </ContextMenuContent>
+        </ContextMenu>
       ))}
       <p className="text-[11px] leading-normal text-muted-foreground">
         백로그 → 단계로 드래그하면 편입됩니다. 보드 카드를 이 영역으로

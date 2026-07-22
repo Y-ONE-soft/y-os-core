@@ -6,6 +6,12 @@ import { Ellipsis } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
   boardActions,
   useProjectBoard,
 } from "@/components/features/projects/board-store";
@@ -66,29 +72,40 @@ export function ProjectBoard({
             {/* 카드 영역만 스크롤 — 컬럼 자체는 보드 높이를 꽉 채운다 (Figma 260×448) */}
             <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto">
               {stage.tasks.map((task) => (
-                <div
-                  key={task.id}
-                  className="flex w-full shrink-0 items-center gap-2 rounded-[8px] bg-background px-2.5 py-2 shadow-xs"
-                >
-                  <Checkbox
-                    aria-label={`${task.name} 완료`}
-                    checked={task.done}
-                    onCheckedChange={() =>
-                      boardActions.toggleTask(projectId, stage.id, task.id)
-                    }
-                    className="rounded-[4px] border-primary"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setDetailTaskId(task.id)}
-                    className={cn(
-                      "min-w-0 flex-1 truncate text-left text-[13px] font-medium leading-[18px] underline-offset-2 hover:underline",
-                      task.done && "text-muted-foreground line-through",
-                    )}
-                  >
-                    {task.name}
-                  </button>
-                </div>
+                <ContextMenu key={task.id}>
+                  <ContextMenuTrigger asChild>
+                    <div className="flex w-full shrink-0 items-center gap-2 rounded-[8px] bg-background px-2.5 py-2 shadow-xs">
+                      <Checkbox
+                        aria-label={`${task.name} 완료`}
+                        checked={task.done}
+                        onCheckedChange={() =>
+                          boardActions.toggleTask(projectId, stage.id, task.id)
+                        }
+                        className="rounded-[4px] border-primary"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setDetailTaskId(task.id)}
+                        className={cn(
+                          "min-w-0 flex-1 truncate text-left text-[13px] font-medium leading-[18px] underline-offset-2 hover:underline",
+                          task.done && "text-muted-foreground line-through",
+                        )}
+                      >
+                        {task.name}
+                      </button>
+                    </div>
+                  </ContextMenuTrigger>
+                  <ContextMenuContent className="w-44">
+                    <ContextMenuItem
+                      variant="destructive"
+                      onSelect={() =>
+                        boardActions.deleteTask(projectId, task.id)
+                      }
+                    >
+                      작업 삭제
+                    </ContextMenuItem>
+                  </ContextMenuContent>
+                </ContextMenu>
               ))}
               {addingStageId === stage.id ? (
                 <div className="flex w-full shrink-0 items-center gap-2 rounded-[8px] border-[1.5px] border-primary bg-background px-2.5 py-2 shadow-xs">

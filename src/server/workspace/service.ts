@@ -163,6 +163,10 @@ export type TaskPatch = Partial<{
   projectId: string;
 }>;
 
+export function deleteTask(id: string) {
+  return db.task.deleteMany({ where: { id } });
+}
+
 export async function updateTask(id: string, patch: TaskPatch) {
   if (patch.projectId === undefined) {
     return db.task.updateMany({ where: { id }, data: patch });
