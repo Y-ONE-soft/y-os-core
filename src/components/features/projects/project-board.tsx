@@ -14,9 +14,11 @@ import { formatShort } from "@/components/features/projects/roadmap-utils";
 
 export function ProjectBoard({
   projectId,
+  onAddStage,
   onOpenStage,
 }: {
   projectId: string;
+  onAddStage: () => void;
   onOpenStage: (stageId: string) => void;
 }) {
   const { stages } = useProjectBoard(projectId);
@@ -126,6 +128,15 @@ export function ProjectBoard({
           </section>
         );
       })}
+      {/* Figma 113:452 "단계 추가 (대기)" — 마지막 컬럼 자리의 점선 진입점 */}
+      <button
+        type="button"
+        onClick={onAddStage}
+        className="flex w-[260px] shrink-0 flex-col items-center justify-center rounded-[8px] border border-dashed p-2 text-center text-[12.5px] font-medium leading-5 text-muted-foreground transition-colors hover:border-muted-foreground/40 hover:text-foreground"
+      >
+        <span aria-hidden>＋</span>
+        단계 추가
+      </button>
       <TaskDetailOverlay
         taskId={detailTaskId}
         onClose={() => setDetailTaskId(null)}
