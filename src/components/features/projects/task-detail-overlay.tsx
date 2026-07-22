@@ -34,6 +34,7 @@ import {
   useBoardState,
   useUnassignedTasks,
 } from "@/components/features/projects/board-store";
+import { clampStageToTasks } from "@/components/features/projects/roadmap-utils";
 import type { BoardStage, BoardTask } from "@/types/workspace";
 import { TEAM_MEMBERS } from "@/components/features/projects/project-detail-data";
 
@@ -62,13 +63,6 @@ function fileIcon(name: string) {
   if (["png", "jpg", "jpeg", "gif", "svg", "webp"].includes(ext)) return "🖼️";
   if (["doc", "docx", "pdf", "txt", "md", "hwp"].includes(ext)) return "📄";
   return "📁";
-}
-
-/** 작업 id에서 파생하는 자리표시 티켓 키 번호 (키 체계 도입 전) */
-function taskKeyNumber(taskId: string) {
-  let hash = 0;
-  for (const char of taskId) hash = (hash * 31 + char.charCodeAt(0)) % 900;
-  return 100 + hash;
 }
 
 export function TaskDetailOverlay({
@@ -134,9 +128,34 @@ export function TaskDetailOverlay({
   const stageLabel = project ? (stage?.name ?? "백로그") : "미배정";
   const projectLabel = project?.name ?? "프로젝트 없음";
 
-  const keyPrefix =
-    project?.name.replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 3) || "YOS";
-  const taskKey = `${keyPrefix}-${taskKeyNumber(task.id)}`;
+  // 단계 상세와 같은 표기 — 소속 안에서의 순번. (키 체계가 없어 만들어 쓰던
+  // 가짜 티켓 번호 YOS-202 식 표기는 뜻이 없어 걷어냈다)
+  const siblings = stage
+    ? stage.tasks
+    : projectId === null
+      ? unassigned
+      : (boards[projectId]?.backlog ?? []);
+  const taskIndex = siblings.findIndex((candidate) => candidate.id === task.id);
+
+  /**
+   * 예정일 변경 — 캘린더 드래그와 같은 규칙을 따른다.
+   * 단계 밖 날짜를 고르면 단계가 그 날짜까지 늘어나 할일을 덮는다.
+   */
+  const setSchedule = (value: string) => {
+    const scheduledDate = value || undefined;
+    boardActions.updateTask(projectId, stageId, task.id, { scheduledDate });
+    if (!stage?.startDate || !scheduledDate) return;
+    const stretched = clampStageToTasks(
+      { startDate: stage.startDate, endDate: stage.endDate },
+      { min: scheduledDate, max: scheduledDate },
+    );
+    if (
+      stretched.startDate !== stage.startDate ||
+      stretched.endDate !== stage.endDate
+    ) {
+      boardActions.updateStage(projectId!, stage.id, stretched);
+    }
+  };
 
   const addFiles = (files: FileList | null) => {
     if (!files?.length) return;
@@ -209,7 +228,7 @@ export function TaskDetailOverlay({
         <header className="flex shrink-0 items-center justify-between border-b py-3.5 pl-7 pr-5">
           <div className="flex items-center gap-3">
             <span className="rounded-[6px] border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-              {taskKey}
+              작업 {taskIndex + 1}
             </span>
             <span className="text-[13px] text-muted-foreground">
               {projectLabel}&nbsp;&nbsp;·&nbsp;&nbsp;{stageLabel}
@@ -510,6 +529,32 @@ export function TaskDetailOverlay({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="task-detail-scheduled"
+                className="text-xs font-medium text-muted-foreground"
+              >
+                예정일
+              </label>
+              <Input
+                id="task-detail-scheduled"
+                type="date"
+                value={task.scheduledDate ?? ""}
+                disabled={stageId === null}
+                title={
+                  stageId === null
+                    ? "단계에 편성하면 예정일이 잡힙니다"
+                    : undefined
+                }
+                onChange={(event) => setSchedule(event.target.value)}
+                className="h-9 rounded-[8px] bg-background"
+              />
+              {stageId === null && (
+                <p className="text-[11px] text-muted-foreground">
+                  단계에 편성하면 예정일이 잡힙니다
+                </p>
+              )}
             </div>
             <div className="flex flex-col gap-2">
               <p className="text-xs font-medium text-muted-foreground">
