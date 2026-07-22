@@ -10,6 +10,8 @@ export type RoadmapTick = {
   label: string;
   /** 창 시작일로부터의 오프셋(일) */
   offsetDays: number;
+  /** 이 눈금이 속한 연도 — 첫 눈금·연도가 바뀌는 눈금에 표시한다 */
+  year: number;
 };
 
 export type RoadmapWindow = {
@@ -58,6 +60,17 @@ export function todayISO() {
   return toISO(new Date());
 }
 
+/** 헤더용 창 기간 표기 — 연도를 명시한다. 예: 2026.07.13 ~ 2026.08.09 */
+export function formatWindowPeriod(view: { start: string; days: number }) {
+  const startDate = fromISO(view.start);
+  const endDate = addDays(startDate, view.days - 1);
+  const format = (date: Date) =>
+    `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(
+      date.getDate(),
+    ).padStart(2, "0")}`;
+  return `${format(startDate)} ~ ${format(endDate)}`;
+}
+
 /**
  * 오늘을 기준으로 창을 만든다. 각 범위는 "직전 1단위 + 이후"를 보여줘
  * 오늘이 두 번째 칸에 오도록 맞춘다 (기존 주간 뷰의 배치와 동일).
@@ -82,6 +95,7 @@ export function buildRoadmapWindow(
       ticks.push({
         label: `${tickDate.getMonth() + 1}/${tickDate.getDate()}`,
         offsetDays: index,
+        year: tickDate.getFullYear(),
       });
     }
   } else if (range === "주") {
@@ -93,6 +107,7 @@ export function buildRoadmapWindow(
       ticks.push({
         label: `${tickDate.getMonth() + 1}/${tickDate.getDate()}`,
         offsetDays: index * 7,
+        year: tickDate.getFullYear(),
       });
     }
   } else if (range === "개월") {
@@ -109,6 +124,7 @@ export function buildRoadmapWindow(
       ticks.push({
         label: `${tickDate.getMonth() + 1}월`,
         offsetDays: diffDays(startDate, tickDate),
+        year: tickDate.getFullYear(),
       });
     }
   } else {
@@ -123,8 +139,9 @@ export function buildRoadmapWindow(
     for (let index = 0; index < COLUMNS; index += 1) {
       const tickDate = addMonths(startDate, index * 3);
       ticks.push({
-        label: `${String(tickDate.getFullYear()).slice(2)} Q${Math.floor(tickDate.getMonth() / 3) + 1}`,
+        label: `Q${Math.floor(tickDate.getMonth() / 3) + 1}`,
         offsetDays: diffDays(startDate, tickDate),
+        year: tickDate.getFullYear(),
       });
     }
   }
