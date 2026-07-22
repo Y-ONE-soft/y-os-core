@@ -8,7 +8,7 @@
 
 ## 1. 작업 내용 요약
 
-버튼만 있고 아무 일도 하지 않던 두 요청 흐름을 docs/84의 요청 도메인에 연결했다.
+버튼만 있고 아무 일도 하지 않던 두 요청 흐름을 docs/88의 요청 도메인에 연결했다.
 
 | 진입점 | 이전 | 이번 |
 |---|---|---|
@@ -28,7 +28,7 @@
 | 수정 | `src/components/features/projects/stage-detail-overlay.tsx` | 발송 연결, 응답 대기 목록 표기 |
 | 수정 | `src/components/features/projects/task-detail-overlay.tsx` | 두 모달 발송 연결, 메시지 입력 상태 연결 |
 | 수정 | `src/components/features/projects/stage-add-overlay.tsx` | 생성 직후 발송으로 전환 |
-| 추가 | `docs/85-feat-공동-작업자-지정-도움-요청을-실제-요청으로-발송.md` | 본 문서 |
+| 추가 | `docs/89-feat-공동-작업자-지정-도움-요청을-실제-요청으로-발송.md` | 본 문서 |
 
 ## 3. 설계 결정과 이유
 

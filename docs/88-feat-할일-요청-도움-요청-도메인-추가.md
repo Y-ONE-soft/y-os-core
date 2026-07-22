@@ -53,7 +53,7 @@ model Request {
 | 추가 | `src/app/api/admin/requests/route.ts` | `GET`(내 요청 목록) · `POST`(발송) |
 | 추가 | `src/app/api/admin/requests/[requestId]/route.ts` | `PATCH`(수락·거절·취소) |
 | 추가 | `src/lib/api/requests.ts` | 프론트 호출 함수 |
-| 추가 | `docs/84-feat-할일-요청-도움-요청-도메인-추가.md` | 본 문서 |
+| 추가 | `docs/88-feat-할일-요청-도움-요청-도메인-추가.md` | 본 문서 |
 
 ## 4. 권한·정합성 처리
 

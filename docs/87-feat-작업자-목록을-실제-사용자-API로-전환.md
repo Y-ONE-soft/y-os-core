@@ -36,7 +36,9 @@
 | 수정 | `src/components/features/projects/collaborator-request-dialog.tsx` | 실제 사용자 목록, 자기 자신 제외, 로딩·빈 상태 |
 | 수정 | `src/components/features/projects/task-detail-overlay.tsx` | 요청 모달 목록 동일 전환 |
 | 수정 | `src/components/features/projects/stage-add-overlay.tsx` | 선택된 공동작업자 이름 표기를 실제 사용자로 |
-| 추가 | `docs/83-feat-작업자-목록을-실제-사용자-API로-전환.md` | 본 문서 |
+| 추가 | `docs/87-feat-작업자-목록을-실제-사용자-API로-전환.md` | 본 문서 |
+
+> 문서 번호는 작성 시점에 83~86이었으나, 머지 직전 다른 브랜치들이 먼저 들어가며 네 번호를 모두 선점했다. "나중에 머지되는 쪽이 번호를 올린다"는 규칙에 따라 이 사이클의 문서를 **87~90**으로 조정했다.
 
 ## 3. 설계 결정과 이유
 
