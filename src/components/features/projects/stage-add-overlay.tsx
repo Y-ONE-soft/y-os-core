@@ -1,23 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { Users } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { boardActions } from "@/components/features/projects/board-store";
 import { CollaboratorRequestDialog } from "@/components/features/projects/collaborator-request-dialog";
+import { OverlayBreadcrumb } from "@/components/features/projects/overlay-breadcrumb";
 import { TEAM_MEMBERS } from "@/components/features/projects/project-detail-data";
 import { todayISO } from "@/components/features/projects/roadmap-utils";
 
-// Figma Stage Detail Overlay(130:414)의 생성 모드.
-// 상세 오버레이와 같은 레이아웃(좌: 제목·내용 / 우: 세부 사항)이되,
-// 단계가 아직 없어야 성립하는 영역(산출물·연결·댓글)은 비활성으로 두고
-// 우측 하단은 "즉시 저장" 안내 대신 취소/추가 액션을 놓는다.
+// 단계 상세 오버레이(stage-detail-overlay)의 생성 모드 — 셸·타이포·세부 사항 스펙을 그대로 따른다.
+// 단계가 아직 없어야 성립하는 영역(산출물·연결·댓글)만 안내 문구로 두고,
+// 우측 하단은 "즉시 저장" 안내·삭제 대신 취소/추가 액션을 놓는다.
 
 export function StageAddOverlay({
   projectId,
@@ -84,25 +88,35 @@ export function StageAddOverlay({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="flex h-[87dvh] w-[92vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[1280px]">
+      <DialogContent
+        showCloseButton={false}
+        className="flex h-[min(780px,calc(100vh-48px))] w-[min(1280px,calc(100vw-48px))] flex-col gap-0 overflow-hidden rounded-[16px] p-0 sm:max-w-none"
+      >
         <DialogTitle className="sr-only">단계 추가</DialogTitle>
-        <header className="flex h-[68px] shrink-0 items-center justify-between gap-3 border-b px-7">
+        <header className="flex shrink-0 items-center justify-between border-b py-3.5 pl-7 pr-5">
           <div className="flex items-center gap-3">
-            <span className="rounded-[6px] bg-muted px-2.5 py-1 text-xs font-medium">
+            <span className="rounded-[6px] border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
               단계
             </span>
-            <p className="text-[13px] text-muted-foreground">
-              {projectName} · 로드맵
-            </p>
+            {/* 상세와 같은 "프로젝트 › 단계" 규칙. 아직 이름이 없으면 자리표시로 둔다 */}
+            <OverlayBreadcrumb items={[projectName, name.trim() || "새 단계"]} />
+          </div>
+          <div className="flex items-center gap-2">
+            <DialogClose
+              aria-label="닫기"
+              className="flex size-9 items-center justify-center rounded-[8px] text-base text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              ✕
+            </DialogClose>
           </div>
         </header>
-        <div className="flex min-h-0 flex-1 items-stretch">
+        <div className="flex min-h-0 flex-1">
           <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-10 py-8">
-            <div className="flex items-center gap-3.5">
+            <div className="flex shrink-0 items-center gap-3.5">
               <Checkbox
                 disabled
                 aria-label="단계 완료 (생성 후 사용)"
-                className="size-[22px] rounded-[6px] border-primary"
+                className="size-[22px] rounded-[6px] border-primary [&_svg]:size-4"
               />
               <Input
                 autoFocus
@@ -113,73 +127,92 @@ export function StageAddOverlay({
                 onKeyDown={(event) => {
                   if (event.key === "Enter") submit();
                 }}
-                className="h-auto border-0 px-0 text-2xl font-bold tracking-tight shadow-none focus-visible:ring-0 md:text-2xl"
+                // Input 기본 세로 패딩(py-1)이 남으면 제목 행이 상세보다 높아져
+                // 왼쪽 컬럼 전체가 아래로 밀린다 — py-0 + leading-tight로 h2와 같은 높이를 만든다
+                className="h-auto border-0 px-0 py-0 text-[30px] leading-tight font-semibold shadow-none focus-visible:ring-0 md:text-[30px]"
               />
             </div>
-            <section className="flex flex-col gap-2">
-              <h3 className="text-[13px] font-semibold">내용</h3>
-              <textarea
+            <section className="flex shrink-0 flex-col gap-2.5">
+              <h3 className="text-sm font-semibold">내용</h3>
+              <Textarea
                 value={description}
-                placeholder="작업 내용, 요구사항, 진행 메모 등을 자세히 작성하세요..."
                 onChange={(event) => setDescription(event.target.value)}
-                className="h-[256px] w-full resize-none rounded-[10px] border bg-background px-3.5 py-3 text-sm leading-relaxed outline-none placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring"
+                placeholder="작업 내용, 요구사항, 진행 메모 등을 자세히 작성하세요…"
+                className="min-h-[160px] rounded-[8px] px-3 py-3"
               />
             </section>
-            <section className="flex flex-col gap-2">
-              <h3 className="text-[13px] font-semibold">산출물 · 0</h3>
-              <div className="flex h-[57px] items-center justify-center rounded-[10px] border border-dashed bg-muted/50 text-[13px] text-muted-foreground">
-                단계를 만든 뒤 파일을 첨부할 수 있습니다
+            <section className="flex shrink-0 flex-col gap-2.5">
+              <h3 className="text-sm font-semibold">
+                산출물&nbsp;&nbsp;·&nbsp;&nbsp;0
+              </h3>
+              <div className="flex w-full items-center justify-center gap-1 rounded-[10px] border border-dashed bg-muted py-5 text-sm">
+                <span className="text-muted-foreground">
+                  단계를 만든 뒤 작업에 첨부할 수 있습니다
+                </span>
               </div>
             </section>
-            <section className="flex flex-col gap-1.5">
-              <h3 className="text-[13px] font-semibold">연결 티켓·위키 · 0</h3>
-              <p className="px-2.5 text-xs text-muted-foreground">
+            <section className="flex shrink-0 flex-col gap-1.5">
+              <h3 className="text-sm font-semibold">
+                연결 티켓·위키&nbsp;&nbsp;·&nbsp;&nbsp;0
+              </h3>
+              <p className="px-2.5 py-2 text-[13px] font-medium text-muted-foreground">
                 단계를 만든 뒤 연결할 수 있습니다
               </p>
             </section>
-            <section className="flex flex-col gap-2">
-              <h3 className="text-[13px] font-semibold">댓글 · 0</h3>
-              <p className="text-[13px] text-muted-foreground">
+            <section className="flex shrink-0 flex-col gap-3 pb-2">
+              <h3 className="text-sm font-semibold">
+                댓글&nbsp;&nbsp;·&nbsp;&nbsp;0
+              </h3>
+              <p className="text-sm text-muted-foreground">
                 단계를 만든 뒤 댓글을 남길 수 있습니다.
               </p>
             </section>
           </div>
-          <aside className="flex w-[330px] shrink-0 flex-col gap-5 overflow-y-auto border-l px-7 py-8">
-            <h3 className="text-[13px] font-semibold">세부 사항</h3>
-            <div className="flex flex-col gap-1.5">
+          <div aria-hidden className="w-px shrink-0 bg-border" />
+          <aside className="flex w-[330px] shrink-0 flex-col gap-5 overflow-y-auto bg-muted px-7 py-8">
+            <h3 className="text-sm font-semibold">세부 사항</h3>
+            <div className="flex flex-col gap-2">
               <p className="text-xs font-medium text-muted-foreground">
                 프로젝트
               </p>
-              <p className="flex items-center gap-2 text-[13px] font-medium">
+              <div className="flex h-9 items-center gap-2 rounded-[8px] border bg-background px-3 text-[13px]">
                 <span
                   aria-hidden
-                  className="size-2.5 rounded-full"
+                  className="size-2 shrink-0 rounded-full"
                   style={{ backgroundColor: projectColor }}
                 />
-                {projectName}
-              </p>
+                <span className="min-w-0 truncate">{projectName}</span>
+              </div>
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="stage-add-start" className="text-xs">
+              <label
+                htmlFor="stage-add-start"
+                className="text-xs font-medium text-muted-foreground"
+              >
                 시작일
-              </Label>
+              </label>
               <Input
                 id="stage-add-start"
                 type="date"
                 value={startDate}
                 onChange={(event) => setStartDate(event.target.value)}
+                className="h-9 rounded-[8px] bg-background"
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="stage-add-end" className="text-xs">
+              <label
+                htmlFor="stage-add-end"
+                className="text-xs font-medium text-muted-foreground"
+              >
                 종료일
-              </Label>
+              </label>
               <Input
                 id="stage-add-end"
                 type="date"
                 aria-invalid={invalidRange || undefined}
                 value={endDate}
                 onChange={(event) => setEndDate(event.target.value)}
+                className="h-9 rounded-[8px] bg-background"
               />
               {invalidRange && (
                 <p className="text-[11px] text-destructive">
@@ -216,13 +249,13 @@ export function StageAddOverlay({
                 </span>
               </span>
             </button>
+            <div aria-hidden className="h-px w-full bg-border" />
             <Button
               variant="outline"
-              className="w-full"
+              className="w-full rounded-[8px] bg-background"
               onClick={() => setCollabOpen(true)}
             >
-              <Users className="size-4" />
-              공동 작업자 지정 요청
+              👥 공동 작업자 지정 요청
               {collaborators.length > 0 && ` · ${collaborators.length}`}
             </Button>
             {collaborators.length > 0 && (
@@ -234,15 +267,21 @@ export function StageAddOverlay({
                   .join(", ")}
               </p>
             )}
-            <div className="border-t" />
-            <div className="mt-auto flex flex-col gap-2">
-              <Button onClick={submit} disabled={!canSubmit}>
-                추가
-              </Button>
-              <Button variant="outline" onClick={() => handleOpenChange(false)}>
-                취소
-              </Button>
-            </div>
+            <div className="flex-1" />
+            <Button
+              onClick={submit}
+              disabled={!canSubmit}
+              className="w-full rounded-[8px]"
+            >
+              추가
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+              className="w-full rounded-[8px] bg-background"
+            >
+              취소
+            </Button>
           </aside>
         </div>
         {collabOpen && (
