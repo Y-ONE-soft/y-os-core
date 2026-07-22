@@ -278,7 +278,15 @@ export function MyWorkCalendarPanel() {
         >
           ◀
         </button>
-        <h2 className="text-[15px] font-semibold">{grid.title}</h2>
+        {/* 월 숫자는 2자리 고정폭 슬롯에 넣는다 — 1자리 달(7월)에도 제목 폭이 같아야
+            양옆 화살표가 달을 넘길 때마다 밀리지 않는다 */}
+        <h2 className="text-[15px] font-semibold tabular-nums">
+          {grid.year}년{" "}
+          <span className="inline-block w-[2ch] text-right">
+            {grid.month + 1}
+          </span>
+          월
+        </h2>
         <button
           type="button"
           aria-label="다음 달"
