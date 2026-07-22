@@ -96,6 +96,41 @@ export function dragStageDates(
   };
 }
 
+/** 예정일이 잡힌 할일들의 최소~최대 날짜 — 단계가 반드시 덮어야 하는 구간 */
+export function taskDateRange(
+  tasks: { scheduledDate?: string }[],
+): { min: string; max: string } | null {
+  const dates = tasks
+    .map((task) => task.scheduledDate)
+    .filter((date): date is string => Boolean(date))
+    .sort();
+  return dates.length === 0
+    ? null
+    : { min: dates[0], max: dates[dates.length - 1] };
+}
+
+/**
+ * 단계는 자기 할일을 항상 덮어야 한다. 드래그 결과가 할일을 벗어나면 그 지점에서 멈춘다.
+ * - 이동: 길이를 유지한 채 덮개를 깨지 않는 범위로 이동량을 제한한다
+ * - 시작/끝 조절: 해당 끝만 할일 날짜까지 물러난다
+ */
+export function clampStageToTasks(
+  dates: StageDates,
+  cover: { min: string; max: string } | null,
+): StageDates {
+  if (!cover) return dates;
+
+  const end = dates.endDate ?? shiftISO(dates.startDate, OPEN_ENDED_DAYS - 1);
+  const startDate = dates.startDate > cover.min ? cover.min : dates.startDate;
+  const endDate = end < cover.max ? cover.max : end;
+  // 끝이 없던(진행형) 막대는 할일을 덮기 위해 늘려야 할 때만 끝이 생긴다
+  const stretched = endDate !== end;
+  return {
+    startDate,
+    endDate: dates.endDate === undefined && !stretched ? undefined : endDate,
+  };
+}
+
 export function barRange(
   windowStart: string,
   windowDays: number,

@@ -34,6 +34,10 @@ export type CalOverlay =
       stageId: string;
       count: number;
       deadline?: boolean;
+      /** 이 조각에 단계의 실제 시작일이 들어 있다 — 시작 손잡이를 여기에만 단다 */
+      startsHere?: boolean;
+      /** 이 조각에 단계의 실제 종료일이 들어 있다 — 끝 손잡이를 여기에만 단다 */
+      endsHere?: boolean;
     })
   // 할일 칩 — Task에 예정일이 생기면 이 종류로 만든다.
   | (OverlayBase & { kind: "task"; taskId: string; done?: boolean });
