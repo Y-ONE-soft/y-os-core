@@ -45,7 +45,8 @@ export const createStageCommentApi = (
 
 export const createTaskApi = (input: {
   id: string;
-  projectId: string;
+  /** null = 미배정 */
+  projectId: string | null;
   stageId: string | null;
   name: string;
 }) => api.post<{ ok: boolean }>("/api/admin/tasks", input);

@@ -23,22 +23,27 @@ import { useProjectStore } from "@/components/features/projects/project-store";
 import {
   boardActions,
   useBoardState,
+  useUnassignedTasks,
 } from "@/components/features/projects/board-store";
 import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
 
-// 내 작업 페이지는 프로젝트 스코프가 없으므로 전 프로젝트 백로그를 통합해 보여준다.
-// 데이터 원본은 프로젝트 상세의 백로그와 동일한 보드 스토어(DB).
-// 새 작업은 첫 프로젝트 백로그로 들어가며, 프로젝트는 작업 상세(티켓)에서 바꾼다.
+// 내 작업 페이지는 프로젝트 스코프가 없으므로 미배정 작업과 전 프로젝트 백로그를
+// 함께 보여준다. 데이터 원본은 프로젝트 상세의 백로그와 동일한 보드 스토어(DB).
+// 여기서 만든 작업은 원칙적으로 "프로젝트 없음"(미배정)이며, 소속은 행의
+// 드롭다운 라벨이나 작업 티켓에서 정한다.
 export function MyWorkBacklog() {
   const { groups } = useProjectStore();
   const boards = useBoardState();
+  const unassigned = useUnassignedTasks();
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
 
   const projects = groups.flatMap((group) => group.projects);
-  const items = projects.flatMap((project) =>
-    (boards[project.id]?.backlog ?? []).map((task) => ({ project, task })),
-  );
-  const defaultProjectId = projects[0]?.id ?? null;
+  const items = [
+    ...unassigned.map((task) => ({ project: null, task })),
+    ...projects.flatMap((project) =>
+      (boards[project.id]?.backlog ?? []).map((task) => ({ project, task })),
+    ),
+  ];
 
   return (
     <aside className="flex w-[300px] shrink-0 flex-col gap-2 self-stretch overflow-y-auto rounded-[8px] border bg-background p-3.5 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.05)]">
@@ -52,13 +57,13 @@ export function MyWorkBacklog() {
         <input
           placeholder="＋ 작업 이름 입력 후 Enter"
           aria-label="백로그 작업 추가"
-          disabled={!defaultProjectId}
-          className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+          className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
           onKeyDown={(event) => {
-            if (event.key === "Enter" && defaultProjectId) {
+            if (event.key === "Enter") {
               const name = event.currentTarget.value.trim();
               if (name) {
-                boardActions.addBacklogTask(defaultProjectId, name);
+                // 프로젝트 없음이 기본 — 소속은 나중에 라벨·티켓에서 정한다
+                boardActions.addUnassignedTask(name);
                 event.currentTarget.value = "";
               }
             }
@@ -73,7 +78,7 @@ export function MyWorkBacklog() {
                 aria-label={`${task.name} 완료`}
                 checked={task.done}
                 onCheckedChange={() =>
-                  boardActions.toggleTask(project.id, null, task.id)
+                  boardActions.toggleTask(project?.id ?? null, null, task.id)
                 }
                 className="rounded-[4px] border-primary bg-background"
               />
@@ -94,12 +99,34 @@ export function MyWorkBacklog() {
                 >
                   <span
                     aria-hidden
-                    className="size-1.5 shrink-0 rounded-full"
-                    style={{ backgroundColor: project.color }}
+                    className={cn(
+                      "size-1.5 shrink-0 rounded-full",
+                      !project && "border border-muted-foreground/50",
+                    )}
+                    style={
+                      project ? { backgroundColor: project.color } : undefined
+                    }
                   />
-                  <span className="truncate">{project.name} · 백로그</span>
+                  <span className="truncate">
+                    {project ? `${project.name} · 백로그` : "프로젝트 없음"}
+                  </span>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem
+                    onSelect={() =>
+                      boardActions.assignTask(
+                        project?.id ?? null,
+                        task.id,
+                        null,
+                        null,
+                      )
+                    }
+                  >
+                    프로젝트 없음
+                    {!project && (
+                      <Check aria-hidden className="ml-auto size-3.5" />
+                    )}
+                  </DropdownMenuItem>
                   {projects.map((candidate) => (
                     <DropdownMenuGroup key={candidate.id}>
                       <DropdownMenuLabel className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
@@ -113,7 +140,7 @@ export function MyWorkBacklog() {
                       <DropdownMenuItem
                         onSelect={() =>
                           boardActions.assignTask(
-                            project.id,
+                            project?.id ?? null,
                             task.id,
                             candidate.id,
                             null,
@@ -121,7 +148,7 @@ export function MyWorkBacklog() {
                         }
                       >
                         백로그
-                        {candidate.id === project.id && (
+                        {candidate.id === project?.id && (
                           <Check aria-hidden className="ml-auto size-3.5" />
                         )}
                       </DropdownMenuItem>
@@ -130,7 +157,7 @@ export function MyWorkBacklog() {
                           key={stage.id}
                           onSelect={() =>
                             boardActions.assignTask(
-                              project.id,
+                              project?.id ?? null,
                               task.id,
                               candidate.id,
                               stage.id,
@@ -149,7 +176,9 @@ export function MyWorkBacklog() {
           <ContextMenuContent className="w-44">
             <ContextMenuItem
               variant="destructive"
-              onSelect={() => boardActions.deleteTask(project.id, task.id)}
+              onSelect={() =>
+                boardActions.deleteTask(project?.id ?? null, task.id)
+              }
             >
               작업 삭제
             </ContextMenuItem>

@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { boardActions } from "@/components/features/projects/board-store";
 import { CollaboratorRequestDialog } from "@/components/features/projects/collaborator-request-dialog";
 import { TEAM_MEMBERS } from "@/components/features/projects/project-detail-data";
+import { todayISO } from "@/components/features/projects/roadmap-utils";
 
 // Figma Stage Detail Overlay(130:414)의 생성 모드.
 // 상세 오버레이와 같은 레이아웃(좌: 제목·내용 / 우: 세부 사항)이되,
@@ -60,14 +61,17 @@ export function StageAddOverlay({
 
   const submit = () => {
     if (!canSubmit) return;
+    // 단계는 항상 기간을 갖는다 — 비워두면 시작·종료 모두 오늘로 잡는다.
+    // (작업을 단계에 편입할 때 예정일을 계산할 기준이 늘 있어야 한다)
+    const today = todayISO();
     // 생성 API가 받지 않는 내용·공동작업자는 extra로 넘기면
     // 스토어가 생성 완료 후 patch로 이어 저장한다 (순서 보장)
     const stageId = boardActions.addStage(
       projectId,
       {
         name: name.trim(),
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
+        startDate: startDate || today,
+        endDate: endDate || today,
         showDeadline,
       },
       { description, requestedCollaborators: collaborators },

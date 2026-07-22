@@ -20,6 +20,7 @@ function toTask(task: Task): BoardTask {
     name: task.name,
     done: task.done,
     description: task.description ?? undefined,
+    scheduledDate: task.scheduledDate ?? undefined,
   };
 }
 
@@ -66,9 +67,16 @@ export async function getWorkspace(): Promise<Workspace> {
   const boards: Record<string, ProjectBoardData> = {};
   for (const project of projects) boards[project.id] = { stages: [], backlog: [] };
   for (const stage of stages) boards[stage.projectId]?.stages.push(toStage(stage));
-  for (const task of backlogTasks) boards[task.projectId]?.backlog.push(toTask(task));
+
+  // projectId가 null인 작업은 어느 보드에도 속하지 않으므로 별도 버킷으로 내려보낸다
+  const unassigned: BoardTask[] = [];
+  for (const task of backlogTasks) {
+    if (task.projectId === null) unassigned.push(toTask(task));
+    else boards[task.projectId]?.backlog.push(toTask(task));
+  }
 
   return {
+    unassigned,
     groups: groups.map((group) => ({
       id: group.id,
       name: group.name,
@@ -155,7 +163,8 @@ export function createStageComment(input: {
 
 export function createTask(input: {
   id: string;
-  projectId: string;
+  /** null = 미배정 — 내 작업에서 만든 작업의 기본 상태 */
+  projectId: string | null;
   stageId: string | null;
   name: string;
 }) {
@@ -167,7 +176,8 @@ export type TaskPatch = Partial<{
   done: boolean;
   description: string | null;
   stageId: string | null;
-  projectId: string;
+  projectId: string | null;
+  scheduledDate: string | null;
 }>;
 
 export function deleteTask(id: string) {
