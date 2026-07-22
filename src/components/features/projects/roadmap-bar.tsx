@@ -6,10 +6,13 @@ import { cn } from "@/lib/utils";
 import {
   barRange,
   dragStageDates,
-  hexToRgba,
   type DragMode,
   type StageDates,
 } from "@/components/features/projects/roadmap-utils";
+import {
+  barSurface,
+  barTextTone,
+} from "@/components/features/projects/project-palette";
 import type { RoadmapTimeline } from "@/components/features/projects/roadmap-window";
 
 // 간트 막대 — 작업 현황 로드맵과 프로젝트 상세 단계 로드맵이 공유한다.
@@ -134,8 +137,7 @@ export function RoadmapBar({
     left: startDay * timeline.dayWidth,
     // 배지가 있으면 배지(11) + 여백이 잘리지 않을 만큼 최소폭을 넓힌다
     width: Math.max(days * timeline.dayWidth, badge === undefined ? 26 : 32),
-    backgroundColor: hexToRgba(color, 0.12),
-    borderColor: hexToRgba(color, 0.8),
+    ...barSurface(color),
   };
   const className = cn(
     "absolute top-1 flex h-[18px] items-center overflow-hidden rounded-[6px] border text-left",
@@ -183,7 +185,7 @@ export function RoadmapBar({
       )}
       <span
         className="whitespace-nowrap text-[10.5px] font-medium"
-        style={{ color }}
+        style={{ color: barTextTone(color) }}
       >
         {typeof label === "function" ? label(shownStart, shownEnd) : label}
       </span>

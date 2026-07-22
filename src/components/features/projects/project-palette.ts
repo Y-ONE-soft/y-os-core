@@ -5,6 +5,8 @@
 // 파생은 저장하지 않고 화면에서 계산한다(board-store). 저장해 두면 나중에
 // 프로젝트 색을 바꿨을 때 옛 색이 남아 다시 어긋나기 때문이다.
 
+import { hexToRgba } from "@/components/features/projects/roadmap-utils";
+
 type Hsl = { h: number; s: number; l: number };
 
 const clamp = (value: number, min: number, max: number) =>
@@ -114,5 +116,63 @@ export function taskTone(stageColor: string): string {
     h: base.h,
     s: clamp(base.s - 12, S_MIN, S_MAX),
     l: clamp(base.l + 12, L_MIN, L_MAX + 6),
+  });
+}
+
+/**
+ * 단계 없는 할일(백로그·미배정) 톤 — 소속 단계가 없으니 프로젝트 색에서 바로 파생한다.
+ * `taskTone`과 계산은 같지만 인자가 단계 색이 아니라 프로젝트 색임을 이름으로 못박는다.
+ * 이 함수가 없던 동안 캘린더는 `taskTone(project.color)`로, 타임라인은 프로젝트 색을
+ * 그대로 써서 같은 할일이 화면마다 다른 색으로 보였다.
+ */
+export function backlogTone(projectColor: string): string {
+  return taskTone(projectColor);
+}
+
+// ── 막대 표면 규칙 ─────────────────────────────────────────────────────
+// 파생 색이 같아도 화면마다 채우기 농도·글자 톤이 다르면 다른 색으로 보인다.
+// 로드맵·타임라인·캘린더가 공유하도록 값을 여기 한곳에만 둔다.
+
+/** 막대 채우기 — 배경 위에서 텍스트가 읽힐 만큼만 옅게 */
+const BAR_FILL_ALPHA = 0.12;
+/** 강조(hover·선택) 시 채우기 — 여러 조각으로 나뉜 한 단계를 통으로 보이게 한다 */
+const BAR_FILL_ACTIVE_ALPHA = 0.3;
+/** 테두리·링 */
+const BAR_EDGE_ALPHA = 0.8;
+
+/** 막대 테두리·링 색 */
+export function barEdge(color: string): string {
+  return hexToRgba(color, BAR_EDGE_ALPHA);
+}
+
+/** 막대 배경 + 테두리 — 둘을 함께 돌려줘 한쪽만 다른 값을 쓰는 일을 막는다 */
+export function barSurface(color: string, active = false) {
+  return {
+    backgroundColor: hexToRgba(
+      color,
+      active ? BAR_FILL_ACTIVE_ALPHA : BAR_FILL_ALPHA,
+    ),
+    borderColor: barEdge(color),
+  };
+}
+
+/**
+ * 막대 위 글자·아이콘 톤. 옅은 틴트 위에서는 원색이 대비가 모자라 한 단계 어둡게 쓴다.
+ *
+ * RGB 채널에 계수를 곱하는 방식(캘린더의 옛 `shade()`)도 **색상(hue)은 보존된다** —
+ * 채널을 같은 비율로 줄이면 비율이 유지되기 때문이다. 어긋나는 것은 다른 둘이다. 실측:
+ *   - **명도가 입력에 딸려간다** — 프로젝트 색에 따라 L이 32~40으로 벌어져(편차 7.5pt)
+ *     프로젝트마다 글자 대비가 달라진다. 상한을 고정하면 편차가 0이다.
+ *   - **채도가 떨어진다** — 감소폭이 색상마다 달라 초록 −12pt, 보라 −44pt처럼 들쭉날쭉하다.
+ *     HSL에서 명도만 내리면 채도는 그대로 유지된다.
+ */
+const BAR_TEXT_L_MAX = 38;
+
+export function barTextTone(color: string): string {
+  const base = hexToHsl(color);
+  return hslToHex({
+    h: base.h,
+    s: base.s,
+    l: Math.min(base.l, BAR_TEXT_L_MAX),
   });
 }

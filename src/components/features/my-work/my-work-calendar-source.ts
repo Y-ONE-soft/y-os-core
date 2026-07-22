@@ -3,7 +3,10 @@
 
 import type { BoardTask, Project, ProjectBoardData } from "@/types/workspace";
 import { OPEN_ENDED_DAYS } from "@/components/features/projects/roadmap-utils";
-import { taskTone } from "@/components/features/projects/project-palette";
+import {
+  backlogTone,
+  taskTone,
+} from "@/components/features/projects/project-palette";
 import {
   DAYS_PER_WEEK,
   gridDay,
@@ -142,7 +145,7 @@ export function buildCalendarSource(
     // 백로그 할일도 날짜 칸에 떨어뜨리면 예정일을 가질 수 있다 (덮는 단계가 없을 때)
     for (const task of board?.backlog ?? []) {
       // 단계 없는 백로그 할일은 프로젝트 색을 같은 규칙으로 옅게 쓴다
-      const chip = taskChip(grid, project.id, taskTone(project.color), task);
+      const chip = taskChip(grid, project.id, backlogTone(project.color), task);
       if (chip) {
         overlays.push(chip);
         placed = true;
