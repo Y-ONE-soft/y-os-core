@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { CURRENT_USER } from "@/lib/constants";
+import { useSession } from "@/components/features/auth/session-context";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,6 +29,7 @@ export function StageAddDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const { user } = useSession();
   const [name, setName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -119,7 +120,7 @@ export function StageAddDialog({
             </p>
             <div className="flex items-center gap-2">
               <span className="flex size-7 items-center justify-center rounded-full bg-primary text-[11px] font-medium text-primary-foreground">
-                {CURRENT_USER.initial}
+                {user?.name.charAt(0)}
               </span>
               <button
                 type="button"
