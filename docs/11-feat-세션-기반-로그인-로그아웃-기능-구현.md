@@ -110,3 +110,10 @@ src/types/auth.ts                                # SessionUser/UserRole 타입 (
 - 세션 로딩 중 유저 메뉴는 스켈레톤, 마스터 전용 UI는 잠깐 숨김 상태로 시작 — RSC 세션 조회(쿠키 기반 서버 렌더)로 개선 여지
 - proxy는 쿠키 존재만 검사 — 위조 쿠키로 화면 셸은 열리나 데이터 API는 전부 401 (현 단계 데이터가 localStorage/상수라 노출 정보 없음). 실데이터 API가 늘면 각 Route Handler에서 `getSessionUser` 검증이 표준
 - Vercel 배포는 push 후 확인해 추록 예정 (Neon env는 전 환경 주입 상태 — docs/7)
+
+## 8. 사후 검증 결과 (추록)
+
+- 커밋 `5e2a8e8` push → Vercel 프리뷰 배포 **success(● Ready)** — proxy(미들웨어)·`/api/auth/*` 포함 빌드가 배포 환경에서 정상 생성됨
+- 프리뷰 URL: https://y-os-core-kzg142vco-project-hosting-center.vercel.app (한글 브랜치 해시 URL, SSO 보호라 외부 curl 검증은 불가 — 프로덕션 별칭은 main 머지 후 공개 URL에서 확인 가능)
+- PR: https://github.com/Y-ONE-soft/y-os-core/pull/7 — merge commit 방식으로 머지
+- 프로덕션(https://y-os-core.vercel.app)은 머지 배포 후 로그인 동작을 확인하면 된다 (Neon env·시드 계정은 전 환경 공유)
