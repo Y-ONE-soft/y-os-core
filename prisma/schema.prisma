@@ -16,18 +16,24 @@ enum UserRole {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  username     String    @unique // 로그인 아이디
+  id           String        @id @default(cuid())
+  username     String        @unique // 로그인 아이디
   passwordHash String // bcrypt 해시 — 평문 저장 금지
   role         UserRole
   name         String
-  group        String? // 소속 그룹
+  // 소속 그룹 — 프로젝트 그룹과 동일한 축이어야 "내 소속 프로젝트" 판정이 가능하다.
+  // (구 group String? 자유 문자열은 ProjectGroup과 연결되지 않아 FK로 교체)
+  groupId      String?
+  group        ProjectGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
   title        String? // 직책
   phone        String?
-  email        String?   @unique
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  email        String?       @unique
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
   sessions     Session[]
+  ownedProjects Project[]
+
+  @@index([groupId])
 }
 
 model Session {
@@ -49,6 +55,7 @@ model ProjectGroup {
   name      String
   createdAt DateTime  @default(now())
   projects  Project[]
+  users     User[]
 }
 
 model Project {
@@ -58,10 +65,15 @@ model Project {
   createdAt DateTime     @default(now())
   groupId   String
   group     ProjectGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  // 작업자 — 스탭이 만든 프로젝트의 소유자. 배정 도메인 도입 전까지 1인 기준.
+  // 사용자가 지워져도 프로젝트는 남아야 하므로 SetNull.
+  ownerId   String?
+  owner     User?        @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   stages    Stage[]
   tasks     Task[]
 
   @@index([groupId])
+  @@index([ownerId])
 }
 
 model Stage {
