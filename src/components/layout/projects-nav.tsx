@@ -501,7 +501,7 @@ export function ProjectsNav() {
       </nav>
       {!collapsed && (
         <footer className="w-full">
-          {/* 초기화는 되돌릴 수 없다 — 시드 정리 이후 프로젝트·단계·작업이
+          {/* 초기화는 되돌릴 수 없다 — 시드 정리 이후 프로젝트·단계·할일이
               복원되지 않으므로 확인 단계를 둔다 (docs/46) */}
           <AlertDialog>
             <AlertDialogTrigger asChild>

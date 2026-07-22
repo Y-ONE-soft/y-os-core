@@ -1,4 +1,4 @@
-// 작업 카드 드래그 앤 드롭 규약 — 백로그·보드가 함께 쓴다.
+// 할일 카드 드래그 앤 드롭 규약 — 백로그·보드가 함께 쓴다.
 // 전용 MIME 타입을 써서 외부에서 끌어온 텍스트·파일이 드롭되지 않게 한다.
 
 const TASK_MIME = "application/x-yos-task";
@@ -18,7 +18,7 @@ export function isTaskDrag(event: React.DragEvent) {
   return event.dataTransfer.types.includes(TASK_MIME);
 }
 
-/** 드롭 시점에만 실제 작업 id를 읽을 수 있다 */
+/** 드롭 시점에만 실제 할일 id를 읽을 수 있다 */
 export function getTaskDragData(event: React.DragEvent) {
   return event.dataTransfer.getData(TASK_MIME) || null;
 }

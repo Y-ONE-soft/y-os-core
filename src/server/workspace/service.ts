@@ -69,7 +69,7 @@ export async function getWorkspace(): Promise<Workspace> {
   for (const project of projects) boards[project.id] = { stages: [], backlog: [] };
   for (const stage of stages) boards[stage.projectId]?.stages.push(toStage(stage));
 
-  // projectId가 null인 작업은 어느 보드에도 속하지 않으므로 별도 버킷으로 내려보낸다
+  // projectId가 null인 할일은 어느 보드에도 속하지 않으므로 별도 버킷으로 내려보낸다
   const unassigned: BoardTask[] = [];
   for (const task of backlogTasks) {
     if (task.projectId === null) unassigned.push(toTask(task));
@@ -152,9 +152,9 @@ export function createStage(input: {
 }
 
 /**
- * 단계 삭제 — 그 단계의 작업은 지우지 않고 백로그(stageId = null)로 옮긴다.
- * Task.stage가 onDelete: Cascade이므로 **반드시 작업을 먼저 떼어낸 뒤** 단계를
- * 지워야 한다. 순서가 뒤바뀌면 작업까지 함께 삭제된다.
+ * 단계 삭제 — 그 단계의 할일은 지우지 않고 백로그(stageId = null)로 옮긴다.
+ * Task.stage가 onDelete: Cascade이므로 **반드시 할일을 먼저 떼어낸 뒤** 단계를
+ * 지워야 한다. 순서가 뒤바뀌면 할일까지 함께 삭제된다.
  *
  * opts.ownerId를 주면 해당 사용자가 작업자인 프로젝트의 단계만 지운다
  * (deleteProject와 동일한 스탭 가드).
@@ -210,7 +210,7 @@ export function createStageComment(input: {
 
 export function createTask(input: {
   id: string;
-  /** null = 미배정 — 내 작업에서 만든 작업의 기본 상태 */
+  /** null = 미배정 — 내 할일에서 만든 할일의 기본 상태 */
   projectId: string | null;
   stageId: string | null;
   name: string;
@@ -270,13 +270,13 @@ export async function updateTask(id: string, patch: TaskPatch) {
 }
 
 /**
- * 데이터 초기화 — 프로젝트·단계·작업을 모두 지우고 그룹 골격만 남긴다.
+ * 데이터 초기화 — 프로젝트·단계·할일을 모두 지우고 그룹 골격만 남긴다.
  * (User/Session은 무관. 그룹을 남기는 이유는 seed-data.ts 주석 참고)
  */
 export async function resetWorkspace(): Promise<void> {
   const seed = workspaceSeedRows();
   await db.$transaction([
-    db.projectGroup.deleteMany(), // 프로젝트·단계·작업까지 cascade 삭제
+    db.projectGroup.deleteMany(), // 프로젝트·단계·할일까지 cascade 삭제
     db.task.deleteMany(), // 그룹 밖에 남을 수 있는 잔여 행 방어
     db.projectGroup.createMany({ data: seed.groups }),
   ]);

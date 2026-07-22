@@ -73,8 +73,8 @@ export function ProjectBoard({
               dropStageId === stage.id && "ring-2 ring-primary ring-offset-1",
             )}
           >
-            {/* 단계 메뉴는 헤더 우클릭 — 작업 카드·프로젝트·백로그와 같은 방식.
-                컬럼 전체를 트리거로 잡으면 작업 카드 메뉴와 중첩되므로 헤더만 잡는다 */}
+            {/* 단계 메뉴는 헤더 우클릭 — 할일 카드·프로젝트·백로그와 같은 방식.
+                컬럼 전체를 트리거로 잡으면 할일 카드 메뉴와 중첩되므로 헤더만 잡는다 */}
             <ContextMenu>
               <ContextMenuTrigger asChild>
                 {/* 헤더 어디를 눌러도 단계 상세가 열린다 */}

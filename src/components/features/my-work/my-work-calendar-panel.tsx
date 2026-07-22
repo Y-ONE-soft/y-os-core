@@ -48,7 +48,7 @@ export function MyWorkCalendarPanel() {
     [monthAnchor],
   );
 
-  // "내 작업" 기준 — 작업 현황·사이드바와 같은 소유자 판정을 따른다.
+  // "내 할일" 기준 — 작업 현황·사이드바와 같은 소유자 판정을 따른다.
   const myProjects = useMemo(
     () =>
       groups
@@ -139,9 +139,9 @@ export function MyWorkCalendarPanel() {
   }
 
   /**
-   * 백로그에서 끌어온 작업을 날짜 칸에 떨어뜨렸을 때.
+   * 백로그에서 끌어온 할일을 날짜 칸에 떨어뜨렸을 때.
    * 그 날짜를 덮는 단계가 (같은 프로젝트에) 있으면 그 단계로 편입하고,
-   * 없으면(미배정 작업 포함) 예정일만 잡는다.
+   * 없으면(미배정 할일 포함) 예정일만 잡는다.
    */
   function handleDropTask(taskId: string, date: string) {
     // 미배정 목록 먼저 — 프로젝트가 없으니 편입할 단계도 없다

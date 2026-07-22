@@ -1,4 +1,4 @@
-// 내 작업 화면 자리표시 데이터 — Figma My Work Layout(147:495)의 예시 값 재현.
+// 내 할일 화면 자리표시 데이터 — Figma My Work Layout(147:495)의 예시 값 재현.
 // 캘린더는 실데이터로 전환됐다. 남은 요청 카드만 아직 자리표시다.
 
 export type WorkRequest = {

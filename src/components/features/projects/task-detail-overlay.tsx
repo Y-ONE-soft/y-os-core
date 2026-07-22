@@ -90,8 +90,8 @@ export function TaskDetailOverlay({
   const [requestMembers, setRequestMembers] = useState<Set<string>>(new Set());
 
   const projects = groups.flatMap((group) => group.projects);
-  // 작업이 놓인 위치(프로젝트·단계)를 스토어에서 직접 찾는다. 단계에 편성된 작업,
-  // 백로그 작업(stageId = null), 미배정 작업(projectId = null)을 모두 지원하며,
+  // 할일이 놓인 위치(프로젝트·단계)를 스토어에서 직접 찾는다. 단계에 편성된 할일,
+  // 백로그 할일(stageId = null), 미배정 할일(projectId = null)을 모두 지원하며,
   // 오버레이 안에서 소속을 바꿔도 새 위치를 따라가므로 열린 상태가 유지된다.
   const unassignedTask = taskId
     ? unassigned.find((entry) => entry.id === taskId)
@@ -125,7 +125,7 @@ export function TaskDetailOverlay({
   const project = projects.find((candidate) => candidate.id === projectId);
   const stages = projectId === null ? [] : (boards[projectId]?.stages ?? []);
   const stageId = stage?.id ?? null;
-  // 미배정 작업은 단계 개념이 없으므로 "미배정"으로 표기한다
+  // 미배정 할일은 단계 개념이 없으므로 "미배정"으로 표기한다
   const stageLabel = project ? (stage?.name ?? "백로그") : "미배정";
   const projectLabel = project?.name ?? "프로젝트 없음";
 

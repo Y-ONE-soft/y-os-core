@@ -28,10 +28,10 @@ import {
 import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
 import { setTaskDragData } from "@/components/features/projects/task-drag";
 
-// 내 작업 페이지는 프로젝트 스코프가 없으므로 미배정 작업과 전 프로젝트 백로그를
+// 내 할일 페이지는 프로젝트 스코프가 없으므로 미배정 할일과 전 프로젝트 백로그를
 // 함께 보여준다. 데이터 원본은 프로젝트 상세의 백로그와 동일한 보드 스토어(DB).
-// 여기서 만든 작업은 원칙적으로 "프로젝트 없음"(미배정)이며, 소속은 행의
-// 드롭다운 라벨이나 작업 티켓에서 정한다.
+// 여기서 만든 할일은 원칙적으로 "프로젝트 없음"(미배정)이며, 소속은 행의
+// 드롭다운 라벨이나 할일 티켓에서 정한다.
 export function MyWorkBacklog() {
   const { groups } = useProjectStore();
   const boards = useBoardState();

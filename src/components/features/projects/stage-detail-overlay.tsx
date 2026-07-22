@@ -21,8 +21,8 @@ import {
 import { CollaboratorRequestDialog } from "@/components/features/projects/collaborator-request-dialog";
 import { OverlayBreadcrumb } from "@/components/features/projects/overlay-breadcrumb";
 
-// 레이아웃·타이포·컬러는 작업 상세 오버레이(task-detail-overlay)와 통일한다.
-// 단계에만 있는 항목(기간·데드라인 표시)과 작업에만 있는 항목(유형·난이도)만 다르다.
+// 레이아웃·타이포·컬러는 할일 상세 오버레이(task-detail-overlay)와 통일한다.
+// 단계에만 있는 항목(기간·데드라인 표시)과 할일에만 있는 항목(유형·난이도)만 다르다.
 
 function formatRelative(iso?: string) {
   if (!iso) return "—";
