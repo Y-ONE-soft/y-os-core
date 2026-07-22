@@ -7,12 +7,14 @@ import { getPreset } from "@/server/presets/service";
 import { presetStageSpan, splitRangeEvenly } from "@/lib/stage-plan";
 
 /**
- * 정렬 가능한 id를 만든다.
+ * 정렬 가능한 id를 만든다 — **할일 전용**이다.
  *
- * 워크스페이스 조회 정렬은 [createdAt asc, id asc]인데, 한 트랜잭션 안에서 만든 행은
+ * 할일 조회 정렬은 여전히 [createdAt asc, id asc]인데, 한 트랜잭션 안에서 만든 행은
  * createdAt(now())이 모두 같은 값으로 잡혀 실질 정렬 키가 id가 된다. 순수 uuid를 쓰면
- * 프리셋의 단계 순서가 무작위로 섞이므로, 접두사 뒤에 0으로 채운 순번을 넣어
+ * 프리셋의 할일 순서가 무작위로 섞이므로, 접두사 뒤에 0으로 채운 순번을 넣어
  * id 사전순 = 의도한 순서가 되도록 한다.
+ *
+ * 단계는 이 트릭이 필요 없다 — 명시적 order 필드로 정렬한다(STAGE_ORDER).
  */
 function orderedId(prefix: string, index: number): string {
   return `${prefix}-${String(index).padStart(3, "0")}-${crypto.randomUUID()}`;
@@ -54,7 +56,7 @@ export async function createProjectFromPreset(
 
     for (const [stageIndex, stage] of preset.stages.entries()) {
       const span = presetStageSpan(input.baseDate, stage);
-      const stageId = orderedId("st", stageIndex);
+      const stageId = `st-${crypto.randomUUID()}`;
       await tx.stage.create({
         data: {
           id: stageId,
@@ -63,6 +65,8 @@ export async function createProjectFromPreset(
           color: stage.color,
           startDate: span.startDate,
           endDate: span.endDate,
+          // 새 프로젝트라 1..N을 그대로 매긴다 (@@unique([projectId, order]))
+          order: stageIndex + 1,
         },
       });
 
@@ -115,13 +119,14 @@ export async function createProjectWithEvenStages(
     for (const [index, span] of spans.entries()) {
       await tx.stage.create({
         data: {
-          id: orderedId("st", index),
+          id: `st-${crypto.randomUUID()}`,
           projectId: input.projectId,
           name: `${index + 1}단계`,
           // 표시 색은 보드가 프로젝트 색에서 파생하므로 여기서는 프로젝트 색을 그대로 둔다
           color: input.color,
           startDate: span.startDate,
           endDate: span.endDate,
+          order: index + 1,
         },
       });
     }
