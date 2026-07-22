@@ -3,6 +3,7 @@
 
 import type { BoardTask, Project, ProjectBoardData } from "@/types/workspace";
 import { OPEN_ENDED_DAYS } from "@/components/features/projects/roadmap-utils";
+import { taskTone } from "@/components/features/projects/project-palette";
 import {
   DAYS_PER_WEEK,
   gridDay,
@@ -119,9 +120,10 @@ export function buildCalendarSource(
         stageCount += 1;
         placed = true;
       }
-      // 할일 칩은 단계 색을 따른다 — 어느 단계 소속인지 한눈에 보이게
+      // 할일 칩은 소속 단계 색을 한 톤 옅게 — 같은 계열이되 단계 막대와 구분된다
+      const taskColor = taskTone(stage.color);
       for (const task of stage.tasks) {
-        const chip = taskChip(grid, project, stage.color, task);
+        const chip = taskChip(grid, project, taskColor, task);
         if (chip) {
           overlays.push(chip);
           placed = true;
