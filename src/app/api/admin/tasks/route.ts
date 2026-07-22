@@ -17,6 +17,7 @@ export async function POST(request: Request) {
     projectId?: unknown;
     stageId?: unknown;
     name?: unknown;
+    assigneeId?: unknown;
   } | null;
   if (!body || !isName(body.id) || !isName(body.name)) return badRequest();
 
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
     projectId: isName(body.projectId) ? body.projectId : null,
     stageId: isName(body.stageId) ? body.stageId : null,
     name: body.name.trim(),
+    assigneeId: isName(body.assigneeId) ? body.assigneeId : null,
   });
   return NextResponse.json({ ok: true });
 }

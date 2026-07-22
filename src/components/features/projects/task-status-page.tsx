@@ -14,11 +14,12 @@ import {
 import { StageDetailOverlay } from "@/components/features/projects/stage-detail-overlay";
 import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
 import { TaskStatusCalendar } from "@/components/features/projects/task-status-calendar";
+import { TaskStatusAssignees } from "@/components/features/projects/task-status-assignees";
 
 const VIEW_OPTIONS = ["로드맵", "담당자", "캘린더"] as const;
 type ViewOption = (typeof VIEW_OPTIONS)[number];
-/** 담당자 뷰는 아직 구현 전 — 누를 수 있게 두면 빈 화면이 되므로 막아 둔다 */
-const UNAVAILABLE_VIEWS: ViewOption[] = ["담당자"];
+/** 아직 구현 전인 뷰 — 누를 수 있게 두면 빈 화면이 되므로 막아 둔다 */
+const UNAVAILABLE_VIEWS: ViewOption[] = [];
 
 function FilterChip({
   checked,
@@ -221,7 +222,13 @@ export function TaskStatusPage() {
           })}
         </div>
       </div>
-      {activeView === "캘린더" ? (
+      {activeView === "담당자" ? (
+        <TaskStatusAssignees
+          projects={visibleProjects}
+          isMaster={isMaster}
+          currentUserId={user?.id ?? null}
+        />
+      ) : activeView === "캘린더" ? (
         <TaskStatusCalendar
           projects={visibleProjects}
           onOpenStage={(projectId, stageId) =>

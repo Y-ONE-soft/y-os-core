@@ -387,15 +387,25 @@ export const boardActions = {
     }
     cache.persist(patchTaskApi(taskId, { done }));
   },
-  /** 할일 이름·내용·예정일 수정 (할일 상세 오버레이, 캘린더 드래그) */
+  /** 할일 이름·내용·예정일·담당자 수정 (할일 상세 오버레이, 캘린더 드래그) */
   updateTask(
     projectId: string | null,
     stageId: string | null,
     taskId: string,
-    patch: Partial<Pick<BoardTask, "name" | "description" | "scheduledDate">>,
+    patch: Partial<Pick<BoardTask, "name" | "description" | "scheduledDate">> & {
+      /** null = 담당자 해제. 키가 없으면 담당자를 건드리지 않는다 */
+      assigneeId?: string | null;
+    },
   ) {
+    // 로컬 상태는 BoardTask 규격(미배정 = undefined)이라 null을 맞춰 준다.
+    // 서버로는 null 그대로 보내야 한다 — undefined는 JSON에서 사라져
+    // 라우트의 `key in body` 검사를 통과하지 못하고 해제가 무시된다.
+    const localPatch: Partial<BoardTask> =
+      "assigneeId" in patch
+        ? { ...patch, assigneeId: patch.assigneeId ?? undefined }
+        : (patch as Partial<BoardTask>);
     const apply = (task: BoardTask) =>
-      task.id === taskId ? { ...task, ...patch } : task;
+      task.id === taskId ? { ...task, ...localPatch } : task;
     if (projectId === null) {
       cache.apply((prev) => ({
         ...prev,
