@@ -19,7 +19,15 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
 import { fetchPresets } from "@/lib/api/presets";
-import { createProjectFromPresetApi } from "@/lib/api/workspace";
+import {
+  createProjectFromPresetApi,
+  createProjectWithEvenStagesApi,
+} from "@/lib/api/workspace";
+import {
+  evenSplitError,
+  inclusiveDays,
+  splitRangeEvenly,
+} from "@/lib/stage-plan";
 import type { PresetSummary } from "@/types/preset";
 import { useSession } from "@/components/features/auth/session-context";
 import {
@@ -30,7 +38,15 @@ import * as cache from "@/components/features/projects/workspace-cache";
 import {
   RangeCalendar,
   todayLocalISO,
+  type DateRange,
 } from "@/components/features/projects/range-calendar";
+
+type Mode = "preset" | "even";
+
+const MODES: { key: Mode; label: string }[] = [
+  { key: "preset", label: "프리셋 적용" },
+  { key: "even", label: "직접 만들기" },
+];
 
 export function ProjectCreateDialog({
   open,
@@ -47,25 +63,32 @@ export function ProjectCreateDialog({
         그대로 만들게 되는 것을 이펙트로 리셋하지 않고 마운트 주기로 해결한다.
       */}
       <DialogContent className="sm:max-w-[560px]">
-        <CreateFromPresetForm onDone={() => onOpenChange(false)} />
+        <ProjectCreateForm onDone={() => onOpenChange(false)} />
       </DialogContent>
     </Dialog>
   );
 }
 
-function CreateFromPresetForm({ onDone }: { onDone: () => void }) {
+function ProjectCreateForm({ onDone }: { onDone: () => void }) {
   const { user } = useSession();
   const { groups } = useProjectStore();
   const isMaster = user?.role === "MASTER";
 
-  const [presets, setPresets] = useState<PresetSummary[] | null>(null);
-  const [presetId, setPresetId] = useState<string | null>(null);
+  const [mode, setMode] = useState<Mode>("preset");
+  // 두 모드가 함께 쓰는 값
   const [name, setName] = useState("");
-  const [baseDate, setBaseDate] = useState(todayLocalISO);
-  // 마스터만 고른다 — 스탭은 서버가 세션 그룹으로 강제한다
   const [groupId, setGroupId] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 프리셋 적용 모드
+  const [presets, setPresets] = useState<PresetSummary[] | null>(null);
+  const [presetId, setPresetId] = useState<string | null>(null);
+  const [baseDate, setBaseDate] = useState(todayLocalISO);
+
+  // 직접 만들기 모드
+  const [range, setRange] = useState<Partial<DateRange>>({});
+  const [stageCount, setStageCount] = useState(4);
 
   useEffect(() => {
     let alive = true;
@@ -83,7 +106,19 @@ function CreateFromPresetForm({ onDone }: { onDone: () => void }) {
     return PROJECT_COLORS[total % PROJECT_COLORS.length];
   }, [groups]);
 
-  const selected = presets?.find((preset) => preset.id === presetId) ?? null;
+  const selectedPreset =
+    presets?.find((preset) => preset.id === presetId) ?? null;
+
+  // 균등 분할 미리보기 — 서버 생성과 같은 @/lib/stage-plan을 쓰므로 결과가 어긋나지 않는다
+  const evenPlan = useMemo(() => {
+    if (!range.startDate || !range.endDate) return null;
+    const invalid = evenSplitError(range.startDate, range.endDate, stageCount);
+    if (invalid) return { error: invalid, spans: null };
+    return {
+      error: null,
+      spans: splitRangeEvenly(range.startDate, range.endDate, stageCount),
+    };
+  }, [range.startDate, range.endDate, stageCount]);
 
   function pickPreset(preset: PresetSummary) {
     setPresetId(preset.id);
@@ -91,22 +126,36 @@ function CreateFromPresetForm({ onDone }: { onDone: () => void }) {
     setName((prev) => (prev.trim() ? prev : preset.name));
   }
 
+  const sharedReady = name.trim().length > 0 && (!isMaster || !!groupId);
   const canSubmit =
-    !!presetId && name.trim().length > 0 && (!isMaster || !!groupId);
+    sharedReady &&
+    (mode === "preset" ? !!presetId : !!evenPlan && !evenPlan.error);
 
   async function submit() {
     if (!canSubmit || submitting) return;
     setSubmitting(true);
     setError(null);
+    const base = {
+      id: `p-${crypto.randomUUID()}`,
+      ...(isMaster ? { groupId } : {}),
+      name: name.trim(),
+      color: nextColor,
+    };
     try {
-      await createProjectFromPresetApi({
-        id: `p-${crypto.randomUUID()}`,
-        ...(isMaster ? { groupId } : {}),
-        name: name.trim(),
-        color: nextColor,
-        presetId: presetId!,
-        baseDate,
-      });
+      if (mode === "preset") {
+        await createProjectFromPresetApi({
+          ...base,
+          presetId: presetId!,
+          baseDate,
+        });
+      } else {
+        await createProjectWithEvenStagesApi({
+          ...base,
+          startDate: range.startDate!,
+          endDate: range.endDate!,
+          stageCount,
+        });
+      }
       // 생성이 끝났으면 먼저 닫는다. 목록 갱신을 기다렸다가 닫으면, 갱신이 실패했을 때
       // 이미 만들어진 프로젝트인데도 창이 열린 채 남아 사용자가 다시 눌러 중복 생성한다.
       onDone();
@@ -127,11 +176,41 @@ function CreateFromPresetForm({ onDone }: { onDone: () => void }) {
       <DialogHeader>
         <DialogTitle>프로젝트 생성</DialogTitle>
         <DialogDescription>
-          프리셋을 고르고 시작일을 정하면 단계와 할일이 함께 만들어집니다.
+          {mode === "preset"
+            ? "프리셋을 고르고 시작일을 정하면 단계와 할일이 함께 만들어집니다."
+            : "기간을 드래그하고 단계 수를 정하면 기간을 균등하게 나눈 단계가 만들어집니다."}
         </DialogDescription>
       </DialogHeader>
 
-        <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4">
+        <div
+          role="tablist"
+          aria-label="생성 방식"
+          className="flex items-center rounded-[8px] border p-[3px]"
+        >
+          {MODES.map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              role="tab"
+              aria-selected={mode === item.key}
+              onClick={() => {
+                setMode(item.key);
+                setError(null);
+              }}
+              className={cn(
+                "flex-1 rounded-[6px] px-2.5 py-1 text-[13px] font-medium transition-colors",
+                mode === item.key
+                  ? "bg-accent text-accent-foreground"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+
+        {mode === "preset" && (
           <div className="flex flex-col gap-1.5">
             <Label>프리셋</Label>
             {presets === null ? (
@@ -142,7 +221,7 @@ function CreateFromPresetForm({ onDone }: { onDone: () => void }) {
                 저장한 뒤 사용할 수 있습니다.
               </p>
             ) : (
-              <ul className="flex max-h-[180px] flex-col gap-1 overflow-y-auto">
+              <ul className="flex max-h-[150px] flex-col gap-1 overflow-y-auto">
                 {presets.map((preset) => (
                   <li key={preset.id}>
                     <button
@@ -168,37 +247,43 @@ function CreateFromPresetForm({ onDone }: { onDone: () => void }) {
               </ul>
             )}
           </div>
+        )}
 
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="project-name">프로젝트 이름</Label>
+          <Input
+            id="project-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder={
+              mode === "preset"
+                ? "프리셋을 고르면 이름이 채워집니다"
+                : "프로젝트 이름"
+            }
+          />
+        </div>
+
+        {isMaster && (
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="project-name">프로젝트 이름</Label>
-            <Input
-              id="project-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder="프리셋을 고르면 이름이 채워집니다"
-            />
+            {/* 마스터는 전체 그룹을 다루므로 어디에 만들지 정해야 한다 */}
+            <Label htmlFor="project-group">그룹</Label>
+            <select
+              id="project-group"
+              value={groupId}
+              onChange={(event) => setGroupId(event.target.value)}
+              className="h-9 rounded-[8px] border bg-transparent px-2.5 text-[13px]"
+            >
+              <option value="">그룹 선택</option>
+              {groups.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name}
+                </option>
+              ))}
+            </select>
           </div>
+        )}
 
-          {isMaster && (
-            <div className="flex flex-col gap-1.5">
-              {/* 마스터는 전체 그룹을 다루므로 어디에 만들지 정해야 한다 */}
-              <Label htmlFor="project-group">그룹</Label>
-              <select
-                id="project-group"
-                value={groupId}
-                onChange={(event) => setGroupId(event.target.value)}
-                className="h-9 rounded-[8px] border bg-transparent px-2.5 text-[13px]"
-              >
-                <option value="">그룹 선택</option>
-                {groups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
+        {mode === "preset" ? (
           <div className="flex flex-col gap-1.5">
             <Label>
               시작일{" "}
@@ -209,22 +294,85 @@ function CreateFromPresetForm({ onDone }: { onDone: () => void }) {
             <RangeCalendar
               mode="single"
               value={{ startDate: baseDate, endDate: baseDate }}
-              onChange={(range) => setBaseDate(range.startDate)}
+              onChange={(picked) => setBaseDate(picked.startDate)}
             />
-            {selected && (
+            {selectedPreset && (
               <p className="text-[11px] text-muted-foreground">
-                {baseDate}부터 단계 {selected.stageCount}개 · 할일{" "}
-                {selected.taskCount}개가 만들어집니다.
+                {baseDate}부터 단계 {selectedPreset.stageCount}개 · 할일{" "}
+                {selectedPreset.taskCount}개가 만들어집니다.
               </p>
             )}
           </div>
+        ) : (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <Label>
+                기간{" "}
+                <span className="font-normal text-muted-foreground">
+                  — 캘린더를 드래그해 시작일과 종료일을 잡으세요
+                </span>
+              </Label>
+              <RangeCalendar mode="range" value={range} onChange={setRange} />
+            </div>
 
-          {error && (
-            <p role="alert" className="text-[13px] text-destructive">
-              {error}
-            </p>
-          )}
-        </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="stage-count">예상 단계 수</Label>
+              <Input
+                id="stage-count"
+                type="number"
+                min={1}
+                value={stageCount}
+                onChange={(event) =>
+                  setStageCount(Number(event.target.value) || 0)
+                }
+                className="w-24"
+              />
+            </div>
+
+            {/* 미리보기 — 만들기 전에 어떻게 쪼개지는지 그대로 보여준다 */}
+            {range.startDate && range.endDate && (
+              <div className="flex flex-col gap-1.5">
+                <p className="text-[11px] text-muted-foreground">
+                  {range.startDate} ~ {range.endDate} (총{" "}
+                  {inclusiveDays(range.startDate, range.endDate)}일)
+                </p>
+                {evenPlan?.error ? (
+                  <p
+                    role="alert"
+                    className="rounded-[8px] border border-destructive/40 p-2.5 text-[12px] text-destructive"
+                  >
+                    {evenPlan.error}
+                  </p>
+                ) : (
+                  <ul
+                    data-testid="even-preview"
+                    className="flex max-h-[130px] flex-col gap-0.5 overflow-y-auto rounded-[8px] border p-2"
+                  >
+                    {evenPlan?.spans?.map((span, index) => (
+                      <li
+                        key={span.startDate}
+                        className="flex items-center justify-between text-[12px]"
+                      >
+                        <span className="font-medium">{index + 1}단계</span>
+                        <span className="tabular-nums text-muted-foreground">
+                          {span.startDate} ~ {span.endDate} (
+                          {inclusiveDays(span.startDate, span.endDate)}일)
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </>
+        )}
+
+        {error && (
+          <p role="alert" className="text-[13px] text-destructive">
+            {error}
+          </p>
+        )}
+      </div>
 
       <DialogFooter>
         <Button variant="outline" onClick={onDone} disabled={submitting}>
