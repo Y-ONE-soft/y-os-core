@@ -16,6 +16,11 @@ type SessionValue = {
   user: SessionUser | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  /**
+   * 내 정보 수정 후 헤더·아바타가 즉시 옛 값을 벗도록 컨텍스트를 갈아끼운다.
+   * 서버가 돌려준 SessionUser를 그대로 넣으므로 재조회가 필요 없다.
+   */
+  setUser: (user: SessionUser) => void;
 };
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -50,7 +55,7 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   return (
-    <SessionContext value={{ user, loading, signOut }}>
+    <SessionContext value={{ user, loading, signOut, setUser }}>
       {children}
     </SessionContext>
   );
