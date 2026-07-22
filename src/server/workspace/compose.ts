@@ -126,6 +126,14 @@ export async function applyPresetToProject(input: {
     });
     if (existing > 0) throw new ProjectNotEmptyError();
 
+    // 담당자 기본값은 **프로젝트 소유자** 기준이다 — 여기서는 기존 프로젝트에
+    // 적용하므로 요청자와 소유자가 다를 수 있다(마스터가 남의 프로젝트에 적용).
+    const project = await tx.project.findUnique({
+      where: { id: input.projectId },
+      select: { ownerId: true },
+    });
+    const assigneeId = project?.ownerId ?? input.ownerId;
+
     for (const [stageIndex, stage] of preset.stages.entries()) {
       const span = presetStageSpan(input.baseDate, stage);
       const stageId = `st-${crypto.randomUUID()}`;
@@ -149,6 +157,7 @@ export async function applyPresetToProject(input: {
             projectId: input.projectId,
             stageId,
             name: task.name,
+            assigneeId,
             scheduledDate:
               task.offsetDays === undefined
                 ? null
