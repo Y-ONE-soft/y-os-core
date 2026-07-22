@@ -120,7 +120,6 @@ export function ProjectBoard({
         );
       })}
       <TaskDetailOverlay
-        projectId={projectId}
         taskId={detailTaskId}
         onClose={() => setDetailTaskId(null)}
       />

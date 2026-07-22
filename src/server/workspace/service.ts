@@ -157,10 +157,15 @@ export type TaskPatch = Partial<{
   done: boolean;
   description: string | null;
   stageId: string | null;
+  projectId: string;
 }>;
 
 export function updateTask(id: string, patch: TaskPatch) {
-  return db.task.updateMany({ where: { id }, data: patch });
+  // 단계는 프로젝트에 속하므로, 프로젝트를 옮기면 이전 프로젝트의 단계를 가리킨
+  // 채로 남을 수 없다. 항상 대상 프로젝트의 백로그(stageId = null)로 보낸다.
+  const data =
+    patch.projectId === undefined ? patch : { ...patch, stageId: null };
+  return db.task.updateMany({ where: { id }, data });
 }
 
 /** 데이터 초기화 — 워크스페이스 전체를 시드 상태로 되돌린다 (User/Session은 무관) */

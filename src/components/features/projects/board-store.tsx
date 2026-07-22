@@ -188,6 +188,35 @@ export const boardActions = {
     });
     cache.persist(patchTaskApi(taskId, { stageId: toStageId }));
   },
+  /** 다른 프로젝트로 이동 — 단계는 프로젝트 소속이므로 대상 프로젝트의 백로그로 보낸다 */
+  moveTaskToProject(
+    fromProjectId: string,
+    toProjectId: string,
+    taskId: string,
+  ) {
+    if (fromProjectId === toProjectId) return;
+    const from = cache.getSnapshot().boards[fromProjectId];
+    const task =
+      from?.backlog.find((candidate) => candidate.id === taskId) ??
+      from?.stages
+        .flatMap((stage) => stage.tasks)
+        .find((candidate) => candidate.id === taskId);
+    if (!task) return;
+
+    updateBoard(fromProjectId, (board) => ({
+      ...board,
+      backlog: board.backlog.filter((item) => item.id !== taskId),
+      stages: board.stages.map((stage) => ({
+        ...stage,
+        tasks: stage.tasks.filter((item) => item.id !== taskId),
+      })),
+    }));
+    updateBoard(toProjectId, (board) => ({
+      ...board,
+      backlog: [...board.backlog, task],
+    }));
+    cache.persist(patchTaskApi(taskId, { projectId: toProjectId }));
+  },
   toggleTask(projectId: string, stageId: string | null, taskId: string) {
     const board = cache.getSnapshot().boards[projectId];
     const current =

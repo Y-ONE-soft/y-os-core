@@ -31,8 +31,9 @@ import { useSession } from "@/components/features/auth/session-context";
 import { useProjectStore } from "@/components/features/projects/project-store";
 import {
   boardActions,
-  useProjectBoard,
+  useBoardState,
 } from "@/components/features/projects/board-store";
+import type { BoardStage, BoardTask } from "@/types/workspace";
 import { TEAM_MEMBERS } from "@/components/features/projects/project-detail-data";
 
 // 단계 Select에서 백로그(stageId = null)를 가리키는 센티널 — Radix Select는 빈 문자열 값을 허용하지 않는다
@@ -69,17 +70,15 @@ function taskKeyNumber(taskId: string) {
 }
 
 export function TaskDetailOverlay({
-  projectId,
   taskId,
   onClose,
 }: {
-  projectId: string;
   taskId: string | null;
   onClose: () => void;
 }) {
   const { user } = useSession();
   const { groups } = useProjectStore();
-  const { stages, backlog } = useProjectBoard(projectId);
+  const boards = useBoardState();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [taskType, setTaskType] = useState(TASK_TYPES[0]);
@@ -92,19 +91,36 @@ export function TaskDetailOverlay({
   const [request, setRequest] = useState<RequestKind>(null);
   const [requestMembers, setRequestMembers] = useState<Set<string>>(new Set());
 
-  const project = groups
-    .flatMap((group) => group.projects)
-    .find((candidate) => candidate.id === projectId);
-  // 단계에 편성된 작업과 백로그 작업(stageId = null) 모두 지원한다
-  const stage = stages.find((candidate) =>
-    candidate.tasks.some((item) => item.id === taskId),
+  const projects = groups.flatMap((group) => group.projects);
+  // 작업이 놓인 위치(프로젝트·단계)를 스토어에서 직접 찾는다. 단계에 편성된 작업과
+  // 백로그 작업(stageId = null)을 모두 지원하며, 오버레이 안에서 프로젝트를 바꿔도
+  // 새 위치를 그대로 따라가므로 열린 상태가 유지된다.
+  const located = taskId
+    ? projects.reduce<{
+        projectId: string;
+        stage: BoardStage | null;
+        task: BoardTask;
+      } | null>((found, candidate) => {
+        if (found) return found;
+        const board = boards[candidate.id];
+        if (!board) return null;
+        const stage = board.stages.find((item) =>
+          item.tasks.some((entry) => entry.id === taskId),
+        );
+        const task = stage
+          ? stage.tasks.find((entry) => entry.id === taskId)
+          : board.backlog.find((entry) => entry.id === taskId);
+        return task ? { projectId: candidate.id, stage: stage ?? null, task } : null;
+      }, null)
+    : null;
+
+  const project = projects.find(
+    (candidate) => candidate.id === located?.projectId,
   );
-  const task = stage
-    ? stage.tasks.find((item) => item.id === taskId)
-    : backlog.find((item) => item.id === taskId);
+  if (!located || !project) return null;
 
-  if (!taskId || !project || !task) return null;
-
+  const { projectId, stage, task } = located;
+  const stages = boards[projectId]?.stages ?? [];
   const stageId = stage?.id ?? null;
   const stageLabel = stage?.name ?? "백로그";
 
@@ -422,14 +438,28 @@ export function TaskDetailOverlay({
               <p className="text-xs font-medium text-muted-foreground">
                 프로젝트
               </p>
-              <div className="flex items-center gap-2">
-                <span
-                  aria-hidden
-                  className="size-2.5 rounded-full"
-                  style={{ backgroundColor: project.color }}
-                />
-                <span className="text-sm font-medium">{project.name}</span>
-              </div>
+              <Select
+                value={projectId}
+                onValueChange={(next) =>
+                  boardActions.moveTaskToProject(projectId, next, task.id)
+                }
+              >
+                <SelectTrigger className="h-9 w-full rounded-[8px] bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {projects.map((candidate) => (
+                    <SelectItem key={candidate.id} value={candidate.id}>
+                      <span
+                        aria-hidden
+                        className="size-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: candidate.color }}
+                      />
+                      {candidate.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex flex-col gap-2">
               <p className="text-xs font-medium text-muted-foreground">단계</p>
