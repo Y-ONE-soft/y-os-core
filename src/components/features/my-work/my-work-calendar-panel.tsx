@@ -134,6 +134,23 @@ export function MyWorkCalendarPanel() {
     return null;
   }
 
+  /** 캘린더 칩의 체크박스 — 상세를 열지 않고 그 자리에서 완료를 토글한다 */
+  function handleToggleTask(taskId: string) {
+    for (const project of myProjects) {
+      for (const stage of boards[project.id]?.stages ?? []) {
+        if (stage.tasks.some((candidate) => candidate.id === taskId)) {
+          boardActions.toggleTask(project.id, stage.id, taskId);
+          return;
+        }
+      }
+      // 단계에 속하지 않은 백로그 할일도 캘린더에 뜰 수 있다
+      if (boards[project.id]?.backlog.some((task) => task.id === taskId)) {
+        boardActions.toggleTask(project.id, null, taskId);
+        return;
+      }
+    }
+  }
+
   /**
    * 백로그에서 끌어온 할일을 날짜 칸에 떨어뜨렸을 때.
    * 그 날짜를 덮는 단계가 (같은 프로젝트에) 있으면 그 단계로 편입하고,
@@ -293,6 +310,7 @@ export function MyWorkCalendarPanel() {
           setDetailStage({ projectId, stageId })
         }
         onOpenTask={setDetailTaskId}
+        onToggleTask={handleToggleTask}
         onDrag={handleDrag}
         onDropTask={handleDropTask}
       />
