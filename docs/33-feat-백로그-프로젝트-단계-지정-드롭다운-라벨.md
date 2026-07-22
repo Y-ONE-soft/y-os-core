@@ -1,4 +1,4 @@
-# 32. 백로그 프로젝트·단계 지정 드롭다운 라벨
+# 33. 백로그 프로젝트·단계 지정 드롭다운 라벨
 
 - **예정 커밋 메시지**: `feat: 백로그 프로젝트·단계 지정 드롭다운 라벨`
 - **작업일**: 2026-07-22
@@ -41,7 +41,7 @@
 | `src/components/features/projects/board-store.tsx` | `moveTask`+`moveTaskToProject` → `assignTask`로 통합 |
 | `src/components/features/projects/task-detail-overlay.tsx` | 티켓의 프로젝트·단계 Select를 `assignTask`로 정리 |
 | `src/server/workspace/service.ts` | 프로젝트+단계 동시 지정 허용 + 단계 소속 검증 |
-| `docs/32-…` | 이 문서 |
+| `docs/33-…` | 이 문서 |
 
 ## 4. 검증
 
