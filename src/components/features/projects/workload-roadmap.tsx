@@ -5,10 +5,7 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { Project } from "@/components/features/projects/project-store";
-import {
-  boardActions,
-  useBoardState,
-} from "@/components/features/projects/board-store";
+import { useBoardState } from "@/components/features/projects/board-store";
 import { formatShort } from "@/components/features/projects/roadmap-utils";
 import { RoadmapBar } from "@/components/features/projects/roadmap-bar";
 import {
@@ -325,14 +322,10 @@ export function WorkloadRoadmap({
                                     endDate={stage.endDate}
                                     badge={stageIndex + 1}
                                     onClick={openStage}
-                                    onCommit={(patch) =>
-                                      boardActions.updateStage(
-                                        project.id,
-                                        stage.id,
-                                        patch,
-                                      )
-                                    }
-                                    title={`${stage.name} — 클릭하면 단계 상세, 양 끝을 끌면 기간 조절, 가운데를 끌면 이동`}
+                                    // 작업 현황 로드맵은 읽기 전용 — 기간 수정은 프로젝트
+                                    // 상세 로드맵·단계 상세에서만 한다.
+                                    // (onCommit을 넘기지 않으면 RoadmapBar가 드래그를 끈다)
+                                    title={`${stage.name} — 클릭하면 단계 상세`}
                                     label={(start, end) =>
                                       end
                                         ? `${stagePercent}% · ${formatShort(start)}~${formatShort(end)}`
