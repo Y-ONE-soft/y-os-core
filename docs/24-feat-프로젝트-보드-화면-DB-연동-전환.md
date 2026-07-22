@@ -72,3 +72,9 @@ lib/api/workspace.ts → /api/admin/** → server/workspace → Neon
 - 다중 사용자 동시 편집 실시간 동기화 없음(부트스트랩 1회 + 로컬) — 필요 시 폴링/구독
 - 산출물·연결 티켓·유형/난이도·이슈 등록은 여전히 오버레이 로컬 상태 — 각 도메인 태스크에서 스키마화
 - 프로덕션 배포 후 로그인→할일 추가 동작은 머지 후 "사후 검증 결과 (추록)"로 확인 예정
+
+## 8. 사후 검증 결과 (추록)
+
+- 커밋 `338c38d` push → Vercel 프리뷰 배포 **success(● Ready)**: https://y-os-core-bu75o18yn-project-hosting-center.vercel.app
+- PR: https://github.com/Y-ONE-soft/y-os-core/pull/19 — merge commit 방식 머지
+- 프로덕션 배포 success 및 로그인→할일 추가·영속은 머지 후 프로덕션 URL에서 확인(아래 최종 추록)
