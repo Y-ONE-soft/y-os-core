@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Ellipsis } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -43,32 +42,39 @@ export function ProjectBoard({
             key={stage.id}
             className="flex min-h-0 w-[260px] shrink-0 flex-col gap-1.5 rounded-[8px] bg-border p-2"
           >
-            <header className="flex shrink-0 items-center gap-[7px] py-0.5 pl-1 pr-0.5">
-              <span
-                aria-hidden
-                className="size-2 shrink-0 rounded-full"
-                style={{ backgroundColor: stage.color }}
-              />
-              <h3 className="min-w-0 flex-1 truncate text-[13px] font-semibold">
-                <button
-                  type="button"
-                  onClick={() => onOpenStage(stage.id)}
-                  className="max-w-full truncate text-left transition-colors hover:text-primary/80 hover:underline"
+            {/* 단계 메뉴는 헤더 우클릭 — 작업 카드·프로젝트·백로그와 같은 방식.
+                컬럼 전체를 트리거로 잡으면 작업 카드 메뉴와 중첩되므로 헤더만 잡는다 */}
+            <ContextMenu>
+              <ContextMenuTrigger asChild>
+                <header className="flex shrink-0 items-center gap-[7px] py-0.5 pl-1 pr-0.5">
+                  <span
+                    aria-hidden
+                    className="size-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: stage.color }}
+                  />
+                  <h3 className="min-w-0 flex-1 truncate text-[13px] font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => onOpenStage(stage.id)}
+                      className="max-w-full truncate text-left transition-colors hover:text-primary/80 hover:underline"
+                    >
+                      {stage.name}
+                    </button>
+                  </h3>
+                  <span className="rounded-full bg-background px-[7px] py-0.5 text-[10.5px] text-muted-foreground">
+                    {countLabel}
+                  </span>
+                </header>
+              </ContextMenuTrigger>
+              <ContextMenuContent className="w-44">
+                <ContextMenuItem
+                  variant="destructive"
+                  onSelect={() => boardActions.deleteStage(projectId, stage.id)}
                 >
-                  {stage.name}
-                </button>
-              </h3>
-              <span className="rounded-full bg-background px-[7px] py-0.5 text-[10.5px] text-muted-foreground">
-                {countLabel}
-              </span>
-              <button
-                type="button"
-                aria-label={`${stage.name} 단계 메뉴`}
-                className="text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <Ellipsis className="size-3.5" />
-              </button>
-            </header>
+                  단계 삭제
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
             {/* 카드 영역만 스크롤 — 컬럼 자체는 보드 높이를 꽉 채운다 (Figma 260×448) */}
             <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto">
               {stage.tasks.map((task) => (
