@@ -137,6 +137,43 @@ export function MyWorkCalendarPanel() {
     return null;
   }
 
+  /**
+   * 백로그에서 끌어온 작업을 날짜 칸에 떨어뜨렸을 때.
+   * 그 날짜를 덮는 단계가 (같은 프로젝트에) 있으면 그 단계로 편입하고,
+   * 없으면(미배정 작업 포함) 예정일만 잡는다.
+   */
+  function handleDropTask(taskId: string, date: string) {
+    // 미배정 목록 먼저 — 프로젝트가 없으니 편입할 단계도 없다
+    if (unassigned.some((task) => task.id === taskId)) {
+      boardActions.updateTask(null, null, taskId, { scheduledDate: date });
+      return;
+    }
+    for (const project of myProjects) {
+      const board = boards[project.id];
+      if (!board?.backlog.some((task) => task.id === taskId)) continue;
+      const covering = board.stages.find(
+        (stage) =>
+          stage.startDate &&
+          stage.startDate <= date &&
+          (stage.endDate ?? stage.startDate) >= date,
+      );
+      if (covering) {
+        boardActions.assignTask(
+          project.id,
+          taskId,
+          project.id,
+          covering.id,
+          date,
+        );
+      } else {
+        boardActions.updateTask(project.id, null, taskId, {
+          scheduledDate: date,
+        });
+      }
+      return;
+    }
+  }
+
   function handleDrag(
     target: DragTarget,
     deltaDays: number,
@@ -273,6 +310,7 @@ export function MyWorkCalendarPanel() {
           setDetailStage({ projectId, stageId })
         }
         onDrag={handleDrag}
+        onDropTask={handleDropTask}
       />
       {detailStage && (
         <StageDetailOverlay

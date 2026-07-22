@@ -214,6 +214,8 @@ export const boardActions = {
     taskId: string,
     toProjectId: string | null,
     toStageId: string | null,
+    /** 예정일을 직접 지정한다 (캘린더 날짜 칸에 떨어뜨린 경우). 없으면 규칙대로 계산 */
+    scheduledDateOverride?: string,
   ) {
     const snapshot = cache.getSnapshot();
     const from = fromProjectId === null ? null : snapshot.boards[fromProjectId];
@@ -257,7 +259,10 @@ export const boardActions = {
         : snapshot.boards[toProjectId]?.stages.find(
             (stage) => stage.id === toStageId,
           );
-    const scheduledDate = toStageId === null ? null : scheduleFor(toStage?.startDate);
+    const scheduledDate =
+      toStageId === null
+        ? (scheduledDateOverride ?? null)
+        : (scheduledDateOverride ?? scheduleFor(toStage?.startDate));
     const moved: BoardTask = { ...task, scheduledDate: scheduledDate ?? undefined };
 
     // 대상 위치에 추가
