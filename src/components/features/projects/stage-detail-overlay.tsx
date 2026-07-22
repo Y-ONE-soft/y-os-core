@@ -18,8 +18,10 @@ import {
   boardActions,
   useProjectBoard,
 } from "@/components/features/projects/board-store";
+import { AssigneeList } from "@/components/features/projects/assignee-list";
 import { CollaboratorRequestDialog } from "@/components/features/projects/collaborator-request-dialog";
 import { OverlayBreadcrumb } from "@/components/features/projects/overlay-breadcrumb";
+import { useProjectStore } from "@/components/features/projects/project-store";
 import {
   requestActions,
   usePendingRequestsFor,
@@ -53,6 +55,11 @@ export function StageDetailOverlay({
   onOpenChange: (open: boolean) => void;
 }) {
   const { user } = useSession();
+  // 작업자는 프로젝트에서 가져온다. props로 받으면 호출부 4곳을 모두 고쳐야 한다.
+  const { groups } = useProjectStore();
+  const projectOwner = groups
+    .flatMap((group) => group.projects)
+    .find((project) => project.id === projectId)?.owner;
   const { stages } = useProjectBoard(projectId);
   const stage = stages.find((candidate) => candidate.id === stageId) ?? null;
   const pendingRequests = usePendingRequestsFor({ stageId });
@@ -201,6 +208,17 @@ export function StageDetailOverlay({
           <div aria-hidden className="w-px shrink-0 bg-border" />
           <aside className="flex w-[330px] shrink-0 flex-col gap-5 overflow-y-auto bg-muted px-7 py-8">
             <h3 className="text-sm font-semibold">세부 사항</h3>
+            {/* 작업자는 세부 사항의 첫 항목 — 할일 상세와 같은 자리 */}
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                작업자
+              </p>
+              {/* 단계에는 담당 필드가 없어 상위 프로젝트의 작업자를 보여준다 */}
+              <AssigneeList
+                assignee={projectOwner}
+                collaborators={stage.collaborators}
+              />
+            </div>
             <div className="flex flex-col gap-2">
               <p className="text-xs font-medium text-muted-foreground">
                 프로젝트
