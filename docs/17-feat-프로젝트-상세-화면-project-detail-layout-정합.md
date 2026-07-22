@@ -47,7 +47,12 @@ Figma `jimmy-design-system` → `Project Detail Layout`(node `96:166`, 페이지
    - 탭·칩 `bg-accent` 반영 ✓
 3. Figma 96:166 스크린샷과 구조 대조 — 헤더 컨트롤 순서(프리셋 저장 → ＋ 단계 → 스위처), 컬럼 구성 일치
 
-## 6. 알려진 사항 / 후속 과제
+## 6. 사후 검증 결과 (추록)
+
+- PR #12 프리뷰 배포 **success** (Vercel 체크 pass): `https://y-os-core-lbq5unke6-project-hosting-center.vercel.app`
+- 프로덕션 배포 success 확인(요청 사이클 7단계)은 머지 후 수행해 사용자 보고로 기록
+
+## 7. 알려진 사항 / 후속 과제
 
 - 프리셋 저장·프리셋 목록/상세, 레인지 스위처 동작, 막대 드래그, Task/Stage Detail Overlay(105:243, 130:414)는 디자인만 존재 — 별도 요청 단위
 - 사이드바 워크스페이스 메뉴(내 작업·작업 분석·프리셋 진입점)는 이 요청 범위 밖
