@@ -41,8 +41,8 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
       </div>
       <div className="flex h-8 shrink-0 items-center rounded-[8px] bg-muted px-2.5 focus-within:ring-1 focus-within:ring-primary">
         <input
-          placeholder="＋ 작업 이름 입력 후 Enter"
-          aria-label="백로그 작업 추가"
+          placeholder="＋ 할일 이름 입력 후 Enter"
+          aria-label="백로그 할일 추가"
           className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
           onKeyDown={(event) => {
             if (event.key === "Enter") {
@@ -147,7 +147,7 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
               variant="destructive"
               onSelect={() => boardActions.deleteTask(projectId, item.id)}
             >
-              작업 삭제
+              할일 삭제
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>

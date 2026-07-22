@@ -14,7 +14,7 @@ import { StageAddOverlay } from "@/components/features/projects/stage-add-overla
 import { StageDetailOverlay } from "@/components/features/projects/stage-detail-overlay";
 import { PresetSaveDialog } from "@/components/features/projects/preset-save-dialog";
 
-const TABS = ["보드", "작업", "리포트", "산출물", "메모", "문의"] as const;
+const TABS = ["보드", "할일", "리포트", "산출물", "메모", "문의"] as const;
 const ACTIVE_TAB = "보드";
 
 export function ProjectDetailPage({ projectId }: { projectId: string }) {

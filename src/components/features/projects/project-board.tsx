@@ -165,7 +165,7 @@ export function ProjectBoard({
                         boardActions.deleteTask(projectId, task.id)
                       }
                     >
-                      작업 삭제
+                      할일 삭제
                     </ContextMenuItem>
                   </ContextMenuContent>
                 </ContextMenu>
@@ -174,8 +174,8 @@ export function ProjectBoard({
                 <div className="flex w-full shrink-0 items-center gap-2 rounded-[8px] border-[1.5px] border-primary bg-background px-2.5 py-2 shadow-xs">
                   <input
                     autoFocus
-                    placeholder="작업명 입력 후 Enter"
-                    aria-label={`${stage.name} 작업 추가`}
+                    placeholder="할일명 입력 후 Enter"
+                    aria-label={`${stage.name} 할일 추가`}
                     className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
                     onKeyDown={(event) => {
                       if (event.key === "Enter") {
@@ -201,7 +201,7 @@ export function ProjectBoard({
                   onClick={() => setAddingStageId(stage.id)}
                   className="flex w-full shrink-0 items-center rounded-[8px] py-[5px] pl-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
                 >
-                  ＋ 작업
+                  ＋ 할일
                 </button>
               )}
             </div>

@@ -221,7 +221,7 @@ export function TaskDetailOverlay({
         <header className="flex shrink-0 items-center justify-between border-b py-3.5 pl-7 pr-5">
           <div className="flex items-center gap-3">
             <span className="rounded-[6px] border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-              할 일
+              할일
             </span>
             <OverlayBreadcrumb items={[projectLabel, stageLabel, task.name]} />
           </div>
@@ -565,7 +565,7 @@ export function TaskDetailOverlay({
             </div>
             <div className="flex flex-col gap-2">
               <p className="text-xs font-medium text-muted-foreground">
-                작업 유형
+                할일 유형
               </p>
               <Select value={taskType} onValueChange={setTaskType}>
                 <SelectTrigger className="h-9 w-full rounded-[8px] bg-background">
@@ -627,7 +627,7 @@ export function TaskDetailOverlay({
                 onClose();
               }}
             >
-              작업 삭제
+              할일 삭제
             </Button>
             <div className="text-[11px] leading-[1.6] text-muted-foreground">
               <p>변경사항은 즉시 저장됩니다</p>

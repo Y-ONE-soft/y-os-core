@@ -46,7 +46,7 @@ type WorkspaceItem = { label: string; href: string; icon: LucideIcon };
 
 const WORKSPACE_ITEMS: WorkspaceItem[] = [
   { label: "작업 현황", href: "/projects", icon: ListTodo },
-  { label: "내 작업", href: "/projects/my-tasks", icon: SquareCheck },
+  { label: "내 할일", href: "/projects/my-tasks", icon: SquareCheck },
   { label: "작업 분석", href: "/projects/analytics", icon: ChartColumn },
 ];
 
@@ -517,7 +517,7 @@ export function ProjectsNav() {
               <AlertDialogHeader>
                 <AlertDialogTitle>데이터를 초기화할까요?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  모든 프로젝트·단계·작업이 삭제되고 그룹만 남습니다. 삭제된
+                  모든 프로젝트·단계·할일이 삭제되고 그룹만 남습니다. 삭제된
                   데이터는 복구할 수 없습니다.
                 </AlertDialogDescription>
               </AlertDialogHeader>

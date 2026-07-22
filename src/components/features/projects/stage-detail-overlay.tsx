@@ -129,7 +129,7 @@ export function StageDetailOverlay({
               </h3>
               <div className="flex w-full items-center justify-center gap-1 rounded-[10px] border border-dashed bg-muted py-5 text-sm">
                 <span className="text-muted-foreground">
-                  단계 산출물은 작업에 첨부합니다
+                  단계 산출물은 할일에 첨부합니다
                 </span>
               </div>
             </section>
