@@ -33,6 +33,7 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { useShell } from "@/components/layout/shell-context";
@@ -137,6 +138,41 @@ function InlineAddInput({
   );
 }
 
+/** 우클릭 메뉴의 색 변경 — 프로젝트 색을 바꾸면 단계·할일 색도 파생으로 함께 바뀐다 */
+function ColorMenuSection({
+  current,
+  onPick,
+}: {
+  current: string;
+  onPick: (color: string) => void;
+}) {
+  return (
+    <div className="px-2 py-1.5">
+      <p className="pb-1.5 text-[11px] font-medium text-muted-foreground">
+        색 변경
+      </p>
+      <div className="flex flex-wrap gap-1" role="group" aria-label="프로젝트 색 변경">
+        {PROJECT_COLORS.map((option) => (
+          <button
+            key={option}
+            type="button"
+            aria-label={`색 ${option}`}
+            aria-pressed={option === current}
+            onClick={() => onPick(option)}
+            className={cn(
+              "size-4 rounded-full transition-transform",
+              option === current
+                ? "ring-2 ring-foreground ring-offset-1 ring-offset-popover"
+                : "hover:scale-110",
+            )}
+            style={{ backgroundColor: option }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function ProjectsNav() {
   const pathname = usePathname();
   const { sidebarCollapsed: collapsed } = useShell();
@@ -144,6 +180,7 @@ export function ProjectsNav() {
     groups,
     addGroup,
     addProject,
+    setProjectColor,
     deleteGroup,
     deleteProject,
     resetData,
@@ -261,6 +298,13 @@ export function ProjectsNav() {
                           </Link>
                         </ContextMenuTrigger>
                         <ContextMenuContent className="w-44">
+                          <ColorMenuSection
+                            current={project.color}
+                            onPick={(color) =>
+                              setProjectColor(project.id, color)
+                            }
+                          />
+                          <ContextMenuSeparator />
                           <ContextMenuItem
                             variant="destructive"
                             onSelect={() => deleteProject(groupId, project.id)}
@@ -374,6 +418,13 @@ export function ProjectsNav() {
                                     {projectRow}
                                   </ContextMenuTrigger>
                                   <ContextMenuContent className="w-44">
+                                    <ColorMenuSection
+                                      current={project.color}
+                                      onPick={(color) =>
+                                        setProjectColor(project.id, color)
+                                      }
+                                    />
+                                    <ContextMenuSeparator />
                                     <ContextMenuItem
                                       variant="destructive"
                                       onSelect={() =>

@@ -1,4 +1,4 @@
-# 66. 프로젝트 생성 시 색 선택 추가
+# 69. 프로젝트 생성 시 색 선택 추가
 
 - **예정 커밋 메시지**: `feat: 프로젝트 생성 시 색 선택 추가`
 - **작업일**: 2026-07-22
@@ -35,7 +35,7 @@
 |---|---|---|
 | 수정 | `src/components/layout/projects-nav.tsx` | `InlineAddInput`에 색 팔레트 옵션 추가, `openProjectAdd()`로 기본 색 초기화, 두 진입점(스탭·마스터) 배선 |
 | 수정 | `src/components/features/projects/project-store.tsx` | `addProject`에 선택적 `color` 인자 추가 |
-| 신규 | `docs/66-feat-프로젝트-생성-시-색-선택-추가.md` | 이 문서 |
+| 신규 | `docs/69-feat-프로젝트-생성-시-색-선택-추가.md` | 이 문서 |
 
 ## 4. 검증
 
