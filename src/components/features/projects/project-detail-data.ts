@@ -5,6 +5,14 @@
 
 export type BoardTask = { id: string; name: string; done: boolean };
 
+export type StageComment = {
+  id: string;
+  author: string;
+  text: string;
+  /** ISO 문자열 */
+  at: string;
+};
+
 export type BoardStage = {
   id: string;
   name: string;
@@ -16,6 +24,16 @@ export type BoardStage = {
   /** 로드맵 막대·보드 컬럼 헤더에 기간(마감) 표시 여부 */
   showDeadline: boolean;
   tasks: BoardTask[];
+  /** 단계 완료 체크 (상세 오버레이 제목 체크박스) */
+  done?: boolean;
+  /** 상세 내용 메모 */
+  description?: string;
+  comments?: StageComment[];
+  /** 공동 작업자 지정 요청 보낸 멤버 id (멤버 도메인 전 자리표시) */
+  requestedCollaborators?: string[];
+  /** ISO 문자열 — 상세 오버레이 푸터 표기용 */
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export type ProjectBoardData = {
@@ -180,3 +198,11 @@ export const BOARD_SEED: Record<string, ProjectBoardData> = {
     backlog: [],
   },
 };
+
+/** 자리표시 팀 멤버 — 작업 상세 오버레이의 요청 모달 작업자 목록 (멤버 도메인 도입 전) */
+export const TEAM_MEMBERS = [
+  { id: "m-kim", name: "김서연", role: "기획", color: "#3b82f6" },
+  { id: "m-park", name: "박지훈", role: "개발", color: "#8b5cf6" },
+  { id: "m-lee", name: "이민아", role: "디자인", color: "#10b981" },
+  { id: "m-choi", name: "최현우", role: "개발", color: "#ef4444" },
+] as const;

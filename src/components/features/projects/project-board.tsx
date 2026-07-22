@@ -9,17 +9,21 @@ import {
   boardActions,
   useProjectBoard,
 } from "@/components/features/projects/board-store";
+import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
 import { formatShort } from "@/components/features/projects/roadmap-utils";
 
 export function ProjectBoard({
   projectId,
   onAddStage,
+  onOpenStage,
 }: {
   projectId: string;
   onAddStage: () => void;
+  onOpenStage: (stageId: string) => void;
 }) {
   const { stages } = useProjectBoard(projectId);
   const [addingStageId, setAddingStageId] = useState<string | null>(null);
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
 
   return (
     <div className="flex min-h-0 flex-1 items-start gap-2.5 overflow-x-auto">
@@ -40,7 +44,13 @@ export function ProjectBoard({
                 style={{ backgroundColor: stage.color }}
               />
               <h3 className="min-w-0 flex-1 truncate text-[13px] font-semibold">
-                {stage.name}
+                <button
+                  type="button"
+                  onClick={() => onOpenStage(stage.id)}
+                  className="max-w-full truncate text-left transition-colors hover:text-primary/80 hover:underline"
+                >
+                  {stage.name}
+                </button>
               </h3>
               <span className="rounded-full bg-background px-[7px] py-0.5 text-[10.5px] text-muted-foreground">
                 {countLabel}
@@ -66,14 +76,16 @@ export function ProjectBoard({
                   }
                   className="rounded-[4px] border-primary"
                 />
-                <span
+                <button
+                  type="button"
+                  onClick={() => setDetailTaskId(task.id)}
                   className={cn(
-                    "min-w-0 flex-1 truncate text-[13px] font-medium leading-[18px]",
+                    "min-w-0 flex-1 truncate text-left text-[13px] font-medium leading-[18px] underline-offset-2 hover:underline",
                     task.done && "text-muted-foreground line-through",
                   )}
                 >
                   {task.name}
-                </span>
+                </button>
               </div>
             ))}
             {addingStageId === stage.id ? (
@@ -116,6 +128,11 @@ export function ProjectBoard({
       >
         ＋ 단계 추가
       </button>
+      <TaskDetailOverlay
+        projectId={projectId}
+        taskId={detailTaskId}
+        onClose={() => setDetailTaskId(null)}
+      />
     </div>
   );
 }
