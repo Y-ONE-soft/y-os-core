@@ -11,7 +11,7 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
   const { backlog } = useProjectBoard(projectId);
 
   return (
-    <aside className="flex w-[300px] shrink-0 flex-col gap-2 rounded-[12px] border bg-background p-3.5 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.05)]">
+    <aside className="flex w-[300px] shrink-0 flex-col gap-2 rounded-[8px] border bg-background p-3.5 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.05)]">
       <div className="flex items-center gap-1.5">
         <h2 className="text-[13.5px] font-semibold">백로그</h2>
         <span className="text-xs font-medium text-muted-foreground">
