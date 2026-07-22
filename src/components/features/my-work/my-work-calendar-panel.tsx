@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 
-import { cn } from "@/lib/utils";
 import { useSession } from "@/components/features/auth/session-context";
 import { useProjectStore } from "@/components/features/projects/project-store";
 import {
@@ -27,9 +26,6 @@ import {
 import { buildMonthGrid } from "@/components/features/my-work/my-work-month";
 import { buildCalendarSource } from "@/components/features/my-work/my-work-calendar-source";
 import { buildWeekLayouts } from "@/components/features/my-work/my-work-calendar-layout";
-
-const RANGE_SEGMENTS = ["기간", "시작일", "종료일"] as const;
-const ACTIVE_SEGMENT = "기간";
 
 export function MyWorkCalendarPanel() {
   const { user } = useSession();
@@ -277,30 +273,14 @@ export function MyWorkCalendarPanel() {
         <p className="text-xs text-muted-foreground">
           이 달 {source.stageCount}건
         </p>
-        <div className="ml-auto flex items-center rounded-[8px] border p-[3px]">
-          {RANGE_SEGMENTS.map((segment) => (
-            <button
-              key={segment}
-              type="button"
-              aria-pressed={segment === ACTIVE_SEGMENT}
-              className={cn(
-                "rounded-[6px] px-2.5 py-[3px] text-xs font-medium transition-colors",
-                segment === ACTIVE_SEGMENT
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {segment}
-            </button>
-          ))}
-        </div>
+        {/* ml-auto는 제거된 기간 세그먼트가 갖고 있던 우측 정렬 역할을 이어받은 것 */}
         <button
           type="button"
           onClick={() => {
             const today = new Date();
             setMonthAnchor(new Date(today.getFullYear(), today.getMonth(), 1));
           }}
-          className="rounded-[8px] border px-2.5 py-[5px] text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+          className="ml-auto rounded-[8px] border px-2.5 py-[5px] text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
         >
           오늘
         </button>
