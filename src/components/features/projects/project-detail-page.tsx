@@ -1,19 +1,24 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useProjectStore } from "@/components/features/projects/project-store";
+import { useProjectBoard } from "@/components/features/projects/board-store";
 import { ProjectRoadmap } from "@/components/features/projects/project-roadmap";
 import { ProjectBoard } from "@/components/features/projects/project-board";
 import { ProjectBacklog } from "@/components/features/projects/project-backlog";
+import { StageAddDialog } from "@/components/features/projects/stage-add-dialog";
 
 const TABS = ["보드", "작업", "리포트", "산출물", "메모", "문의"] as const;
 const ACTIVE_TAB = "보드";
 
 export function ProjectDetailPage({ projectId }: { projectId: string }) {
   const { groups } = useProjectStore();
+  const { stages } = useProjectBoard(projectId);
+  const [stageDialogOpen, setStageDialogOpen] = useState(false);
   const project = groups
     .flatMap((group) => group.projects)
     .find((candidate) => candidate.id === projectId);
@@ -30,6 +35,15 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
       </div>
     );
   }
+
+  const allTasks = stages.flatMap((stage) => stage.tasks);
+  const progress =
+    allTasks.length === 0
+      ? 0
+      : Math.round(
+          (allTasks.filter((task) => task.done).length / allTasks.length) * 100,
+        );
+  const openStageDialog = () => setStageDialogOpen(true);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3.5 p-6">
@@ -51,7 +65,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
           />
           <h1 className="text-xl font-semibold">{project.name}</h1>
         </div>
-        <p className="text-[13px] text-muted-foreground">진행률 0%</p>
+        <p className="text-[13px] text-muted-foreground">진행률 {progress}%</p>
       </header>
       <nav aria-label="프로젝트 상세 탭" className="shrink-0">
         <ul className="flex items-center gap-1">
@@ -78,11 +92,16 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
       </nav>
       <div className="flex min-h-0 flex-1 items-stretch gap-3.5">
         <div className="flex min-w-0 flex-1 flex-col gap-3.5">
-          <ProjectRoadmap />
-          <ProjectBoard />
+          <ProjectRoadmap projectId={projectId} onAddStage={openStageDialog} />
+          <ProjectBoard projectId={projectId} onAddStage={openStageDialog} />
         </div>
-        <ProjectBacklog />
+        <ProjectBacklog projectId={projectId} />
       </div>
+      <StageAddDialog
+        projectId={projectId}
+        open={stageDialogOpen}
+        onOpenChange={setStageDialogOpen}
+      />
     </div>
   );
 }
