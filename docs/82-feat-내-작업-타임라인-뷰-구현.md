@@ -1,4 +1,4 @@
-# 78. 내 작업 타임라인 뷰 구현
+# 82. 내 작업 타임라인 뷰 구현
 
 - **예정 커밋 메시지**: `feat: 내 작업 타임라인 뷰 구현`
 - **작업일**: 2026-07-22
@@ -47,7 +47,7 @@
 | 신규 | `src/components/features/my-work/my-work-timeline-panel.tsx` | 타임라인 뷰 본체 |
 | 수정 | `src/app/(main)/projects/my-tasks/page.tsx` | `searchParams`에서 `view` 읽어 전달 |
 | 수정 | `src/components/features/my-work/my-work-page.tsx` | 탭을 Link로, `view`에 따라 패널 분기 |
-| 신규 | `docs/78-…` | 이 문서 |
+| 신규 | `docs/82-…` | 이 문서 |
 
 ## 6. 검증
 
