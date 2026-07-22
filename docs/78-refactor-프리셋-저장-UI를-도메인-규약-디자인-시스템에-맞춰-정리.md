@@ -96,6 +96,16 @@ npm run build             # 성공 — Compiled successfully
 
 **미검증** — 브라우저에서 다이얼로그를 열어본 확인은 이번에도 못 했다. 저장소에 브라우저 자동화 도구가 없고, 워크스페이스 캐시의 `getServerSnapshot()`이 항상 빈 값이라 SSR HTML에도 프로젝트 상세 본문이 렌더되지 않는다. 시각 확인은 사용자 몫으로 남는다.
 
+## 사후 검증 결과 (추록)
+
+푸시 이후에만 확정되는 검증 결과.
+
+- **PR**: [#71](https://github.com/Y-ONE-soft/y-os-core/pull/71)
+- **프리뷰 배포**: `● Ready` — https://y-os-core-lrhg9h6ip-project-hosting-center.vercel.app
+- **PR 체크**: `Vercel` pass, `Vercel Preview Comments` pass
+
+프리뷰에서 프로젝트 상세를 열면 정리된 버튼·다이얼로그를 눈으로 확인할 수 있다(`step01` 로그인).
+
 ## 병렬 작업 메모
 
 착수 시점 main = `6af7d21`. `project-detail-page.tsx`를 만지는 다른 세션이 없음을 확인하고 진행했다. 문서 번호는 main 기준 77까지 사용되어 78로 잡았다.
