@@ -1,4 +1,4 @@
-# 74. 내 작업 캘린더에 미배정 묶음 표시
+# 76. 내 작업 캘린더에 미배정 묶음 표시
 
 - **예정 커밋 메시지**: `feat: 내 작업 캘린더에 미배정 묶음 표시`
 - **작업일**: 2026-07-22
@@ -31,7 +31,7 @@
 |---|---|
 | `my-work-calendar-source.ts` | `UNASSIGNED_BOX` 상수, `taskChip` 시그니처 정리, `buildCalendarSource`에 `unassigned` 인자와 미배정 묶음 생성 |
 | `my-work-calendar-panel.tsx` | `useUnassignedTasks()`를 읽어 소스에 전달 |
-| `docs/74-…` | 이 문서 |
+| `docs/76-…` | 이 문서 |
 
 ## 4. 검증
 
