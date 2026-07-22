@@ -147,62 +147,32 @@ export const boardActions = {
     }));
     cache.persist(createTaskApi({ id, projectId, stageId: null, name }));
   },
-  /** 단계 간 이동 — `null`은 백로그를 뜻한다 (백로그 ↔ 단계 이동 포함) */
-  moveTask(
-    projectId: string,
-    fromStageId: string | null,
-    toStageId: string | null,
-    taskId: string,
-  ) {
-    if (fromStageId === toStageId) return;
-    updateBoard(projectId, (board) => {
-      const task =
-        fromStageId === null
-          ? board.backlog.find((candidate) => candidate.id === taskId)
-          : board.stages
-              .find((stage) => stage.id === fromStageId)
-              ?.tasks.find((candidate) => candidate.id === taskId);
-      if (!task) return board;
-
-      const backlog =
-        fromStageId === null
-          ? board.backlog.filter((item) => item.id !== taskId)
-          : board.backlog;
-      const stages = board.stages.map((stage) =>
-        stage.id === fromStageId
-          ? { ...stage, tasks: stage.tasks.filter((item) => item.id !== taskId) }
-          : stage,
-      );
-
-      return toStageId === null
-        ? { ...board, stages, backlog: [...backlog, task] }
-        : {
-            ...board,
-            backlog,
-            stages: stages.map((stage) =>
-              stage.id === toStageId
-                ? { ...stage, tasks: [...stage.tasks, task] }
-                : stage,
-            ),
-          };
-    });
-    cache.persist(patchTaskApi(taskId, { stageId: toStageId }));
-  },
-  /** 다른 프로젝트로 이동 — 단계는 프로젝트 소속이므로 대상 프로젝트의 백로그로 보낸다 */
-  moveTaskToProject(
+  /**
+   * 작업의 소속(프로젝트·단계)을 한 번에 지정한다. `stageId: null`은 백로그를 뜻하며
+   * 같은 프로젝트 안의 단계 이동, 다른 프로젝트로의 이동, 백로그 편입을 모두 다룬다.
+   */
+  assignTask(
     fromProjectId: string,
-    toProjectId: string,
     taskId: string,
+    toProjectId: string,
+    toStageId: string | null,
   ) {
-    if (fromProjectId === toProjectId) return;
     const from = cache.getSnapshot().boards[fromProjectId];
+    const currentStage = from?.stages.find((stage) =>
+      stage.tasks.some((candidate) => candidate.id === taskId),
+    );
     const task =
-      from?.backlog.find((candidate) => candidate.id === taskId) ??
-      from?.stages
-        .flatMap((stage) => stage.tasks)
-        .find((candidate) => candidate.id === taskId);
+      currentStage?.tasks.find((candidate) => candidate.id === taskId) ??
+      from?.backlog.find((candidate) => candidate.id === taskId);
     if (!task) return;
+    if (
+      fromProjectId === toProjectId &&
+      (currentStage?.id ?? null) === toStageId
+    ) {
+      return;
+    }
 
+    // 출발 보드에서 제거 (단계·백로그 어느 쪽이든)
     updateBoard(fromProjectId, (board) => ({
       ...board,
       backlog: board.backlog.filter((item) => item.id !== taskId),
@@ -211,11 +181,22 @@ export const boardActions = {
         tasks: stage.tasks.filter((item) => item.id !== taskId),
       })),
     }));
-    updateBoard(toProjectId, (board) => ({
-      ...board,
-      backlog: [...board.backlog, task],
-    }));
-    cache.persist(patchTaskApi(taskId, { projectId: toProjectId }));
+    // 대상 보드에 추가
+    updateBoard(toProjectId, (board) =>
+      toStageId === null
+        ? { ...board, backlog: [...board.backlog, task] }
+        : {
+            ...board,
+            stages: board.stages.map((stage) =>
+              stage.id === toStageId
+                ? { ...stage, tasks: [...stage.tasks, task] }
+                : stage,
+            ),
+          },
+    );
+    cache.persist(
+      patchTaskApi(taskId, { projectId: toProjectId, stageId: toStageId }),
+    );
   },
   toggleTask(projectId: string, stageId: string | null, taskId: string) {
     const board = cache.getSnapshot().boards[projectId];

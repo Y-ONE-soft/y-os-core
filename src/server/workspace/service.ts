@@ -160,12 +160,21 @@ export type TaskPatch = Partial<{
   projectId: string;
 }>;
 
-export function updateTask(id: string, patch: TaskPatch) {
-  // 단계는 프로젝트에 속하므로, 프로젝트를 옮기면 이전 프로젝트의 단계를 가리킨
-  // 채로 남을 수 없다. 항상 대상 프로젝트의 백로그(stageId = null)로 보낸다.
-  const data =
-    patch.projectId === undefined ? patch : { ...patch, stageId: null };
-  return db.task.updateMany({ where: { id }, data });
+export async function updateTask(id: string, patch: TaskPatch) {
+  if (patch.projectId === undefined) {
+    return db.task.updateMany({ where: { id }, data: patch });
+  }
+  // 단계는 프로젝트에 속하므로, 프로젝트를 옮길 때 단계를 함께 지정하지 않았거나
+  // 지정한 단계가 대상 프로젝트 소속이 아니면 대상 프로젝트의 백로그로 보낸다.
+  let stageId: string | null = null;
+  if (patch.stageId) {
+    const stage = await db.stage.findUnique({
+      where: { id: patch.stageId },
+      select: { projectId: true },
+    });
+    if (stage?.projectId === patch.projectId) stageId = patch.stageId;
+  }
+  return db.task.updateMany({ where: { id }, data: { ...patch, stageId } });
 }
 
 /** 데이터 초기화 — 워크스페이스 전체를 시드 상태로 되돌린다 (User/Session은 무관) */
