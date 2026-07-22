@@ -276,9 +276,9 @@ export function WorkloadRoadmap({
                           const total = stage.tasks.length;
                           const stagePercent =
                             total === 0 ? 0 : Math.round((done / total) * 100);
-                          const showBar = Boolean(
-                            stage.showDeadline && stage.startDate,
-                          );
+                          // 기간이 있으면 항상 막대를 그린다 — 데드라인 표시는
+                          // 캘린더 마감 라벨 전용 설정이라 로드맵과 무관하다
+                          const showBar = Boolean(stage.startDate);
                           const openStage = onOpenStage
                             ? () => onOpenStage(project.id, stage.id)
                             : undefined;

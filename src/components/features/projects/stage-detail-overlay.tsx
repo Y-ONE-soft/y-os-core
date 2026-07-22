@@ -85,19 +85,6 @@ export function StageDetailOverlay({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              aria-pressed={stage.showDeadline}
-              onClick={() => patch({ showDeadline: !stage.showDeadline })}
-              title="로드맵·보드에 이 단계의 마감을 표시합니다"
-              className={cn(
-                "rounded-[8px]",
-                stage.showDeadline &&
-                  "border-primary bg-primary/10 text-primary hover:bg-primary/15",
-              )}
-            >
-              {stage.showDeadline ? "☑" : "☐"} 데드라인 표시
-            </Button>
             <DialogClose
               aria-label="닫기"
               className="flex size-9 items-center justify-center rounded-[8px] text-base text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -258,6 +245,35 @@ export function StageDetailOverlay({
                 className="h-9 rounded-[8px] bg-background"
               />
             </div>
+            <button
+              type="button"
+              aria-pressed={stage.showDeadline}
+              onClick={() => patch({ showDeadline: !stage.showDeadline })}
+              className={cn(
+                "flex w-full items-start gap-2.5 rounded-[8px] border p-3 text-left transition-colors",
+                stage.showDeadline
+                  ? "border-primary bg-primary/5"
+                  : "bg-background hover:bg-accent/40",
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "mt-px flex size-4 shrink-0 items-center justify-center rounded-[4px] border text-[10px] leading-none",
+                  stage.showDeadline
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input bg-background",
+                )}
+              >
+                {stage.showDeadline ? "✓" : ""}
+              </span>
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-[13px] font-medium">데드라인 표시</span>
+                <span className="text-[11px] leading-snug text-muted-foreground">
+                  캘린더에 이 단계의 마감일 라벨을 붙입니다
+                </span>
+              </span>
+            </button>
             <div aria-hidden className="h-px w-full bg-border" />
             <Button
               variant="outline"
@@ -268,6 +284,16 @@ export function StageDetailOverlay({
               {collaboratorCount > 0 && ` · ${collaboratorCount}`}
             </Button>
             <div className="flex-1" />
+            <Button
+              variant="destructive"
+              className="w-full rounded-[8px]"
+              onClick={() => {
+                boardActions.deleteStage(projectId, stage.id);
+                onOpenChange(false);
+              }}
+            >
+              단계 삭제
+            </Button>
             <div className="text-[11px] leading-[1.6] text-muted-foreground">
               <p>변경사항은 즉시 저장됩니다</p>
               <p>
