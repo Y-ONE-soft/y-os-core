@@ -90,6 +90,75 @@ export async function createProjectFromPreset(
   });
 }
 
+/** 단계가 이미 있는 프로젝트에 프리셋을 적용하려 할 때 */
+export class ProjectNotEmptyError extends Error {
+  constructor() {
+    super("이미 단계가 있는 프로젝트에는 프리셋을 적용할 수 없습니다.");
+    this.name = "ProjectNotEmptyError";
+  }
+}
+
+/**
+ * 이미 만들어진 프로젝트에 프리셋을 적용한다 (프로젝트 상세의 '프리셋 사용하기').
+ *
+ * **단계가 하나도 없는 프로젝트에만 허용한다.** 기존 단계에 이어붙이거나 덮어쓰는 것은
+ * 어느 쪽이든 사용자가 만든 내용을 건드리게 되고, 화면도 단계가 있으면 버튼을
+ * 비활성화하므로 서버는 같은 규칙을 최종 판정으로 다시 확인한다.
+ *
+ * 단계 생성 규칙(날짜 오프셋·order·할일 정렬 id)은 createProjectFromPreset과 동일하다.
+ */
+export async function applyPresetToProject(input: {
+  projectId: string;
+  ownerId: string;
+  presetId: string;
+  baseDate: string;
+}): Promise<void> {
+  // 소유자 검증은 getPreset이 ownerId를 함께 걸어 처리한다 (남의 프리셋 id는 not found)
+  const preset = await getPreset(input.ownerId, input.presetId);
+
+  await db.$transaction(async (tx) => {
+    // 빈 프로젝트 판정을 트랜잭션 안에서 해야 동시 요청 두 건이 함께 통과하지 않는다
+    const existing = await tx.stage.count({
+      where: { projectId: input.projectId },
+    });
+    if (existing > 0) throw new ProjectNotEmptyError();
+
+    for (const [stageIndex, stage] of preset.stages.entries()) {
+      const span = presetStageSpan(input.baseDate, stage);
+      const stageId = `st-${crypto.randomUUID()}`;
+      await tx.stage.create({
+        data: {
+          id: stageId,
+          projectId: input.projectId,
+          name: stage.name,
+          color: stage.color,
+          startDate: span.startDate,
+          endDate: span.endDate,
+          // 빈 프로젝트에만 적용하므로 1..N을 그대로 매긴다 (@@unique([projectId, order]))
+          order: stageIndex + 1,
+        },
+      });
+
+      for (const [taskIndex, task] of stage.tasks.entries()) {
+        await tx.task.create({
+          data: {
+            id: orderedId("tk", taskIndex),
+            projectId: input.projectId,
+            stageId,
+            name: task.name,
+            scheduledDate:
+              task.offsetDays === undefined
+                ? null
+                : presetStageSpan(input.baseDate, {
+                    offsetDays: task.offsetDays,
+                  }).startDate,
+          },
+        });
+      }
+    }
+  });
+}
+
 /**
  * 기간을 균등 분할한 단계로 프로젝트를 만든다 (직접 만들기).
  * 할일은 만들지 않는다 — 뼈대만 잡고 내용은 사용자가 채운다.

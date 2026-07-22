@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { SlidersHorizontal } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import {
@@ -33,12 +32,10 @@ const TODAY_LEFT_INSET = 120;
 export function ProjectRoadmap({
   projectId,
   onAddStage,
-  onSavePreset,
   onOpenStage,
 }: {
   projectId: string;
   onAddStage: () => void;
-  onSavePreset: () => void;
   onOpenStage: (stageId: string) => void;
 }) {
   const { stages } = useProjectBoard(projectId);
@@ -97,16 +94,8 @@ export function ProjectRoadmap({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {/* 저장 대상이 이 카드의 단계 구성이므로 ＋단계·레인지 스위처와 같은 자리에 둔다.
-              아이콘은 사이드바 워크스페이스의 '프리셋' 메뉴와 같은 것. */}
-          <button
-            type="button"
-            onClick={onSavePreset}
-            className="flex items-center gap-1 rounded-[6px] border px-2.5 py-1 text-[11.5px] font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-          >
-            <SlidersHorizontal className="size-3.5" />
-            프리셋 저장
-          </button>
+          {/* 프리셋 저장은 페이지 헤더의 '프리셋 저장하기'로 일원화했다 (docs 참고).
+              같은 기능 진입점이 두 곳이면 헷갈리므로 여기서는 제거. */}
           <button
             type="button"
             onClick={onAddStage}

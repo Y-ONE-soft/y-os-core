@@ -39,6 +39,23 @@ export const createProjectFromPresetApi = (input: {
   baseDate: string;
 }) => api.post<{ ok: boolean }>("/api/admin/projects/from-preset", input);
 
+/**
+ * 이미 만들어진 프로젝트에 프리셋을 적용한다 (프로젝트 상세의 '프리셋 사용하기').
+ * 단계가 하나도 없는 프로젝트에만 허용된다 — 서버가 최종 판정한다.
+ */
+export const applyPresetToProjectApi = (
+  projectId: string,
+  input: {
+    presetId: string;
+    /** 프리셋 오프셋의 기준일 (YYYY-MM-DD) */
+    baseDate: string;
+  },
+) =>
+  api.post<{ ok: boolean }>(
+    `/api/admin/projects/${projectId}/apply-preset`,
+    input,
+  );
+
 /** 직접 만들기 — 기간을 stageCount개로 균등 분할한 단계와 함께 만든다 */
 export const createProjectWithEvenStagesApi = (input: {
   id: string;
