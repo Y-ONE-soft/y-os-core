@@ -1,9 +1,9 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { SidebarToggle } from "@/components/layout/sidebar-toggle";
 import { TopNav } from "@/components/layout/top-nav";
 import { UserMenu } from "@/components/layout/user-menu";
+import { YOneLogo } from "@/components/layout/y-one-logo";
 
 export function GlobalHeader() {
   return (
@@ -12,13 +12,7 @@ export function GlobalHeader() {
         <div className="flex items-center gap-3">
           <SidebarToggle />
           <Link href="/" className="flex items-center gap-2.5">
-            <Image
-              src="/brand-mark.svg"
-              alt="Y.OS Core 브랜드 마크"
-              width={28}
-              height={28}
-              priority
-            />
+            <YOneLogo size={28} />
             <span className="text-base font-semibold text-foreground">
               Y.OS Core
             </span>
