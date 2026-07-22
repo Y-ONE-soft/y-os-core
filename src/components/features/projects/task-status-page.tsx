@@ -13,6 +13,7 @@ import {
   WorkloadRoadmap,
   type RoadmapSection,
 } from "@/components/features/projects/workload-roadmap";
+import { StageDetailOverlay } from "@/components/features/projects/stage-detail-overlay";
 
 const VIEW_OPTIONS = ["로드맵", "담당자", "캘린더"] as const;
 const ACTIVE_VIEW = "로드맵";
@@ -81,6 +82,10 @@ export function TaskStatusPage() {
   const [excludedProjectIds, setExcludedProjectIds] = useState<Set<string>>(
     new Set(),
   );
+  const [detailStage, setDetailStage] = useState<{
+    projectId: string;
+    stageId: string;
+  } | null>(null);
 
   if (loading) {
     return (
@@ -208,7 +213,31 @@ export function TaskStatusPage() {
           ))}
         </div>
       </div>
-      <WorkloadRoadmap sections={sections} />
+      <WorkloadRoadmap
+        sections={sections}
+        onOpenStage={(projectId, stageId) =>
+          setDetailStage({ projectId, stageId })
+        }
+      />
+      {detailStage && (
+        <StageDetailOverlay
+          projectId={detailStage.projectId}
+          projectName={
+            visibleProjects.find(
+              (project) => project.id === detailStage.projectId,
+            )?.name ?? ""
+          }
+          projectColor={
+            visibleProjects.find(
+              (project) => project.id === detailStage.projectId,
+            )?.color ?? "#71717a"
+          }
+          stageId={detailStage.stageId}
+          onOpenChange={(open) => {
+            if (!open) setDetailStage(null);
+          }}
+        />
+      )}
     </div>
   );
 }
