@@ -188,7 +188,7 @@ export function TaskStatusPage() {
       </section>
       <div className="flex shrink-0 items-center justify-between">
         <p className="text-[13px] font-medium">
-          선택: {visibleProjects.length}개 프로젝트 · {taskCount}개 작업
+          선택: {visibleProjects.length}개 프로젝트 · {taskCount}개 할일
         </p>
         <div className="flex items-center gap-1">
           {VIEW_OPTIONS.map((view) => (

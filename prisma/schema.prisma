@@ -118,7 +118,7 @@ model Task {
   // scheduledDate와 같은 YYYY-MM-DD 문자열 규격 (DateTime이 아님 — 화면이 날짜만 쓴다)
   completedDate String?
   createdAt     DateTime @default(now())
-  projectId     String? // null = 미배정 (내 작업에서 만든 직후 상태)
+  projectId     String? // null = 미배정 (내 할일에서 만든 직후 상태)
   project       Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
   stageId       String? // null = 백로그
   stage         Stage?   @relation(fields: [stageId], references: [id], onDelete: Cascade)

@@ -45,7 +45,7 @@ export function todayISO() {
 
 /**
  * 단계에 편입될 때 잡히는 예정일 — 단계 시작일과 오늘 중 **더 늦은 날짜**.
- * 이미 시작한 단계에 뒤늦게 넣은 작업이 과거 날짜에 놓이지 않게 한다.
+ * 이미 시작한 단계에 뒤늦게 넣은 할일이 과거 날짜에 놓이지 않게 한다.
  */
 export function scheduleFor(stageStartDate: string | undefined) {
   const today = todayISO();

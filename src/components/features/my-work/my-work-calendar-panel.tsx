@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 
-import { cn } from "@/lib/utils";
 import { useSession } from "@/components/features/auth/session-context";
 import { useProjectStore } from "@/components/features/projects/project-store";
 import {
@@ -28,9 +27,6 @@ import { buildMonthGrid } from "@/components/features/my-work/my-work-month";
 import { buildCalendarSource } from "@/components/features/my-work/my-work-calendar-source";
 import { buildWeekLayouts } from "@/components/features/my-work/my-work-calendar-layout";
 
-const RANGE_SEGMENTS = ["기간", "시작일", "종료일"] as const;
-const ACTIVE_SEGMENT = "기간";
-
 export function MyWorkCalendarPanel() {
   const { user } = useSession();
   const { groups } = useProjectStore();
@@ -48,7 +44,7 @@ export function MyWorkCalendarPanel() {
     [monthAnchor],
   );
 
-  // "내 작업" 기준 — 작업 현황·사이드바와 같은 소유자 판정을 따른다.
+  // "내 할일" 기준 — 작업 현황·사이드바와 같은 소유자 판정을 따른다.
   const myProjects = useMemo(
     () =>
       groups
@@ -139,9 +135,9 @@ export function MyWorkCalendarPanel() {
   }
 
   /**
-   * 백로그에서 끌어온 작업을 날짜 칸에 떨어뜨렸을 때.
+   * 백로그에서 끌어온 할일을 날짜 칸에 떨어뜨렸을 때.
    * 그 날짜를 덮는 단계가 (같은 프로젝트에) 있으면 그 단계로 편입하고,
-   * 없으면(미배정 작업 포함) 예정일만 잡는다.
+   * 없으면(미배정 할일 포함) 예정일만 잡는다.
    */
   function handleDropTask(taskId: string, date: string) {
     // 미배정 목록 먼저 — 프로젝트가 없으니 편입할 단계도 없다
@@ -277,30 +273,14 @@ export function MyWorkCalendarPanel() {
         <p className="text-xs text-muted-foreground">
           이 달 {source.stageCount}건
         </p>
-        <div className="ml-auto flex items-center rounded-[8px] border p-[3px]">
-          {RANGE_SEGMENTS.map((segment) => (
-            <button
-              key={segment}
-              type="button"
-              aria-pressed={segment === ACTIVE_SEGMENT}
-              className={cn(
-                "rounded-[6px] px-2.5 py-[3px] text-xs font-medium transition-colors",
-                segment === ACTIVE_SEGMENT
-                  ? "bg-accent text-accent-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {segment}
-            </button>
-          ))}
-        </div>
+        {/* ml-auto는 제거된 기간 세그먼트가 갖고 있던 우측 정렬 역할을 이어받은 것 */}
         <button
           type="button"
           onClick={() => {
             const today = new Date();
             setMonthAnchor(new Date(today.getFullYear(), today.getMonth(), 1));
           }}
-          className="rounded-[8px] border px-2.5 py-[5px] text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+          className="ml-auto rounded-[8px] border px-2.5 py-[5px] text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
         >
           오늘
         </button>

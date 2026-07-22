@@ -96,28 +96,24 @@ function ProjectBoxItem({
           {project.name}
         </span>
       )}
-      {/* 박스 안 줄 구분선 — 실제 할일 줄 위에만 긋는다 */}
-      {Array.from({ length: box.taskLanes }, (_, index) => (
-        <div
-          key={index}
-          className="absolute inset-x-0 h-px"
-          style={{
-            top: (index + 1) * LANE_PX + 1,
-            backgroundColor: hexToRgba(color, 0.22),
-          }}
-        />
-      ))}
+      {/* 할일이 늘어도 박스는 한 덩어리로 둔다 — 줄 구분선을 그으면 프로젝트가
+          여러 개로 쪼개진 것처럼 읽힌다 */}
     </div>
   );
 }
 
 function OverlayItem({
   overlay,
+  hoveredStageId,
+  onHoverStage,
   onOpenStage,
   onOpenTask,
   onDragStart,
 }: {
   overlay: PlacedOverlay;
+  /** 주 경계로 잘린 조각들을 한 단계로 묶어 강조하기 위한 공유 호버 상태 */
+  hoveredStageId?: string | null;
+  onHoverStage?: (stageId: string | null) => void;
   onOpenStage?: (projectId: string, stageId: string) => void;
   onOpenTask?: (taskId: string) => void;
   onDragStart?: (event: React.PointerEvent, target: DragTarget) => void;
@@ -129,6 +125,9 @@ function OverlayItem({
 
   if (overlay.kind === "stage") {
     const draggable = Boolean(onDragStart);
+    // CSS :hover는 커서가 놓인 조각만 잡는다 — 같은 단계의 다른 주 조각까지
+    // 함께 강조하려면 상태로 묶어야 한다
+    const active = hoveredStageId === overlay.stageId;
     return (
       <div
         className="absolute"
@@ -149,30 +148,42 @@ function OverlayItem({
             })
           }
           onClick={() => onOpenStage?.(overlay.project, overlay.stageId)}
+          onPointerEnter={() => onHoverStage?.(overlay.stageId)}
+          onPointerLeave={() => onHoverStage?.(null)}
+          onFocus={() => onHoverStage?.(overlay.stageId)}
+          onBlur={() => onHoverStage?.(null)}
           title={overlay.label}
           className={cn(
-            "flex size-full items-center gap-1 overflow-hidden rounded-[4px] px-1 text-left transition-shadow hover:ring-1 focus-visible:outline-none focus-visible:ring-2",
+            "flex size-full items-center gap-1 overflow-hidden rounded-[4px] px-1 text-left transition-shadow focus-visible:outline-none focus-visible:ring-2",
+            active && "ring-1",
             draggable && "cursor-grab active:cursor-grabbing",
           )}
           style={{
-            backgroundColor: hexToRgba(color, 0.18),
+            // 강조 시 배경도 함께 진해져 여러 주에 걸친 한 단계가 통으로 보인다
+            backgroundColor: hexToRgba(color, active ? 0.3 : 0.18),
             // ring 색을 단계 색에 맞춘다 (임의 색 클래스 대신 CSS 변수)
             ["--tw-ring-color" as string]: hexToRgba(color, 0.8),
           }}
         >
-          <span
-            aria-hidden
-            className="flex size-[11px] shrink-0 items-center justify-center rounded-full text-[7.5px] font-medium text-white"
-            style={{ backgroundColor: color }}
-          >
-            {overlay.count}
-          </span>
-          <span
-            className="truncate text-[10px] font-medium"
-            style={{ color: text }}
-          >
-            {overlay.label}
-          </span>
+          {/* 이름·개수는 단계가 시작하는 주에만 — 주마다 반복하면 같은 단계가
+              여러 개인 것처럼 읽힌다 (프로젝트 이름과 같은 규칙) */}
+          {overlay.startsHere && (
+            <>
+              <span
+                aria-hidden
+                className="flex size-[11px] shrink-0 items-center justify-center rounded-full text-[7.5px] font-medium text-white"
+                style={{ backgroundColor: color }}
+              >
+                {overlay.count}
+              </span>
+              <span
+                className="truncate text-[10px] font-medium"
+                style={{ color: text }}
+              >
+                {overlay.label}
+              </span>
+            </>
+          )}
           {overlay.deadline && (
             <span
               className="ml-auto shrink-0 rounded-[3px] px-1.5 py-px text-[9px] font-medium text-white"
@@ -279,13 +290,15 @@ export function MyWorkCalendar({
     deltaDays: number,
     phase: StageDragPhase,
   ) => void;
-  /** 백로그에서 끌어온 작업을 날짜 칸에 떨어뜨렸을 때 (HTML5 DnD) */
+  /** 백로그에서 끌어온 할일을 날짜 칸에 떨어뜨렸을 때 (HTML5 DnD) */
   onDropTask?: (taskId: string, date: string) => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
-  // 백로그에서 끌어온 작업이 놓일 날짜 칸 — 어디에 떨어지는지 보이게 한다
+  // 백로그에서 끌어온 할일이 놓일 날짜 칸 — 어디에 떨어지는지 보이게 한다
   const [dropDate, setDropDate] = useState<string | null>(null);
   const weekRefs = useRef<(HTMLDivElement | null)[]>([]);
+  // 주 경계로 잘린 단계 조각을 하나로 묶어 강조한다 (CSS :hover는 조각 단위)
+  const [hoveredStageId, setHoveredStageId] = useState<string | null>(null);
   const dragRef = useRef<{
     target: DragTarget;
     pointerId: number;
@@ -458,6 +471,8 @@ export function MyWorkCalendar({
                 // 조각 단위로 안정된 키 — 인덱스 키는 드래그 중 재배치에서 엉킨다
                 key={`${overlay.kind === "stage" ? overlay.stageId : overlay.taskId}:${overlay.col}`}
                 overlay={overlay}
+                hoveredStageId={hoveredStageId}
+                onHoverStage={setHoveredStageId}
                 onOpenStage={onOpenStage}
                 onOpenTask={onOpenTask}
                 onDragStart={onDrag ? handleDragStart : undefined}

@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
   await createTask({
     id: body.id,
-    // projectId 미지정(null)은 미배정 작업 — 내 작업에서 만든 직후 상태
+    // projectId 미지정(null)은 미배정 할일 — 내 할일에서 만든 직후 상태
     projectId: isName(body.projectId) ? body.projectId : null,
     stageId: isName(body.stageId) ? body.stageId : null,
     name: body.name.trim(),

@@ -1,4 +1,4 @@
-// 워크스페이스 데이터 → 내 작업 캘린더 오버레이.
+// 워크스페이스 데이터 → 내 할일 캘린더 오버레이.
 // 단계는 기간(시작~종료)을 주 단위로 자른 막대로, 할일은 예정일 하루짜리 칩으로 만든다.
 
 import type { BoardTask, Project, ProjectBoardData } from "@/types/workspace";
@@ -75,7 +75,7 @@ function stageSegments(
 }
 
 /**
- * 프로젝트 없는(미배정) 작업을 묶는 가짜 프로젝트 키.
+ * 프로젝트 없는(미배정) 할일을 묶는 가짜 프로젝트 키.
  * 캘린더 박스는 `project` 문자열로 묶이므로, 미배정도 같은 방식으로 한 묶음이 된다.
  */
 export const UNASSIGNED_BOX = "__unassigned__";
@@ -111,7 +111,7 @@ export function buildCalendarSource(
   grid: MonthGrid,
   projects: Project[],
   boards: Record<string, ProjectBoardData>,
-  /** 프로젝트 없는 작업 — 예정일이 있으면 "미배정" 묶음으로 그린다 */
+  /** 프로젝트 없는 할일 — 예정일이 있으면 "미배정" 묶음으로 그린다 */
   unassigned: BoardTask[] = [],
 ): CalendarSource {
   const overlays: CalOverlay[] = [];
@@ -139,9 +139,9 @@ export function buildCalendarSource(
         }
       }
     }
-    // 백로그 작업도 날짜 칸에 떨어뜨리면 예정일을 가질 수 있다 (덮는 단계가 없을 때)
+    // 백로그 할일도 날짜 칸에 떨어뜨리면 예정일을 가질 수 있다 (덮는 단계가 없을 때)
     for (const task of board?.backlog ?? []) {
-      // 단계 없는 백로그 작업은 프로젝트 색을 같은 규칙으로 옅게 쓴다
+      // 단계 없는 백로그 할일은 프로젝트 색을 같은 규칙으로 옅게 쓴다
       const chip = taskChip(grid, project.id, taskTone(project.color), task);
       if (chip) {
         overlays.push(chip);
@@ -157,7 +157,7 @@ export function buildCalendarSource(
     }
   }
 
-  // 미배정 작업은 소속 프로젝트가 없어 어느 박스에도 못 들어간다 — 전용 묶음으로 모은다
+  // 미배정 할일은 소속 프로젝트가 없어 어느 박스에도 못 들어간다 — 전용 묶음으로 모은다
   let hasUnassigned = false;
   for (const task of unassigned) {
     const chip = taskChip(grid, UNASSIGNED_BOX, UNASSIGNED_COLOR, task);

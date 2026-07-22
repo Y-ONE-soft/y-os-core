@@ -21,8 +21,8 @@ import {
 import { CollaboratorRequestDialog } from "@/components/features/projects/collaborator-request-dialog";
 import { OverlayBreadcrumb } from "@/components/features/projects/overlay-breadcrumb";
 
-// 레이아웃·타이포·컬러는 작업 상세 오버레이(task-detail-overlay)와 통일한다.
-// 단계에만 있는 항목(기간·데드라인 표시)과 작업에만 있는 항목(유형·난이도)만 다르다.
+// 레이아웃·타이포·컬러는 할일 상세 오버레이(task-detail-overlay)와 통일한다.
+// 단계에만 있는 항목(기간·데드라인 표시)과 할일에만 있는 항목(유형·난이도)만 다르다.
 
 function formatRelative(iso?: string) {
   if (!iso) return "—";
@@ -129,7 +129,7 @@ export function StageDetailOverlay({
               </h3>
               <div className="flex w-full items-center justify-center gap-1 rounded-[10px] border border-dashed bg-muted py-5 text-sm">
                 <span className="text-muted-foreground">
-                  단계 산출물은 작업에 첨부합니다
+                  단계 산출물은 할일에 첨부합니다
                 </span>
               </div>
             </section>

@@ -73,11 +73,15 @@ export function ProjectBoard({
               dropStageId === stage.id && "ring-2 ring-primary ring-offset-1",
             )}
           >
-            {/* 단계 메뉴는 헤더 우클릭 — 작업 카드·프로젝트·백로그와 같은 방식.
-                컬럼 전체를 트리거로 잡으면 작업 카드 메뉴와 중첩되므로 헤더만 잡는다 */}
+            {/* 단계 메뉴는 헤더 우클릭 — 할일 카드·프로젝트·백로그와 같은 방식.
+                컬럼 전체를 트리거로 잡으면 할일 카드 메뉴와 중첩되므로 헤더만 잡는다 */}
             <ContextMenu>
               <ContextMenuTrigger asChild>
-                <header className="flex shrink-0 items-center gap-[7px] py-0.5 pl-1 pr-0.5">
+                {/* 헤더 어디를 눌러도 단계 상세가 열린다 */}
+                <header
+                  onClick={() => onOpenStage(stage.id)}
+                  className="flex shrink-0 cursor-pointer items-center gap-[7px] rounded-[6px] py-0.5 pl-1 pr-0.5 transition-colors hover:bg-background/60"
+                >
                   <span
                     aria-hidden
                     className="size-2 shrink-0 rounded-full"
@@ -86,7 +90,10 @@ export function ProjectBoard({
                   <h3 className="min-w-0 flex-1 truncate text-[13px] font-semibold">
                     <button
                       type="button"
-                      onClick={() => onOpenStage(stage.id)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onOpenStage(stage.id);
+                      }}
                       className="max-w-full truncate text-left transition-colors hover:text-primary/80 hover:underline"
                     >
                       {stage.name}
@@ -111,27 +118,37 @@ export function ProjectBoard({
               {stage.tasks.map((task) => (
                 <ContextMenu key={task.id}>
                   <ContextMenuTrigger asChild>
-                    {/* 완료 카드는 컬럼 배경에 잠기고 그림자를 잃어 뒤로 물러난다 —
+                    {/* 카드 어디를 눌러도 상세가 열린다 — 체크박스만 예외.
+                        완료 카드는 컬럼 배경에 잠기고 그림자를 잃어 뒤로 물러난다 —
                         글자 취소선만으로는 한눈에 구분되지 않았다 */}
                     <div
+                      onClick={() => setDetailTaskId(task.id)}
                       className={cn(
-                        "flex w-full shrink-0 items-center gap-2 rounded-[8px] px-2.5 py-2",
+                        "flex w-full shrink-0 cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 transition-colors",
                         task.done
-                          ? "bg-muted opacity-60"
-                          : "bg-background shadow-xs",
+                          ? "bg-muted opacity-60 hover:opacity-80"
+                          : "bg-background shadow-xs hover:bg-accent/40",
                       )}
                     >
-                      <Checkbox
-                        aria-label={`${task.name} 완료`}
-                        checked={task.done}
-                        onCheckedChange={() =>
-                          boardActions.toggleTask(projectId, stage.id, task.id)
-                        }
-                        className="rounded-[4px] border-primary"
-                      />
+                      <span
+                        onClick={(event) => event.stopPropagation()}
+                        className="flex shrink-0 items-center"
+                      >
+                        <Checkbox
+                          aria-label={`${task.name} 완료`}
+                          checked={task.done}
+                          onCheckedChange={() =>
+                            boardActions.toggleTask(projectId, stage.id, task.id)
+                          }
+                          className="rounded-[4px] border-primary"
+                        />
+                      </span>
                       <button
                         type="button"
-                        onClick={() => setDetailTaskId(task.id)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          setDetailTaskId(task.id);
+                        }}
                         className={cn(
                           "min-w-0 flex-1 truncate text-left text-[13px] font-medium leading-[18px] underline-offset-2 hover:underline",
                           task.done && "text-muted-foreground line-through",
@@ -148,7 +165,7 @@ export function ProjectBoard({
                         boardActions.deleteTask(projectId, task.id)
                       }
                     >
-                      작업 삭제
+                      할일 삭제
                     </ContextMenuItem>
                   </ContextMenuContent>
                 </ContextMenu>
@@ -157,8 +174,8 @@ export function ProjectBoard({
                 <div className="flex w-full shrink-0 items-center gap-2 rounded-[8px] border-[1.5px] border-primary bg-background px-2.5 py-2 shadow-xs">
                   <input
                     autoFocus
-                    placeholder="작업명 입력 후 Enter"
-                    aria-label={`${stage.name} 작업 추가`}
+                    placeholder="할일명 입력 후 Enter"
+                    aria-label={`${stage.name} 할일 추가`}
                     className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
                     onKeyDown={(event) => {
                       if (event.key === "Enter") {
@@ -184,7 +201,7 @@ export function ProjectBoard({
                   onClick={() => setAddingStageId(stage.id)}
                   className="flex w-full shrink-0 items-center rounded-[8px] py-[5px] pl-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
                 >
-                  ＋ 작업
+                  ＋ 할일
                 </button>
               )}
             </div>

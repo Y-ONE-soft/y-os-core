@@ -28,10 +28,10 @@ import {
 import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
 import { setTaskDragData } from "@/components/features/projects/task-drag";
 
-// 내 작업 페이지는 프로젝트 스코프가 없으므로 미배정 작업과 전 프로젝트 백로그를
+// 내 할일 페이지는 프로젝트 스코프가 없으므로 미배정 할일과 전 프로젝트 백로그를
 // 함께 보여준다. 데이터 원본은 프로젝트 상세의 백로그와 동일한 보드 스토어(DB).
-// 여기서 만든 작업은 원칙적으로 "프로젝트 없음"(미배정)이며, 소속은 행의
-// 드롭다운 라벨이나 작업 티켓에서 정한다.
+// 여기서 만든 할일은 원칙적으로 "프로젝트 없음"(미배정)이며, 소속은 행의
+// 드롭다운 라벨이나 할일 티켓에서 정한다.
 export function MyWorkBacklog() {
   const { groups } = useProjectStore();
   const boards = useBoardState();
@@ -56,8 +56,8 @@ export function MyWorkBacklog() {
       </div>
       <div className="flex h-8 shrink-0 items-center rounded-[8px] bg-muted px-2.5 focus-within:ring-1 focus-within:ring-primary">
         <input
-          placeholder="＋ 작업 이름 입력 후 Enter"
-          aria-label="백로그 작업 추가"
+          placeholder="＋ 할일 이름 입력 후 Enter"
+          aria-label="백로그 할일 추가"
           className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
           onKeyDown={(event) => {
             if (event.key === "Enter") {
@@ -191,7 +191,7 @@ export function MyWorkBacklog() {
                 boardActions.deleteTask(project?.id ?? null, task.id)
               }
             >
-              작업 삭제
+              할일 삭제
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>

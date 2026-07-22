@@ -12,9 +12,9 @@ import { ProjectBoard } from "@/components/features/projects/project-board";
 import { ProjectBacklog } from "@/components/features/projects/project-backlog";
 import { StageAddOverlay } from "@/components/features/projects/stage-add-overlay";
 import { StageDetailOverlay } from "@/components/features/projects/stage-detail-overlay";
-import { PresetSaveDialog } from "@/components/features/projects/preset-save-dialog";
+import { PresetSaveDialog } from "@/components/features/presets/preset-save-dialog";
 
-const TABS = ["보드", "작업", "리포트", "산출물", "메모", "문의"] as const;
+const TABS = ["보드", "할일", "리포트", "산출물", "메모", "문의"] as const;
 const ACTIVE_TAB = "보드";
 
 export function ProjectDetailPage({ projectId }: { projectId: string }) {
@@ -70,9 +70,11 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
             />
             <h1 className="text-xl font-semibold">{project.name}</h1>
           </div>
+          {/* 페이지 단위 액션 — Figma 36px는 Button 사이즈 스케일의 lg(h-9)에 대응 */}
           <Button
             type="button"
             variant="outline"
+            size="lg"
             onClick={() => setPresetDialogOpen(true)}
           >
             프리셋 저장

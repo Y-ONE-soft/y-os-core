@@ -23,7 +23,7 @@ import type {
   ProjectBoardData,
 } from "@/types/workspace";
 
-// 프로젝트별 보드(단계/작업/백로그) — DB가 원본이며 workspace-cache를 통해
+// 프로젝트별 보드(단계/할일/백로그) — DB가 원본이며 workspace-cache를 통해
 // 낙관적 업데이트 후 API 경계로 저장한다 (기존 localStorage 스토어와 동일 인터페이스).
 
 const EMPTY_BOARD: ProjectBoardData = { stages: [], backlog: [] };
@@ -121,8 +121,8 @@ export const boardActions = {
     return id;
   },
   /**
-   * 단계 삭제 — 서버(deleteStage)와 동일하게 안의 작업은 지우지 않고 백로그로
-   * 옮긴다. 낙관적 값이 서버와 어긋나면 새로고침 시 작업이 사라졌다 되살아난다.
+   * 단계 삭제 — 서버(deleteStage)와 동일하게 안의 할일은 지우지 않고 백로그로
+   * 옮긴다. 낙관적 값이 서버와 어긋나면 새로고침 시 할일이 사라졌다 되살아난다.
    */
   deleteStage(projectId: string, stageId: string) {
     updateBoard(projectId, (board) => {
@@ -201,7 +201,7 @@ export const boardActions = {
     }));
     cache.persist(createTaskApi({ id, projectId, stageId: null, name }));
   },
-  /** 프로젝트 없이 작업을 만든다 — 내 작업 백로그의 기본 생성 경로 */
+  /** 프로젝트 없이 할일을 만든다 — 내 할일 백로그의 기본 생성 경로 */
   addUnassignedTask(name: string) {
     const id = `tk-${crypto.randomUUID()}`;
     cache.apply((prev) => ({
@@ -211,7 +211,7 @@ export const boardActions = {
     cache.persist(createTaskApi({ id, projectId: null, stageId: null, name }));
   },
   /**
-   * 작업의 소속(프로젝트·단계)을 한 번에 지정한다. 프로젝트 `null`은 미배정,
+   * 할일의 소속(프로젝트·단계)을 한 번에 지정한다. 프로젝트 `null`은 미배정,
    * 단계 `null`은 백로그를 뜻하며 단계 이동·프로젝트 이동·미배정 전환을 모두 다룬다.
    */
   assignTask(
@@ -298,7 +298,7 @@ export const boardActions = {
       }),
     );
   },
-  /** 작업 삭제 — 미배정이거나 백로그·단계 어디에 있든 제거한다 */
+  /** 할일 삭제 — 미배정이거나 백로그·단계 어디에 있든 제거한다 */
   deleteTask(projectId: string | null, taskId: string) {
     if (projectId === null) {
       cache.apply((prev) => ({
@@ -357,7 +357,7 @@ export const boardActions = {
     }
     cache.persist(patchTaskApi(taskId, { done }));
   },
-  /** 작업 이름·내용·예정일 수정 (작업 상세 오버레이, 캘린더 드래그) */
+  /** 할일 이름·내용·예정일 수정 (할일 상세 오버레이, 캘린더 드래그) */
   updateTask(
     projectId: string | null,
     stageId: string | null,
@@ -450,7 +450,7 @@ export function useBoardState(): BoardState {
   }, [workspace]);
 }
 
-/** 미배정 작업(projectId = null) — 내 작업 백로그의 기본 자리 */
+/** 미배정 할일(projectId = null) — 내 할일 백로그의 기본 자리 */
 export function useUnassignedTasks(): BoardTask[] {
   const workspace = useSyncExternalStore(
     cache.subscribe,
