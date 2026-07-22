@@ -33,6 +33,7 @@ export function RoadmapBar({
   onClick,
   title,
   onCommit,
+  resizable = true,
 }: {
   timeline: RoadmapTimeline;
   color: string;
@@ -46,6 +47,12 @@ export function RoadmapBar({
   title?: string;
   /** 드래그로 기간이 바뀌면 호출 — 넘기지 않으면 드래그 비활성 */
   onCommit?: (patch: StageDates) => void;
+  /**
+   * 양 끝 손잡이로 기간을 조절할 수 있는지. 기본 true.
+   * 기간이 파생값인 막대(예: 프로젝트 전체 범위)는 늘렸을 때 무엇이 늘어나야
+   * 하는지 정의되지 않으므로 false로 두고 통째 이동만 허용한다.
+   */
+  resizable?: boolean;
 }) {
   const rootRef = useRef<HTMLElement | null>(null);
   const dragRef = useRef<{ mode: DragMode; x: number; moved: boolean } | null>(
@@ -148,7 +155,7 @@ export function RoadmapBar({
     draggable && "cursor-move touch-none select-none",
     draft && "z-10 shadow-sm",
   );
-  const handles = draggable && (
+  const handles = draggable && resizable && (
     <>
       <span
         aria-hidden
