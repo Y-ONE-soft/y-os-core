@@ -26,6 +26,7 @@ import {
   useUnassignedTasks,
 } from "@/components/features/projects/board-store";
 import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
+import { setTaskDragData } from "@/components/features/projects/task-drag";
 
 // 내 작업 페이지는 프로젝트 스코프가 없으므로 미배정 작업과 전 프로젝트 백로그를
 // 함께 보여준다. 데이터 원본은 프로젝트 상세의 백로그와 동일한 보드 스토어(DB).
@@ -76,8 +77,11 @@ export function MyWorkBacklog() {
             {/* 완료 항목은 행 전체를 흐려 목록에서 뒤로 물러나게 한다 —
                 보드 카드와 같은 규칙 (project-board.tsx) */}
             <div
+              draggable
+              onDragStart={(event) => setTaskDragData(event, task.id)}
+              title="캘린더 날짜 칸으로 끌어다 놓으면 일정이 잡힙니다"
               className={cn(
-                "flex shrink-0 items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2",
+                "flex shrink-0 cursor-grab items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2 active:cursor-grabbing",
                 task.done && "opacity-60",
               )}
             >

@@ -74,10 +74,17 @@ function stageSegments(
   return segments;
 }
 
+/**
+ * 프로젝트 없는(미배정) 작업을 묶는 가짜 프로젝트 키.
+ * 캘린더 박스는 `project` 문자열로 묶이므로, 미배정도 같은 방식으로 한 묶음이 된다.
+ */
+export const UNASSIGNED_BOX = "__unassigned__";
+const UNASSIGNED_COLOR = "#71717a";
+
 /** 예정일이 잡힌 할일을 그 날짜 칸의 칩으로 만든다 (하루 = span 1) */
 function taskChip(
   grid: MonthGrid,
-  project: Project,
+  boxKey: string,
   color: string,
   task: BoardTask,
 ): CalOverlay | null {
@@ -92,7 +99,7 @@ function taskChip(
     week,
     col: day - week * DAYS_PER_WEEK,
     span: 1,
-    project: project.id,
+    project: boxKey,
     taskId: task.id,
     color,
     label: task.name,
@@ -104,6 +111,8 @@ export function buildCalendarSource(
   grid: MonthGrid,
   projects: Project[],
   boards: Record<string, ProjectBoardData>,
+  /** 프로젝트 없는 작업 — 예정일이 있으면 "미배정" 묶음으로 그린다 */
+  unassigned: BoardTask[] = [],
 ): CalendarSource {
   const overlays: CalOverlay[] = [];
   const meta: Record<string, CalendarProject> = {};
@@ -123,16 +132,17 @@ export function buildCalendarSource(
       // 할일 칩은 소속 단계 색을 한 톤 옅게 — 같은 계열이되 단계 막대와 구분된다
       const taskColor = taskTone(stage.color);
       for (const task of stage.tasks) {
-        const chip = taskChip(grid, project, taskColor, task);
+        const chip = taskChip(grid, project.id, taskColor, task);
         if (chip) {
           overlays.push(chip);
           placed = true;
         }
       }
     }
-    // 백로그 작업에는 예정일이 없지만(단계를 벗어나면 해제) 방어적으로 함께 훑는다
+    // 백로그 작업도 날짜 칸에 떨어뜨리면 예정일을 가질 수 있다 (덮는 단계가 없을 때)
     for (const task of board?.backlog ?? []) {
-      const chip = taskChip(grid, project, project.color, task);
+      // 단계 없는 백로그 작업은 프로젝트 색을 같은 규칙으로 옅게 쓴다
+      const chip = taskChip(grid, project.id, taskTone(project.color), task);
       if (chip) {
         overlays.push(chip);
         placed = true;
@@ -145,6 +155,23 @@ export function buildCalendarSource(
         color: project.color,
       };
     }
+  }
+
+  // 미배정 작업은 소속 프로젝트가 없어 어느 박스에도 못 들어간다 — 전용 묶음으로 모은다
+  let hasUnassigned = false;
+  for (const task of unassigned) {
+    const chip = taskChip(grid, UNASSIGNED_BOX, UNASSIGNED_COLOR, task);
+    if (chip) {
+      overlays.push(chip);
+      hasUnassigned = true;
+    }
+  }
+  if (hasUnassigned) {
+    meta[UNASSIGNED_BOX] = {
+      id: UNASSIGNED_BOX,
+      name: "미배정",
+      color: UNASSIGNED_COLOR,
+    };
   }
 
   return { overlays, projects: meta, stageCount };

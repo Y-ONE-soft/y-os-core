@@ -8,6 +8,7 @@ import { useProjectStore } from "@/components/features/projects/project-store";
 import {
   boardActions,
   useBoardState,
+  useUnassignedTasks,
 } from "@/components/features/projects/board-store";
 import {
   clampStageToTasks,
@@ -34,6 +35,7 @@ export function MyWorkCalendarPanel() {
   const { user } = useSession();
   const { groups } = useProjectStore();
   const boards = useBoardState();
+  const unassigned = useUnassignedTasks();
 
   // 보고 있는 달의 1일. 오늘 판정은 렌더 시점의 실제 날짜로 한다.
   const [monthAnchor, setMonthAnchor] = useState(() => {
@@ -91,8 +93,8 @@ export function MyWorkCalendarPanel() {
   }, [boards, preview]);
 
   const source = useMemo(
-    () => buildCalendarSource(grid, myProjects, previewBoards),
-    [grid, myProjects, previewBoards],
+    () => buildCalendarSource(grid, myProjects, previewBoards, unassigned),
+    [grid, myProjects, previewBoards, unassigned],
   );
 
   /** 드래그 결과 날짜 — 자기 할일을 항상 덮도록 늘려서 돌려준다 */
@@ -134,6 +136,43 @@ export function MyWorkCalendarPanel() {
       }
     }
     return null;
+  }
+
+  /**
+   * 백로그에서 끌어온 작업을 날짜 칸에 떨어뜨렸을 때.
+   * 그 날짜를 덮는 단계가 (같은 프로젝트에) 있으면 그 단계로 편입하고,
+   * 없으면(미배정 작업 포함) 예정일만 잡는다.
+   */
+  function handleDropTask(taskId: string, date: string) {
+    // 미배정 목록 먼저 — 프로젝트가 없으니 편입할 단계도 없다
+    if (unassigned.some((task) => task.id === taskId)) {
+      boardActions.updateTask(null, null, taskId, { scheduledDate: date });
+      return;
+    }
+    for (const project of myProjects) {
+      const board = boards[project.id];
+      if (!board?.backlog.some((task) => task.id === taskId)) continue;
+      const covering = board.stages.find(
+        (stage) =>
+          stage.startDate &&
+          stage.startDate <= date &&
+          (stage.endDate ?? stage.startDate) >= date,
+      );
+      if (covering) {
+        boardActions.assignTask(
+          project.id,
+          taskId,
+          project.id,
+          covering.id,
+          date,
+        );
+      } else {
+        boardActions.updateTask(project.id, null, taskId, {
+          scheduledDate: date,
+        });
+      }
+      return;
+    }
   }
 
   function handleDrag(
@@ -275,6 +314,7 @@ export function MyWorkCalendarPanel() {
         }
         onOpenTask={setDetailTaskId}
         onDrag={handleDrag}
+        onDropTask={handleDropTask}
       />
       {detailStage && (
         <StageDetailOverlay

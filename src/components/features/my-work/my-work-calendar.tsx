@@ -1,13 +1,18 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import {
   hexToRgba,
+  shiftISO,
   type DragMode,
 } from "@/components/features/projects/roadmap-utils";
 import type { MonthGrid } from "@/components/features/my-work/my-work-month";
+import {
+  getTaskDragData,
+  isTaskDrag,
+} from "@/components/features/projects/task-drag";
 import type { CalendarProject } from "@/components/features/my-work/my-work-calendar-source";
 import {
   type PlacedOverlay,
@@ -261,6 +266,7 @@ export function MyWorkCalendar({
   onOpenStage,
   onOpenTask,
   onDrag,
+  onDropTask,
 }: {
   grid: MonthGrid;
   layouts: WeekLayout[];
@@ -273,8 +279,12 @@ export function MyWorkCalendar({
     deltaDays: number,
     phase: StageDragPhase,
   ) => void;
+  /** 백로그에서 끌어온 작업을 날짜 칸에 떨어뜨렸을 때 (HTML5 DnD) */
+  onDropTask?: (taskId: string, date: string) => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
+  // 백로그에서 끌어온 작업이 놓일 날짜 칸 — 어디에 떨어지는지 보이게 한다
+  const [dropDate, setDropDate] = useState<string | null>(null);
   const weekRefs = useRef<(HTMLDivElement | null)[]>([]);
   const dragRef = useRef<{
     target: DragTarget;
@@ -388,14 +398,39 @@ export function MyWorkCalendar({
             className="relative flex w-full flex-1"
             style={{ minHeight }}
           >
-            {week.map((date, dayIndex) => (
+            {week.map((date, dayIndex) => {
+              const cellDate = shiftISO(
+                grid.gridStart,
+                weekIndex * 7 + dayIndex,
+              );
+              return (
               <div
                 key={dayIndex}
+                onDragOver={(event) => {
+                  if (!onDropTask || !isTaskDrag(event)) return;
+                  event.preventDefault(); // 기본값은 '드롭 금지'
+                  event.dataTransfer.dropEffect = "move";
+                  setDropDate(cellDate);
+                }}
+                onDragLeave={(event) => {
+                  if (event.currentTarget.contains(event.relatedTarget as Node)) {
+                    return;
+                  }
+                  setDropDate((prev) => (prev === cellDate ? null : prev));
+                }}
+                onDrop={(event) => {
+                  const taskId = getTaskDragData(event);
+                  setDropDate(null);
+                  if (!onDropTask || !taskId) return;
+                  event.preventDefault();
+                  onDropTask(taskId, cellDate);
+                }}
                 className={cn(
                   "flex-1 border-b px-2 pb-1 pt-1.5",
                   dayIndex < 6 && "border-r",
                   date === null && "bg-muted",
                   date !== null && date === grid.todayDate && "bg-accent",
+                  dropDate === cellDate && "bg-primary/10 ring-1 ring-inset ring-primary",
                 )}
               >
                 {date !== null && (
@@ -409,7 +444,8 @@ export function MyWorkCalendar({
                   </span>
                 )}
               </div>
-            ))}
+              );
+            })}
             {boxes.map((box) => (
               <ProjectBoxItem
                 key={box.project}
