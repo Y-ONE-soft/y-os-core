@@ -15,3 +15,28 @@ export const badRequest = (message = "잘못된 요청입니다.") =>
 /** 필수 문자열 필드 검증 */
 export const isName = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
+
+/** YYYY-MM-DD — Stage/Task의 날짜 표기 규격 */
+export const isISODate = (value: unknown): value is string =>
+  typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+/**
+ * 프로젝트를 만들 그룹 결정 — 스탭은 클라이언트가 보낸 groupId를 신뢰하지 않고 세션
+ * 사용자의 소속 그룹으로 강제한다(남의 그룹에 생성하는 우회 차단). 마스터는 전체
+ * 그룹을 다루므로 요청 값을 그대로 쓴다. POST /api/admin/projects와 같은 규칙이다.
+ *
+ * 반환값이 문자열이면 그룹 id, 아니면 그대로 응답할 에러다.
+ */
+export function resolveProjectGroupId(
+  user: { role: string; groupId: string | null },
+  requestedGroupId: unknown,
+): string | NextResponse {
+  if (user.role === "MASTER") {
+    if (!isName(requestedGroupId)) return badRequest("그룹을 선택하세요.");
+    return requestedGroupId;
+  }
+  if (!user.groupId) {
+    return badRequest("소속 그룹이 없어 프로젝트를 만들 수 없습니다.");
+  }
+  return user.groupId;
+}
