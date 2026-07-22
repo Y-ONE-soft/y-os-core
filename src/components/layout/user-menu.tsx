@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +32,7 @@ function roleLabel(user: SessionUser) {
 
 export function UserMenu() {
   const { user, loading, signOut } = useSession();
+  const router = useRouter();
 
   if (loading) {
     // 트리거와 동일한 한 줄·32px 높이 — 로딩 → 로드 전환 시 헤더가 흔들리지 않도록
@@ -106,7 +108,12 @@ export function UserMenu() {
             {NOTIFICATION_COUNT}
           </Badge>
         </DropdownMenuItem>
-        <DropdownMenuItem className={ITEM_CLASS}>내 정보</DropdownMenuItem>
+        <DropdownMenuItem
+          className={ITEM_CLASS}
+          onSelect={() => router.push("/me")}
+        >
+          내 정보
+        </DropdownMenuItem>
         <DropdownMenuItem className={ITEM_CLASS}>프리셋 관리</DropdownMenuItem>
         <DropdownMenuItem className={ITEM_CLASS}>설정</DropdownMenuItem>
         <DropdownMenuSeparator className="mx-0 my-0" />
