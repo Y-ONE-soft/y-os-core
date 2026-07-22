@@ -1,7 +1,7 @@
 // 워크스페이스 데이터 → 내 작업 캘린더 오버레이.
-// 단계만 실데이터다. 할일 칩은 Task에 예정일이 생기면 여기서 함께 만든다.
+// 단계는 기간(시작~종료)을 주 단위로 자른 막대로, 할일은 예정일 하루짜리 칩으로 만든다.
 
-import type { Project, ProjectBoardData } from "@/types/workspace";
+import type { BoardTask, Project, ProjectBoardData } from "@/types/workspace";
 import { OPEN_ENDED_DAYS } from "@/components/features/projects/roadmap-utils";
 import {
   DAYS_PER_WEEK,
@@ -71,6 +71,32 @@ function stageSegments(
   return segments;
 }
 
+/** 예정일이 잡힌 할일을 그 날짜 칸의 칩으로 만든다 (하루 = span 1) */
+function taskChip(
+  grid: MonthGrid,
+  project: Project,
+  color: string,
+  task: BoardTask,
+): CalOverlay | null {
+  if (!task.scheduledDate) return null;
+
+  const day = gridDay(grid, task.scheduledDate);
+  if (day < 0 || day >= gridDayCount(grid)) return null; // 이 달 그리드 밖
+
+  const week = Math.floor(day / DAYS_PER_WEEK);
+  return {
+    kind: "task",
+    week,
+    col: day - week * DAYS_PER_WEEK,
+    span: 1,
+    project: project.id,
+    taskId: task.id,
+    color,
+    label: task.name,
+    done: task.done,
+  };
+}
+
 export function buildCalendarSource(
   grid: MonthGrid,
   projects: Project[],
@@ -81,14 +107,32 @@ export function buildCalendarSource(
   let stageCount = 0;
 
   for (const project of projects) {
-    const stages = boards[project.id]?.stages ?? [];
+    const board = boards[project.id];
+    const stages = board?.stages ?? [];
     let placed = false;
     for (const stage of stages) {
       const segments = stageSegments(grid, project, stage);
-      if (segments.length === 0) continue;
-      overlays.push(...segments);
-      stageCount += 1;
-      placed = true;
+      if (segments.length > 0) {
+        overlays.push(...segments);
+        stageCount += 1;
+        placed = true;
+      }
+      // 할일 칩은 단계 색을 따른다 — 어느 단계 소속인지 한눈에 보이게
+      for (const task of stage.tasks) {
+        const chip = taskChip(grid, project, stage.color, task);
+        if (chip) {
+          overlays.push(chip);
+          placed = true;
+        }
+      }
+    }
+    // 백로그 작업에는 예정일이 없지만(단계를 벗어나면 해제) 방어적으로 함께 훑는다
+    for (const task of board?.backlog ?? []) {
+      const chip = taskChip(grid, project, project.color, task);
+      if (chip) {
+        overlays.push(chip);
+        placed = true;
+      }
     }
     if (placed) {
       meta[project.id] = {
