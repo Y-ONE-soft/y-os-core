@@ -161,8 +161,10 @@ function Bar({
   const className = cn(
     "absolute top-1 flex h-[18px] items-center overflow-hidden rounded-[6px] border text-left",
     badge === undefined ? "pl-2" : "gap-1 pl-1 pr-1.5",
+    // cursor-move: 손 모양(grab)은 "집는다"는 은유라 간트 막대엔 과하다.
+    // 이동은 move, 양 끝 리사이즈는 ew-resize로 커서만 보고도 구분되게 한다.
     // touch-none: 터치로 막대를 끌 때 가로 스크롤이 같이 먹지 않게 한다
-    draggable && "cursor-grab touch-none select-none active:cursor-grabbing",
+    draggable && "cursor-move touch-none select-none",
     draft && "z-10 shadow-sm",
   );
   const handles = draggable && (
