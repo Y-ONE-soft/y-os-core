@@ -1,0 +1,133 @@
+# 43. fix: 내 작업 캘린더 프로젝트 범위를 주 경계 너머로 연속 처리
+
+## 작업 요약
+
+내 작업 페이지(`/projects/my-tasks`) 월 캘린더에서 **프로젝트 박스가 주 경계에서 끊기던 것**을 캘린더 앱의 여러 날짜 일정처럼 이어 그리도록 고쳤다.
+
+박스 범위를 주별 합집합이 아니라 **월 전체 기준 절대 일자**로 계산하고, 걸치는 모든 주에 잘라 그린다. 잘린 면은 테두리·라운딩을 빼서 한 범위로 읽히게 했다.
+
+## 문제
+
+프로젝트에 속한 할일이 그 프로젝트 단계의 마감 **뒤**에 있고, 게다가 다음 주에 있으면 프로젝트가 그 할일을 감싸지 않는 것처럼 보였다.
+
+YOS가 그 사례다.
+
+| 항목 | 위치 |
+| --- | --- |
+| 단계 `프로젝트 정의` (마감) | W4 col 1~4 |
+| 할일 `PRD` | W5 col 1~2 |
+| 할일 `설계서 검토` | W5 col 2~3 |
+
+박스를 주마다 독립적으로 계산했기 때문에 W4 박스는 수요일에서 끊기고, W5에서 다시 시작했다. 그 사이(W4 목~토, W5 일)가 비어 있어 **마감 이후의 할일을 프로젝트가 덮지 않는 것처럼** 보였다.
+
+박스 범위 계산 자체는 이미 소속 단계·할일 전부의 합집합이었다. 문제는 그 합집합의 단위가 **주**였다는 점이다.
+
+## 변경 내용
+
+### 1. 프로젝트 기간을 월 전체 기준으로 계산
+
+절대 일자(`주 × 7 + 열`)로 프로젝트마다 첫 항목 시작 ~ 마지막 항목 끝을 구한다. 단계든 할일이든 가장 늦게 끝나는 것까지 포함한다.
+
+```ts
+type DayRange = { start: number; end: number }; // [start, end)
+
+const PROJECT_RANGES = collectProjectRanges(CAL_OVERLAYS);
+```
+
+계산 결과:
+
+| 프로젝트 | 절대 일자 범위 |
+| --- | --- |
+| CMS | 18 ~ 27 |
+| YOS | 22 ~ 31 |
+| YOC | 32 ~ 34 |
+
+### 2. 주별로 잘라 렌더
+
+각 주에서 기간이 걸치는 프로젝트를 골라 그 주 구간으로 클리핑한다. 항목이 그 주에 하나도 없어도 기간이 지나가면 박스가 이어진다.
+
+```ts
+const clippedStart = Math.max(projectRange.start, weekStart);
+const clippedEnd = Math.min(projectRange.end, weekEnd);
+```
+
+`continuesLeft`/`continuesRight` 플래그를 박스에 실어, 렌더에서 잘린 면의 테두리와 라운딩을 뺀다.
+
+### 3. 레인 배치 순서를 관례대로
+
+기존에는 데이터에 적힌 등장 순서로 박스를 앉혔다. **시작이 이른 것 먼저, 같으면 긴 것 먼저**로 바꿨다. 캘린더 앱이 쓰는 규칙이고, 데이터 순서가 바뀌어도 결과가 흔들리지 않는다.
+
+레인은 주마다 채워지는 대로 쌓고 빈 레인은 예약하지 않는다. 프로젝트별로 레인을 고정하는 방식도 검토했지만(주가 바뀌어도 세로 위치 유지), 모든 주가 전체 프로젝트 높이만큼 커지는 간트 차트가 되어 채택하지 않았다.
+
+## 변경 파일
+
+### `src/components/features/my-work/my-work-calendar-layout.ts`
+
+- 규칙 주석 갱신 (6개 → 7개 항목, 주 경계 연속·레인 예약 없음 명시)
+- `DAYS_PER_WEEK` 상수, `DayRange` 타입, `dayStart()` 추가
+- `collectProjectRanges()` 신설 — 월 전체 기준 프로젝트 기간
+- 모듈 로드 시 `PROJECT_RANGES` 1회 계산
+- `union()` **제거** — 주별 합집합이 더 이상 필요 없다
+- `layoutWeek()`가 주에 걸치는 프로젝트를 `PROJECT_RANGES`에서 고르고, 시작·길이 순으로 정렬해 배치
+- 박스 열 범위는 프로젝트 기간을 그 주로 클리핑한 값
+- `ProjectBox`에 `continuesLeft`·`continuesRight` 추가
+
+### `src/components/features/my-work/my-work-calendar.tsx`
+
+- 박스 클래스가 조건부 — `continuesLeft`면 `border-l-0`, 아니면 `rounded-l-[2px]`. 오른쪽도 같은 방식. 고정 `rounded-[2px] border`를 대체
+
+## 결과
+
+| 프로젝트 | 전 | 후 |
+| --- | --- | --- |
+| YOS | W4 col 1~4 / W5 col 1~3 (끊김) | **W4 col 1~7 + W5 col 0~3 (연속)** |
+| CMS | W3 col 4~7 / W4 col 0~6 | 동일 (원래 붙어 있었음) |
+| YOC | W5 col 4~6 | 동일 |
+
+주차 높이는 그대로다 — W3 84px, W4 136px, W5 84px.
+
+## 검증
+
+```bash
+npx prisma generate       # 새 워크트리라 생성물이 없어 선행 필요
+npx tsc --noEmit          # 통과 (출력 없음)
+npm run lint              # 통과 (출력 없음)
+npm run build             # 성공 — Compiled successfully, 정적 페이지 17/17
+npm run dev -- -p 3010    # 워크트리 포트 분리
+```
+
+dev 서버 렌더 HTML로 배치를 확인했다 (`master01` 로그인 후 `/projects/my-tasks`).
+
+**주 경계 연속**
+
+- W3 CMS — `left:57.14%; width:42.86%`(col 4~7) + `border-r-0` → 다음 주로 이어짐
+- W4 CMS — `left:0%; width:85.71%`(col 0~6) + `border-l-0 rounded-r-[2px]` → 앞 주에서 이어져 여기서 끝
+- W4 YOS — `left:14.29%; width:85.71%`(col 1~7) + `border-r-0` → **주 끝까지 늘어남**
+- W5 YOS — `left:0%; width:42.86%`(col 0~3) + `border-l-0 rounded-r-[2px]` → **주 시작부터 이어져 할일을 덮음**
+- W5 YOC — 양면 라운딩 유지 (한 주 안에서 시작·종료)
+
+**기존 규칙 유지**
+
+- 주차 높이 W3 `84px`, W4 `136px`, W5 `84px`
+- 박스 5개 전부 `height:56px`(2줄 최소 높이)
+- 단계 한 줄 — W4 CMS 단계 2건 모두 `top:24px; height:22px`, YOS는 `top:76px`(레인 2)
+- 단계 줄 항상 확보 — W5 YOS 할일이 `top:50px`(박스 두 번째 줄)
+- 구분선 — 할일 있는 W5 두 박스에만 `top:27px` 1개씩
+
+## 알려진 이슈 / 후속
+
+- **주가 바뀌면 레인 위치가 달라질 수 있다.** YOS는 W4에서 레인 2, W5에서 레인 0에 놓인다. 가로로는 이어지지만 세로 위치가 튄다. 캘린더 앱의 일반적인 동작이고, 맞추려면 간트 차트가 되므로 이대로 둔다.
+- 기간이 비는 주에도 박스가 이어진다(첫 항목 ~ 마지막 항목 사이는 연속). 현재 자리표시 데이터에는 해당 사례가 없다.
+- 막대 **클릭 동작은 여전히 없다.** 단계 상세 연결은 후속 과제.
+
+## 사후 검증 결과 (추록)
+
+푸시 이후에만 확정되는 검증 결과.
+
+- **PR**: [#40](https://github.com/Y-ONE-soft/y-os-core/pull/40)
+- **프리뷰 배포**: `● Ready` — https://y-os-core-3s073if6d-project-hosting-center.vercel.app
+- **PR 체크**: `Vercel` pass, `Vercel Preview Comments` pass
+
+## 병렬 작업 메모
+
+착수 시점 main = `401235e`. 진행 중 다른 세션이 문서 번호 39를 중복 사용해 PR #36에서 정리됐고(상대 문서가 39~40 → 41~42로 이동), 이번 문서는 최대 번호 42 다음인 **43**으로 잡았다. 40번은 그 정리 과정에서 비어 있다.
