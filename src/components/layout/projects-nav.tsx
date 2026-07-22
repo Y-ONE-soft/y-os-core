@@ -10,11 +10,13 @@ import {
   Folder,
   ListTodo,
   RotateCcw,
+  SlidersHorizontal,
   SquareCheck,
   type LucideIcon,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { STAFF_ASSIGNED_PROJECT_IDS } from "@/lib/constants";
 import { useSession } from "@/components/features/auth/session-context";
 import {
   ContextMenu,
@@ -31,6 +33,13 @@ const WORKSPACE_ITEMS: WorkspaceItem[] = [
   { label: "작업 현황", href: "/projects", icon: ListTodo },
   { label: "내 작업", href: "/projects/my-tasks", icon: SquareCheck },
   { label: "작업 분석", href: "/projects/analytics", icon: ChartColumn },
+];
+
+// 스탭 셸(Y.OS Shell — Projects · Staff, 79:48)에만 노출되는 항목.
+// 마스터 디자인(84:11)에도 프리셋이 있지만 "마스터는 현행 유지" 지시로 스탭만 반영.
+const STAFF_WORKSPACE_ITEMS: WorkspaceItem[] = [
+  ...WORKSPACE_ITEMS,
+  { label: "프리셋", href: "/projects/presets", icon: SlidersHorizontal },
 ];
 
 type AddingState =
@@ -96,6 +105,14 @@ export function ProjectsNav() {
   const { user } = useSession();
   const isMaster = user?.role === "MASTER";
 
+  // 스탭: 배정 프로젝트만 플랫 리스트로 (배정 도메인 도입 전 자리표시 상수 기준).
+  const staffProjects = groups.flatMap((group) =>
+    group.projects
+      .filter((project) => STAFF_ASSIGNED_PROJECT_IDS.includes(project.id))
+      .map((project) => ({ project, groupId: group.id })),
+  );
+  const staffGroupId = staffProjects[0]?.groupId ?? groups[0]?.id;
+
   const toggleGroup = (groupId: string) =>
     setCollapsedGroupIds((prev) => {
       const next = new Set(prev);
@@ -117,7 +134,7 @@ export function ProjectsNav() {
             </p>
           )}
           <ul className="flex flex-col gap-0.5">
-            {WORKSPACE_ITEMS.map((item) => {
+            {(isMaster ? WORKSPACE_ITEMS : STAFF_WORKSPACE_ITEMS).map((item) => {
               const active =
                 item.href === "/projects"
                   ? pathname === "/projects"
@@ -150,7 +167,59 @@ export function ProjectsNav() {
               프로젝트
             </p>
             <ul className="flex flex-col gap-0.5">
-              {groups.map((group) => {
+              {!isMaster &&
+                staffProjects.map(({ project }) => {
+                  const href = `/projects/${project.id}`;
+                  const selected = pathname === href;
+                  return (
+                    <li key={project.id}>
+                      <Link
+                        href={href}
+                        aria-current={selected ? "page" : undefined}
+                        className={cn(
+                          "flex w-full items-center gap-2.5 rounded-[8px] px-3 py-2 transition-colors",
+                          selected ? "bg-muted" : "hover:bg-accent/60",
+                        )}
+                      >
+                        <span
+                          aria-hidden
+                          className="size-2 shrink-0 rounded-full"
+                          style={{ backgroundColor: project.color }}
+                        />
+                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-foreground">
+                          {project.name}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              {!isMaster && staffGroupId && (
+                <li>
+                  {adding?.type === "project" ? (
+                    <InlineAddInput
+                      placeholder="새 프로젝트"
+                      indented={false}
+                      onCommit={(name) => {
+                        addProject(staffGroupId, name);
+                        setAdding(null);
+                      }}
+                      onCancel={() => setAdding(null)}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setAdding({ type: "project", groupId: staffGroupId })
+                      }
+                      className="flex h-[30px] w-full items-center rounded-[8px] px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+                    >
+                      +&nbsp;&nbsp;프로젝트 추가
+                    </button>
+                  )}
+                </li>
+              )}
+              {isMaster &&
+                groups.map((group) => {
                 const expanded = !collapsedGroupIds.has(group.id);
                 const groupRow = (
                   <button
