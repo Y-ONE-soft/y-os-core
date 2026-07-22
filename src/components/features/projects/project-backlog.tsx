@@ -58,27 +58,37 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
       {backlog.map((item) => (
         <ContextMenu key={item.id}>
           <ContextMenuTrigger asChild>
+            {/* 항목 어디를 눌러도 상세가 열린다 — 체크박스·단계 지정은 예외 */}
             <div
               draggable
               onDragStart={(event) => setTaskDragData(event, item.id)}
+              onClick={() => setDetailTaskId(item.id)}
               title="단계 컬럼으로 끌어다 놓으면 편입됩니다"
               className={cn(
-                "flex shrink-0 cursor-grab items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2 active:cursor-grabbing",
+                "flex shrink-0 cursor-grab items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2 transition-colors hover:bg-accent/60 active:cursor-grabbing",
                 // 완료 항목은 행 전체를 흐린다 — 보드 카드·내 작업 백로그와 같은 규칙
-                item.done && "opacity-60",
+                item.done && "opacity-60 hover:opacity-80",
               )}
             >
-              <Checkbox
-                aria-label={`${item.name} 완료`}
-                checked={item.done}
-                onCheckedChange={() =>
-                  boardActions.toggleTask(projectId, null, item.id)
-                }
-                className="rounded-[4px] border-primary bg-background"
-              />
+              <span
+                onClick={(event) => event.stopPropagation()}
+                className="flex shrink-0 items-center"
+              >
+                <Checkbox
+                  aria-label={`${item.name} 완료`}
+                  checked={item.done}
+                  onCheckedChange={() =>
+                    boardActions.toggleTask(projectId, null, item.id)
+                  }
+                  className="rounded-[4px] border-primary bg-background"
+                />
+              </span>
               <button
                 type="button"
-                onClick={() => setDetailTaskId(item.id)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setDetailTaskId(item.id);
+                }}
                 className={cn(
                   "min-w-0 flex-1 truncate text-left text-[13px] font-medium leading-[18px] underline-offset-2 hover:underline",
                   item.done && "text-muted-foreground line-through",
@@ -89,6 +99,7 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
               <DropdownMenu>
                 <DropdownMenuTrigger
                   aria-label={`${item.name} 단계 지정`}
+                  onClick={(event) => event.stopPropagation()}
                   className="flex max-w-[104px] shrink-0 items-center gap-1 rounded-[6px] border bg-background px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
                 >
                   <span className="truncate">백로그</span>
