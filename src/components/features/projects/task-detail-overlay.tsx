@@ -558,6 +558,22 @@ export function TaskDetailOverlay({
             </div>
             <div className="flex flex-col gap-2">
               <p className="text-xs font-medium text-muted-foreground">
+                완료날짜
+              </p>
+              {/* 읽기 전용 — 위 체크박스를 켜면 서버가 오늘 날짜를 기록하고,
+                  풀면 지운다. 직접 고칠 수 있으면 완료 기록의 의미가 없다 */}
+              <div className="flex h-9 items-center rounded-[8px] bg-background px-3 text-sm">
+                {task.completedDate ? (
+                  task.completedDate
+                ) : (
+                  <span className="text-muted-foreground">
+                    완료 체크 시 자동 기록
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-medium text-muted-foreground">
                 작업 유형
               </p>
               <Select value={taskType} onValueChange={setTaskType}>

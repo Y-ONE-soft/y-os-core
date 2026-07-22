@@ -21,8 +21,10 @@ export type BoardTask = {
   done: boolean;
   /** 작업 상세 오버레이 '내용' */
   description?: string;
-  /** YYYY-MM-DD — 캘린더에 놓일 예정일. 없으면 일정 미정 */
+  /** YYYY-MM-DD — 캘린더에 놓일 예정일(화면 표기 "작업날짜"). 없으면 일정 미정 */
   scheduledDate?: string;
+  /** YYYY-MM-DD — 완료 체크 시 서버가 기록. 체크를 풀면 사라진다 */
+  completedDate?: string;
 };
 
 export type StageComment = {
