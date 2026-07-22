@@ -12,7 +12,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useSession } from "@/components/features/auth/session-context";
 import {
@@ -86,6 +85,19 @@ export function StageDetailOverlay({
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              aria-pressed={stage.showDeadline}
+              onClick={() => patch({ showDeadline: !stage.showDeadline })}
+              title="로드맵·보드에 이 단계의 마감을 표시합니다"
+              className={cn(
+                "rounded-[8px]",
+                stage.showDeadline &&
+                  "border-primary bg-primary/10 text-primary hover:bg-primary/15",
+              )}
+            >
+              {stage.showDeadline ? "☑" : "☐"} 데드라인 표시
+            </Button>
             <DialogClose
               aria-label="닫기"
               className="flex size-9 items-center justify-center rounded-[8px] text-base text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
@@ -255,24 +267,6 @@ export function StageDetailOverlay({
               👥 공동 작업자 지정 요청
               {collaboratorCount > 0 && ` · ${collaboratorCount}`}
             </Button>
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex flex-col gap-[3px]">
-                <label
-                  htmlFor="stage-detail-deadline"
-                  className="text-[13px] font-medium"
-                >
-                  데드라인 표시
-                </label>
-                <p className="text-[11px] text-muted-foreground">
-                  로드맵·보드에 마감 표시
-                </p>
-              </div>
-              <Switch
-                id="stage-detail-deadline"
-                checked={stage.showDeadline}
-                onCheckedChange={(checked) => patch({ showDeadline: checked })}
-              />
-            </div>
             <div className="flex-1" />
             <div className="text-[11px] leading-[1.6] text-muted-foreground">
               <p>변경사항은 즉시 저장됩니다</p>
