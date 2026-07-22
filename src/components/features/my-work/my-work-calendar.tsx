@@ -290,11 +290,11 @@ export function MyWorkCalendar({
     deltaDays: number,
     phase: StageDragPhase,
   ) => void;
-  /** 백로그에서 끌어온 작업을 날짜 칸에 떨어뜨렸을 때 (HTML5 DnD) */
+  /** 백로그에서 끌어온 할일을 날짜 칸에 떨어뜨렸을 때 (HTML5 DnD) */
   onDropTask?: (taskId: string, date: string) => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
-  // 백로그에서 끌어온 작업이 놓일 날짜 칸 — 어디에 떨어지는지 보이게 한다
+  // 백로그에서 끌어온 할일이 놓일 날짜 칸 — 어디에 떨어지는지 보이게 한다
   const [dropDate, setDropDate] = useState<string | null>(null);
   const weekRefs = useRef<(HTMLDivElement | null)[]>([]);
   // 주 경계로 잘린 단계 조각을 하나로 묶어 강조한다 (CSS :hover는 조각 단위)

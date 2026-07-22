@@ -1,4 +1,4 @@
-// 내 작업 화면 자리표시 데이터 — Figma My Work Layout(147:495)의 예시 값 재현.
+// 내 할일 화면 자리표시 데이터 — Figma My Work Layout(147:495)의 예시 값 재현.
 // 캘린더는 실데이터로 전환됐다. 남은 요청 카드만 아직 자리표시다.
 
 export type WorkRequest = {
@@ -17,14 +17,14 @@ export type WorkRequest = {
 export const REQUESTS: WorkRequest[] = [
   {
     id: "req-1",
-    typeLabel: "작업 할당 요청",
+    typeLabel: "할일 할당 요청",
     typeTone: "primary",
     direction: "받은 요청",
     date: "07-20",
     code: "YOC-909",
     title: "회의1",
     from: "노윤기",
-    message: '노윤기 → 김주웅  ·  "회의1" 작업을 할당했어요. 확인 부탁드려요.',
+    message: '노윤기 → 김주웅  ·  "회의1" 할일을 할당했어요. 확인 부탁드려요.',
     actions: ["수락", "거절", "요청 취소"],
   },
   {

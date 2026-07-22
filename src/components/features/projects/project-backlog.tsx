@@ -24,7 +24,7 @@ import {
 import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
 import { setTaskDragData } from "@/components/features/projects/task-drag";
 
-// 내 작업 백로그와 같은 티켓 형태(작업명 클릭 → 상세, 소속 배지 드롭다운).
+// 내 할일 백로그와 같은 티켓 형태(할일명 클릭 → 상세, 소속 배지 드롭다운).
 // 다만 이 화면은 프로젝트 스코프가 이미 정해져 있으므로 프로젝트는 바꾸지 않고
 // 같은 프로젝트의 단계(또는 백로그 유지)만 지정한다.
 export function ProjectBacklog({ projectId }: { projectId: string }) {
@@ -41,8 +41,8 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
       </div>
       <div className="flex h-8 shrink-0 items-center rounded-[8px] bg-muted px-2.5 focus-within:ring-1 focus-within:ring-primary">
         <input
-          placeholder="＋ 작업 이름 입력 후 Enter"
-          aria-label="백로그 작업 추가"
+          placeholder="＋ 할일 이름 입력 후 Enter"
+          aria-label="백로그 할일 추가"
           className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
           onKeyDown={(event) => {
             if (event.key === "Enter") {
@@ -66,7 +66,7 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
               title="단계 컬럼으로 끌어다 놓으면 편입됩니다"
               className={cn(
                 "flex shrink-0 cursor-grab items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2 transition-colors hover:bg-accent/60 active:cursor-grabbing",
-                // 완료 항목은 행 전체를 흐린다 — 보드 카드·내 작업 백로그와 같은 규칙
+                // 완료 항목은 행 전체를 흐린다 — 보드 카드·내 할일 백로그와 같은 규칙
                 item.done && "opacity-60 hover:opacity-80",
               )}
             >
@@ -147,7 +147,7 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
               variant="destructive"
               onSelect={() => boardActions.deleteTask(projectId, item.id)}
             >
-              작업 삭제
+              할일 삭제
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>

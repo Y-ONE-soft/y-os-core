@@ -73,8 +73,8 @@ export function ProjectBoard({
               dropStageId === stage.id && "ring-2 ring-primary ring-offset-1",
             )}
           >
-            {/* 단계 메뉴는 헤더 우클릭 — 작업 카드·프로젝트·백로그와 같은 방식.
-                컬럼 전체를 트리거로 잡으면 작업 카드 메뉴와 중첩되므로 헤더만 잡는다 */}
+            {/* 단계 메뉴는 헤더 우클릭 — 할일 카드·프로젝트·백로그와 같은 방식.
+                컬럼 전체를 트리거로 잡으면 할일 카드 메뉴와 중첩되므로 헤더만 잡는다 */}
             <ContextMenu>
               <ContextMenuTrigger asChild>
                 {/* 헤더 어디를 눌러도 단계 상세가 열린다 */}
@@ -165,7 +165,7 @@ export function ProjectBoard({
                         boardActions.deleteTask(projectId, task.id)
                       }
                     >
-                      작업 삭제
+                      할일 삭제
                     </ContextMenuItem>
                   </ContextMenuContent>
                 </ContextMenu>
@@ -174,8 +174,8 @@ export function ProjectBoard({
                 <div className="flex w-full shrink-0 items-center gap-2 rounded-[8px] border-[1.5px] border-primary bg-background px-2.5 py-2 shadow-xs">
                   <input
                     autoFocus
-                    placeholder="작업명 입력 후 Enter"
-                    aria-label={`${stage.name} 작업 추가`}
+                    placeholder="할일명 입력 후 Enter"
+                    aria-label={`${stage.name} 할일 추가`}
                     className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
                     onKeyDown={(event) => {
                       if (event.key === "Enter") {
@@ -201,7 +201,7 @@ export function ProjectBoard({
                   onClick={() => setAddingStageId(stage.id)}
                   className="flex w-full shrink-0 items-center rounded-[8px] py-[5px] pl-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
                 >
-                  ＋ 작업
+                  ＋ 할일
                 </button>
               )}
             </div>

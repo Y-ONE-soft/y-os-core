@@ -12,12 +12,12 @@ export function MyWorkPage() {
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 px-6 pb-6 pt-5">
       <header className="flex shrink-0 flex-col gap-1.5">
-        <h1 className="text-[22px] font-semibold">내 작업</h1>
+        <h1 className="text-[22px] font-semibold">내 할일</h1>
         <p className="text-[13px] text-muted-foreground">
           백로그를 날짜로 드래그해 일정을 잡으세요
         </p>
       </header>
-      <nav aria-label="내 작업 뷰 전환" className="shrink-0">
+      <nav aria-label="내 할일 뷰 전환" className="shrink-0">
         <ul className="flex items-center gap-1">
           {VIEW_TABS.map((tab) => {
             const active = tab === ACTIVE_VIEW;
@@ -51,7 +51,7 @@ export function MyWorkPage() {
           </button>
         ))}
         <p className="text-[11px] text-muted-foreground">
-          뷰에만 적용 · &lsquo;내 작업&rsquo;과 독립
+          뷰에만 적용 · &lsquo;내 할일&rsquo;과 독립
         </p>
       </div>
       <div className="flex min-h-0 flex-1 items-stretch gap-4">

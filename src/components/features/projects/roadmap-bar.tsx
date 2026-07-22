@@ -37,7 +37,7 @@ export function RoadmapBar({
   endDate?: string;
   /** 함수를 넘기면 드래그 미리보기 날짜로 라벨을 다시 그린다 */
   label: string | ((start: string, end?: string) => string);
-  /** 단계 순번 — 내 작업 캘린더와 같은 원형 배지로 표시 */
+  /** 단계 순번 — 내 할일 캘린더와 같은 원형 배지로 표시 */
   badge?: number;
   onClick?: () => void;
   title?: string;
