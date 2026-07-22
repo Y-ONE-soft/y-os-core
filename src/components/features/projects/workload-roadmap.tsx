@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ export function WorkloadRoadmap({
   sections: RoadmapSection[];
   onOpenStage?: (projectId: string, stageId: string) => void;
 }) {
+  const router = useRouter();
   const boardState = useBoardState();
   const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
   const [range, setRange] = useState<RoadmapRange>("주");
@@ -262,6 +264,12 @@ export function WorkloadRoadmap({
                                 startDate={projectStart}
                                 endDate={projectEnd ?? undefined}
                                 label={`전체 ${overallPercent}%`}
+                                title={`${project.name} 상세 열기`}
+                                // RoadmapBar가 드래그와 클릭을 구분하므로(DRAG_THRESHOLD)
+                                // 막대를 끌어 옮긴 뒤에는 이동이 일어나지 않는다
+                                onClick={() =>
+                                  router.push(`/projects/${project.id}`)
+                                }
                               />
                             )}
                           </div>

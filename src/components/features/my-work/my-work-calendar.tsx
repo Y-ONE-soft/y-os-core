@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 import {
@@ -66,21 +67,32 @@ function shade(hex: string, factor: number) {
   return `#${hex2(channel(1))}${hex2(channel(3))}${hex2(channel(5))}`;
 }
 
-/** 프로젝트 박스 — 그 프로젝트의 단계 줄과 할일 줄을 함께 감싼다. */
+/** 프로젝트 박스 — 그 프로젝트의 단계 줄과 할일 줄을 함께 감싼다. 박스를 누르면 상세로. */
 function ProjectBoxItem({
   box,
   project,
+  draggingBacklog,
 }: {
   box: ProjectBox;
   project: CalendarProject | undefined;
+  /** 백로그 할일을 드래그하는 동안엔 박스를 투명하게 만들어 아래 날짜 칸의 드롭을 막지 않는다 */
+  draggingBacklog: boolean;
 }) {
   const color = project?.color ?? "#71717a";
 
   return (
-    <div
-      aria-hidden
+    <Link
+      href={`/projects/${box.project}`}
+      title={project ? `${project.name} 상세 열기` : undefined}
+      // a 기본 드래그를 끈다 — 박스를 잡아끌면 링크 이미지 드래그가 시작돼 거슬린다
+      draggable={false}
       className={cn(
-        "pointer-events-none absolute border",
+        "absolute block border transition-colors",
+        // 박스 위에 겹쳐 그려지는 단계 막대·할일 칩은 DOM상 뒤 형제라 위에 쌓인다.
+        // 따라서 그 위를 누르면 그것들이 클릭을 받고, 박스의 빈 영역만 이 링크가 받는다.
+        // 단, HTML5 드롭은 pointer-events가 auto인 최상위 요소가 가로채므로, 백로그를
+        // 끄는 동안에는 박스를 pointer-events-none으로 돌려 아래 날짜 칸이 드롭을 받게 한다.
+        draggingBacklog ? "pointer-events-none" : "pointer-events-auto hover:brightness-95",
         // 주 경계에서 잘린 면은 열어 둬야 다음 주로 이어진 한 범위로 읽힌다
         box.continuesLeft ? "border-l-0" : "rounded-l-[2px]",
         box.continuesRight ? "border-r-0" : "rounded-r-[2px]",
@@ -99,7 +111,7 @@ function ProjectBoxItem({
       {/* 프로젝트 이름은 범위가 시작하는 주에만 — 주마다 반복하지 않는다 */}
       {!box.continuesLeft && project && (
         <span
-          className="absolute right-1 top-0.5 max-w-full truncate text-[9px] font-medium"
+          className="absolute right-1 top-0.5 max-w-[45%] truncate text-[9px] font-medium"
           style={{ color: hexToRgba(color, 0.75) }}
         >
           {project.name}
@@ -107,7 +119,7 @@ function ProjectBoxItem({
       )}
       {/* 할일이 늘어도 박스는 한 덩어리로 둔다 — 줄 구분선을 그으면 프로젝트가
           여러 개로 쪼개진 것처럼 읽힌다 */}
-    </div>
+    </Link>
   );
 }
 
@@ -343,6 +355,10 @@ export function MyWorkCalendar({
   const rootRef = useRef<HTMLDivElement>(null);
   // 백로그에서 끌어온 할일이 놓일 날짜 칸 — 어디에 떨어지는지 보이게 한다
   const [dropDate, setDropDate] = useState<string | null>(null);
+  // 백로그 드래그가 캘린더 위에 있는 동안 true. 프로젝트 박스를 pointer-events-none으로
+  // 돌려, 박스가 덮은 날짜 칸에도 백로그를 떨어뜨릴 수 있게 한다(박스는 클릭 대상이라
+  // 평소 pointer-events-auto이고, 그대로 두면 HTML5 드롭을 가로챈다).
+  const [draggingBacklog, setDraggingBacklog] = useState(false);
   const weekRefs = useRef<(HTMLDivElement | null)[]>([]);
   // 주 경계로 잘린 단계 조각을 하나로 묶어 강조한다 (CSS :hover는 조각 단위)
   const [hoveredStageId, setHoveredStageId] = useState<string | null>(null);
@@ -428,6 +444,19 @@ export function MyWorkCalendar({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
+      // 백로그 드래그 감지 — 박스가 auto인 첫 순간에도 잡도록 캡처 단계에서 켠다.
+      // 끄는 신호는 드롭(성공)과 캘린더 밖 이탈(취소) 둘 다 — dragend는 드래그 소스
+      // 요소에서 발생해 여기로 오지 않으므로 의존하지 않는다.
+      onDragOverCapture={(event) => {
+        if (isTaskDrag(event) && !draggingBacklog) setDraggingBacklog(true);
+      }}
+      onDropCapture={() => setDraggingBacklog(false)}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+          setDraggingBacklog(false);
+          setDropDate(null);
+        }
+      }}
     >
       <div className="flex w-full">
         {WEEKDAYS.map((day) => (
@@ -511,6 +540,7 @@ export function MyWorkCalendar({
                 key={box.project}
                 box={box}
                 project={projects[box.project]}
+                draggingBacklog={draggingBacklog}
               />
             ))}
             {overlays.map((overlay) => (
