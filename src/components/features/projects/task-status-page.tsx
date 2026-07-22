@@ -12,6 +12,7 @@ import {
   type RoadmapSection,
 } from "@/components/features/projects/workload-roadmap";
 import { StageDetailOverlay } from "@/components/features/projects/stage-detail-overlay";
+import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
 import { TaskStatusCalendar } from "@/components/features/projects/task-status-calendar";
 
 const VIEW_OPTIONS = ["로드맵", "담당자", "캘린더"] as const;
@@ -88,6 +89,7 @@ export function TaskStatusPage() {
     stageId: string;
   } | null>(null);
   const [activeView, setActiveView] = useState<ViewOption>("로드맵");
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
 
   if (loading) {
     return (
@@ -225,6 +227,7 @@ export function TaskStatusPage() {
           onOpenStage={(projectId, stageId) =>
             setDetailStage({ projectId, stageId })
           }
+          onOpenTask={setDetailTaskId}
         />
       ) : (
         <WorkloadRoadmap
@@ -253,6 +256,10 @@ export function TaskStatusPage() {
           }}
         />
       )}
+      <TaskDetailOverlay
+        taskId={detailTaskId}
+        onClose={() => setDetailTaskId(null)}
+      />
     </div>
   );
 }
