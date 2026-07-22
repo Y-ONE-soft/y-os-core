@@ -1,3 +1,4 @@
+import { SessionProvider } from "@/components/features/auth/session-context";
 import { ProjectStoreProvider } from "@/components/features/projects/project-store";
 import { ContextNav } from "@/components/layout/context-nav";
 import { GlobalHeader } from "@/components/layout/global-header";
@@ -9,7 +10,8 @@ export default function MainLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ShellProvider>
+    <SessionProvider>
+      <ShellProvider>
       <ProjectStoreProvider>
         <div className="flex h-dvh flex-col">
           <GlobalHeader />
@@ -21,6 +23,7 @@ export default function MainLayout({
           </div>
         </div>
       </ProjectStoreProvider>
-    </ShellProvider>
+      </ShellProvider>
+    </SessionProvider>
   );
 }

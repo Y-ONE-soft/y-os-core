@@ -29,6 +29,7 @@ Next.js 16 + shadcn/ui 기반의 가볍고 빠른 웹 서비스.
    - Claude 세션: EnterWorktree로 생성(워크트리 이름은 ASCII만 허용) → 진입 직후 `git branch -m <한글-작업명>`
    - 수동/터미널: `.\scripts\new-work.ps1 <한글-작업명>` → `.claude/worktrees/<이름>`에 브랜치+워크트리 생성 + `npm install`. Claude 세션은 EnterWorktree의 `path`로 진입해 이어받는다.
    - 새 워크트리는 최초 1회 `npm install` 필요. dev 서버는 포트 분리(`npm run dev -- -p 3001`).
+   - DB 등 env가 필요한 태스크는 워크트리에서 `vercel link --yes --project y-os-core --scope project-hosting-center` → `vercel env pull .env.local`로 내려받는다. **`--project`를 빼먹으면 폴더명으로 새 Vercel 프로젝트가 생성되니 주의.**
 3. **태스크 사이클 반복** — 아래 태스크 사이클로 태스크를 하나씩 끝낸다.
 4. **PR 생성** — 마지막 태스크의 커밋 승인은 PR 생성→머지→최신화→정리까지 일괄 진행 승인으로 본다. push 후 PR을 만들고, **PR 본문에 작업 내용을 기록**한다(태스크·커밋 목록, 작업 결과 문서 링크, 검증 결과).
    - push 이후에만 확정되는 검증(프리뷰 배포 등)은 해당 문서에 "사후 검증 결과 (추록)"를 보완하고 docs 커밋으로 PR에 포함한 뒤 머지한다.
@@ -98,7 +99,7 @@ src
 ├─ types                  # zod로 애매한 타입, z.infer 재노출
 ├─ hooks                  # 커스텀 훅
 ├─ generated              # 자동 생성물 (.gitignore 등록, 커밋 금지)
-└─ middleware.ts          # 인증 체크/리다이렉트
+└─ proxy.ts               # 인증 체크/리다이렉트 (Next 16: 구 middleware.ts의 대체 규약)
 ```
 
 - 도메인 예시 `items`는 실제로는 `problems`(문제)·`concepts`(개념) 등으로 만든다.
