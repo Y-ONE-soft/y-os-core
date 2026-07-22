@@ -14,13 +14,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSession } from "@/components/features/auth/session-context";
+import { useRequests } from "@/hooks/use-requests";
 import type { SessionUser } from "@/types/auth";
-
-/**
- * 알림 도메인이 아직 없어 Figma 예시 값을 자리표시로 둔다.
- * (사이드바 "문의함" 배지와 동일한 방식 — context-nav.tsx)
- */
-const NOTIFICATION_COUNT = 2;
 
 /** 항목 공통 스펙 — Figma 187:842 등: 13px regular, px 8 / py 7, 라운딩 6 */
 const ITEM_CLASS = "gap-2 rounded-[6px] px-2 py-[7px] text-[13px] font-normal";
@@ -33,6 +28,12 @@ function roleLabel(user: SessionUser) {
 export function UserMenu() {
   const { user, loading, signOut } = useSession();
   const router = useRouter();
+  // 배지는 "내가 처리할 것"만 센다 — 받은 요청 중 아직 응답하지 않은 건수.
+  // 보낸 요청은 상대가 처리할 몫이라 제외한다.
+  const { requests } = useRequests();
+  const pendingCount = requests.filter(
+    (item) => item.status === "PENDING" && item.direction === "received",
+  ).length;
 
   if (loading) {
     // 트리거와 동일한 한 줄·32px 높이 — 로딩 → 로드 전환 시 헤더가 흔들리지 않도록
@@ -102,11 +103,17 @@ export function UserMenu() {
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="mx-0 my-0" />
-        <DropdownMenuItem className={ITEM_CLASS}>
+        <DropdownMenuItem
+          className={ITEM_CLASS}
+          onSelect={() => router.push("/notifications")}
+        >
           <span className="flex-1">알림</span>
-          <Badge className="h-auto rounded-[8px] px-1.5 py-px text-[10px] font-medium">
-            {NOTIFICATION_COUNT}
-          </Badge>
+          {/* 처리할 게 없으면 배지를 숨긴다 — 0이 붙어 있으면 볼 게 있는 것처럼 읽힌다 */}
+          {pendingCount > 0 && (
+            <Badge className="h-auto rounded-[8px] px-1.5 py-px text-[10px] font-medium">
+              {pendingCount}
+            </Badge>
+          )}
         </DropdownMenuItem>
         <DropdownMenuItem
           className={ITEM_CLASS}
@@ -114,8 +121,6 @@ export function UserMenu() {
         >
           내 정보
         </DropdownMenuItem>
-        <DropdownMenuItem className={ITEM_CLASS}>프리셋 관리</DropdownMenuItem>
-        <DropdownMenuItem className={ITEM_CLASS}>설정</DropdownMenuItem>
         <DropdownMenuSeparator className="mx-0 my-0" />
         <DropdownMenuItem
           className={ITEM_CLASS}
