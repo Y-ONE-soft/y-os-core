@@ -9,6 +9,7 @@ import {
   createStageApi,
   createStageCommentApi,
   createTaskApi,
+  deleteStageApi,
   deleteTaskApi,
   patchStageApi,
   patchTaskApi,
@@ -110,6 +111,21 @@ export const boardActions = {
         : created,
     );
     return id;
+  },
+  /**
+   * 단계 삭제 — 서버(deleteStage)와 동일하게 안의 작업은 지우지 않고 백로그로
+   * 옮긴다. 낙관적 값이 서버와 어긋나면 새로고침 시 작업이 사라졌다 되살아난다.
+   */
+  deleteStage(projectId: string, stageId: string) {
+    updateBoard(projectId, (board) => {
+      const target = board.stages.find((stage) => stage.id === stageId);
+      return {
+        ...board,
+        backlog: [...board.backlog, ...(target?.tasks ?? [])],
+        stages: board.stages.filter((stage) => stage.id !== stageId),
+      };
+    });
+    cache.persist(deleteStageApi(stageId));
   },
   updateStage(
     projectId: string,
