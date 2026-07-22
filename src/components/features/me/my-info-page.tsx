@@ -61,7 +61,7 @@ export function MyInfoPage() {
         <Skeleton className="h-4 w-64" />
         <div className="flex gap-4 pt-1">
           <Skeleton className="h-[236px] w-[280px] rounded-[8px]" />
-          <Skeleton className="h-[236px] max-w-[560px] flex-1 rounded-[8px]" />
+          <Skeleton className="h-[236px] flex-1 rounded-[8px]" />
         </div>
       </div>
     );
@@ -214,7 +214,7 @@ function MyInfoForm({
         <form
           onSubmit={save}
           aria-labelledby="me-profile"
-          className={cn("flex min-w-[320px] max-w-[560px] flex-1 flex-col", PANEL)}
+          className={cn("flex min-w-[320px] flex-1 flex-col", PANEL)}
         >
           <div className="flex flex-col gap-4 p-5">
             <h2 id="me-profile" className="text-sm font-semibold">
