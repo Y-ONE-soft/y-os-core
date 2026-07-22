@@ -62,3 +62,12 @@ export function persist(operation: Promise<unknown>) {
     void refresh();
   });
 }
+
+/**
+ * 성공해도 서버 상태로 다시 맞춘다 — **서버가 값을 채워 주는** 생성에 쓴다
+ * (할일 담당자 기본값처럼). 같은 규칙을 클라이언트에도 복제하면 두 곳이
+ * 어긋나므로, 낙관적 반영은 그대로 두되 응답 후 서버 값으로 덮는다.
+ */
+export function persistAndSync(operation: Promise<unknown>) {
+  persist(operation.then(() => refresh()));
+}
