@@ -108,6 +108,7 @@ function OverlayItem({
   onHoverStage,
   onOpenStage,
   onOpenTask,
+  onToggleTask,
   onDragStart,
 }: {
   overlay: PlacedOverlay;
@@ -116,6 +117,8 @@ function OverlayItem({
   onHoverStage?: (stageId: string | null) => void;
   onOpenStage?: (projectId: string, stageId: string) => void;
   onOpenTask?: (taskId: string) => void;
+  /** 칩의 체크박스 — 상세를 열지 않고 완료를 토글한다 */
+  onToggleTask?: (taskId: string) => void;
   onDragStart?: (event: React.PointerEvent, target: DragTarget) => void;
 }) {
   const color = overlay.color;
@@ -228,18 +231,13 @@ function OverlayItem({
     );
   }
 
-  // 단계 칩과 동일하게 클릭 시 상세를 연다. 드래그와의 구분은 캘린더 루트의
-  // moved 플래그가 처리한다 — 움직이지 않았을 때만 onClick이 살아난다.
+  // 체크박스는 그 자리에서 완료를 토글하고, 나머지 영역은 상세를 연다.
+  // 버튼 중첩은 불가능하므로 컨테이너를 두고 둘을 나란히 놓는다.
+  // 드래그와 클릭의 구분은 캘린더 루트의 moved 플래그가 처리한다.
   return (
-    <button
-      type="button"
-      title={overlay.label}
-      onPointerDown={(event) =>
-        onDragStart?.(event, { kind: "task", taskId: overlay.taskId })
-      }
-      onClick={() => onOpenTask?.(overlay.taskId)}
+    <div
       className={cn(
-        "absolute flex items-center gap-1 overflow-hidden rounded-[4px] px-1 text-left transition-shadow hover:ring-1 focus-visible:ring-2 focus-visible:outline-none",
+        "absolute flex items-center gap-1 overflow-hidden rounded-[4px] px-1",
         onDragStart && "cursor-grab active:cursor-grabbing",
       )}
       style={{
@@ -250,23 +248,52 @@ function OverlayItem({
         backgroundColor: overlay.done ? hexToRgba(text, 0.1) : undefined,
       }}
     >
-      <span
-        aria-hidden
+      <button
+        type="button"
+        role="checkbox"
+        aria-checked={Boolean(overlay.done)}
+        aria-label={`${overlay.label} 완료`}
+        // 체크박스에서 시작한 포인터는 드래그로 넘기지 않는다 — 칩을 옮기려다
+        // 완료가 눌리거나, 체크하려다 일정이 움직이는 일을 막는다
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggleTask?.(overlay.taskId);
+        }}
         className={cn(
-          "flex size-[9px] shrink-0 items-center justify-center rounded-[2px] text-[7px] text-white",
+          "flex size-[11px] shrink-0 items-center justify-center rounded-[2px] text-[7px] text-white transition-shadow focus-visible:outline-none focus-visible:ring-2",
           !overlay.done && "border-[1.2px]",
         )}
-        style={overlay.done ? { backgroundColor: text } : { borderColor: text }}
+        style={{
+          ...(overlay.done
+            ? { backgroundColor: text }
+            : { borderColor: text }),
+          ["--tw-ring-color" as string]: hexToRgba(color, 0.8),
+        }}
       >
         {overlay.done ? "✓" : ""}
-      </span>
-      <span
-        className={cn("truncate text-[10px] font-medium", overlay.done && "line-through")}
-        style={{ color: overlay.done ? hexToRgba(text, 0.7) : text }}
+      </button>
+      <button
+        type="button"
+        title={overlay.label}
+        onPointerDown={(event) =>
+          onDragStart?.(event, { kind: "task", taskId: overlay.taskId })
+        }
+        onClick={() => onOpenTask?.(overlay.taskId)}
+        className="min-w-0 flex-1 truncate text-left transition-shadow hover:ring-1 focus-visible:outline-none focus-visible:ring-2"
+        style={{ ["--tw-ring-color" as string]: hexToRgba(color, 0.8) }}
       >
-        {overlay.label}
-      </span>
-    </button>
+        <span
+          className={cn(
+            "truncate text-[10px] font-medium",
+            overlay.done && "line-through",
+          )}
+          style={{ color: overlay.done ? hexToRgba(text, 0.7) : text }}
+        >
+          {overlay.label}
+        </span>
+      </button>
+    </div>
   );
 }
 
@@ -276,6 +303,7 @@ export function MyWorkCalendar({
   projects,
   onOpenStage,
   onOpenTask,
+  onToggleTask,
   onDrag,
   onDropTask,
 }: {
@@ -284,6 +312,8 @@ export function MyWorkCalendar({
   projects: Record<string, CalendarProject>;
   onOpenStage?: (projectId: string, stageId: string) => void;
   onOpenTask?: (taskId: string) => void;
+  /** 캘린더 칩 체크박스로 완료 토글 */
+  onToggleTask?: (taskId: string) => void;
   /** 드래그 중(move)에는 미리보기, 손을 뗄 때(commit) 저장한다 */
   onDrag?: (
     target: DragTarget,
@@ -475,6 +505,7 @@ export function MyWorkCalendar({
                 onHoverStage={setHoveredStageId}
                 onOpenStage={onOpenStage}
                 onOpenTask={onOpenTask}
+                onToggleTask={onToggleTask}
                 onDragStart={onDrag ? handleDragStart : undefined}
               />
             ))}
