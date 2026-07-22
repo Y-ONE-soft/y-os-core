@@ -16,6 +16,10 @@ import {
 } from "@/components/features/projects/board-store";
 import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
 import { formatShort } from "@/components/features/projects/roadmap-utils";
+import {
+  getTaskDragData,
+  isTaskDrag,
+} from "@/components/features/projects/task-drag";
 
 export function ProjectBoard({
   projectId,
@@ -29,6 +33,8 @@ export function ProjectBoard({
   const { stages } = useProjectBoard(projectId);
   const [addingStageId, setAddingStageId] = useState<string | null>(null);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+  // 드롭 대상으로 잡힌 컬럼 — 어디에 놓이는지 보이게 하이라이트한다
+  const [dropStageId, setDropStageId] = useState<string | null>(null);
 
   return (
     <div className="flex min-h-0 flex-1 gap-2.5 overflow-x-auto">
@@ -40,7 +46,32 @@ export function ProjectBoard({
         return (
           <section
             key={stage.id}
-            className="flex min-h-0 w-[260px] shrink-0 flex-col gap-1.5 rounded-[8px] bg-border p-2"
+            onDragOver={(event) => {
+              if (!isTaskDrag(event)) return;
+              event.preventDefault(); // 기본값은 '드롭 금지'라 막아줘야 놓을 수 있다
+              event.dataTransfer.dropEffect = "move";
+              setDropStageId(stage.id);
+            }}
+            onDragLeave={(event) => {
+              // 자식 위로 옮겨갈 때도 leave가 뜨므로 컬럼 밖으로 나갔을 때만 끈다
+              if (event.currentTarget.contains(event.relatedTarget as Node)) {
+                return;
+              }
+              setDropStageId((prev) => (prev === stage.id ? null : prev));
+            }}
+            onDrop={(event) => {
+              const taskId = getTaskDragData(event);
+              setDropStageId(null);
+              if (!taskId) return;
+              event.preventDefault();
+              // 백로그·다른 단계 어디서 왔든 이 단계로 편입한다.
+              // 예정일은 assignTask가 max(단계 시작일, 오늘)로 잡아 준다.
+              boardActions.assignTask(projectId, taskId, projectId, stage.id);
+            }}
+            className={cn(
+              "flex min-h-0 w-[260px] shrink-0 flex-col gap-1.5 rounded-[8px] bg-border p-2 transition-shadow",
+              dropStageId === stage.id && "ring-2 ring-primary ring-offset-1",
+            )}
           >
             {/* 단계 메뉴는 헤더 우클릭 — 작업 카드·프로젝트·백로그와 같은 방식.
                 컬럼 전체를 트리거로 잡으면 작업 카드 메뉴와 중첩되므로 헤더만 잡는다 */}
