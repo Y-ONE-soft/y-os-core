@@ -117,6 +117,29 @@ src
 - 색상은 임의 값 대신 `globals.css`의 디자인 토큰(`bg-primary` 등) 사용
 - 새 의존성 추가는 신중하게 — 가볍고 빠른 서비스가 목표
 
+## 디자인 규약 (Figma에 없는 화면)
+
+화면 디자인이 Figma(`jimmy-design-system`, fileKey `Vmv6OlcsEHpHnf5vNDVDoX` → `🚀 Y.OS Core`)에 **있으면 그것이 유일한 기준**이다. 노드 id를 코드 주석에 남긴다.
+
+Figma에 없는 화면(내 정보·프리셋 관리 등)은 아래 값을 따른다. 기존 화면에서 실측해 뽑은 것이며, **새 화면이 제각각 굳는 것을 막기 위한 기본값**이다.
+
+| 요소 | 값 |
+|---|---|
+| 페이지 컨테이너 | `flex flex-col gap-4 px-6 pb-6 pt-5` (높이가 필요하면 `h-full min-h-0`) |
+| 페이지 제목 | `text-[22px] font-semibold` + 부제 `text-[13px] text-muted-foreground` |
+| 패널 | `rounded-[8px] border bg-background shadow-[0px_1px_3px_0px_rgba(0,0,0,0.05)]` |
+| 패널 — 전폭 대형 섹션 | 위와 같되 `rounded-[12px] w-full overflow-hidden` (로드맵·타임라인처럼 가로로 꽉 찬 것만) |
+| 섹션 제목 | `text-sm font-semibold` |
+| 필드 라벨 | `text-xs font-medium text-muted-foreground` |
+| 입력 | `h-9 rounded-[8px]` |
+| 칩·배지 | `rounded-full px-2 py-0.5 text-[11px] font-medium` + `bg-accent`(강조) 또는 `bg-muted`(보조) |
+
+**페이지 제목은 두 갈래로 갈라져 있다.** 작업 현황·프로젝트 상세는 `p-6` + `text-xl`, 내 할일·내 정보는 `px-6 pb-6 pt-5` + `text-[22px]`를 쓴다. 둘 다 Figma에서 왔으므로 **기존 화면을 임의로 통일하지 않는다.** 새 화면은 위 표(후자)를 따르고, 통일이 필요하면 디자인 확인을 거쳐 별도 사이클로 다룬다.
+
+- 색상은 반드시 토큰(`bg-muted`·`text-muted-foreground` 등). 패널 그림자만 예외적으로 임의 값이며 위 문자열을 그대로 복사해 쓴다.
+- 읽기 전용 값은 `disabled` 입력이 아니라 텍스트로 — 입력처럼 보이면 고칠 수 있다고 오해한다.
+- 폼 액션은 패널 하단 밴드(`border-t bg-muted/40 px-5 py-3`)에 우측 정렬.
+
 ## 주의사항
 
 - **`npm audit fix --force` 실행 금지** — Next.js 내부 번들 postcss 관련 오탐이며, 자동 수정이 Next.js 9로 다운그레이드해 버린다. (상세: docs/1번 문서)

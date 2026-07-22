@@ -43,7 +43,7 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id} className="text-xs text-muted-foreground">
+      <Label htmlFor={id} className="text-xs font-medium text-muted-foreground">
         {label}
       </Label>
       {children}
@@ -185,7 +185,7 @@ function MyInfoForm({
           <div className="h-px bg-border" />
 
           <div className="flex flex-col">
-            <h2 id="me-account" className="pb-1 text-xs font-semibold">
+            <h2 id="me-account" className="pb-1.5 text-sm font-semibold">
               계정
             </h2>
             {/* 아이디는 이름 아래 @{username}으로 이미 보인다 */}
