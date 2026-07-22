@@ -5,6 +5,7 @@ import { MyWorkCalendarPanel } from "@/components/features/my-work/my-work-calen
 import { MyWorkTimelinePanel } from "@/components/features/my-work/my-work-timeline-panel";
 import { MyWorkRequests } from "@/components/features/my-work/my-work-requests";
 import { MyWorkBacklog } from "@/components/features/my-work/my-work-backlog";
+import { MyWorkFilters } from "@/components/features/my-work/my-work-filters";
 import { ProjectCreateButton } from "@/components/features/projects/project-create-button";
 
 export type MyWorkView = "calendar" | "timeline";
@@ -13,8 +14,6 @@ const VIEW_TABS: { key: MyWorkView; label: string; href: string }[] = [
   { key: "calendar", label: "캘린더", href: "/projects/my-tasks" },
   { key: "timeline", label: "타임라인", href: "/projects/my-tasks?view=timeline" },
 ];
-
-const FILTERS = ["🔍 필터", "담당자 1 ▾", "프로젝트 ▾"] as const;
 
 export function MyWorkPage({ view }: { view: MyWorkView }) {
   return (
@@ -51,20 +50,7 @@ export function MyWorkPage({ view }: { view: MyWorkView }) {
           })}
         </ul>
       </nav>
-      <div className="flex shrink-0 items-center gap-2">
-        {FILTERS.map((filter) => (
-          <button
-            key={filter}
-            type="button"
-            className="rounded-[8px] border px-2.5 py-[5px] text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-          >
-            {filter}
-          </button>
-        ))}
-        <p className="text-[11px] text-muted-foreground">
-          뷰에만 적용 · &lsquo;내 할일&rsquo;과 독립
-        </p>
-      </div>
+      <MyWorkFilters />
       <div className="flex min-h-0 flex-1 items-stretch gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           {view === "timeline" ? <MyWorkTimelinePanel /> : <MyWorkCalendarPanel />}
