@@ -2,7 +2,13 @@
 // 범위(일/주/개월/분기)는 "화면에 맞추는 창"이 아니라 **확대 배율**이다.
 // 타임라인은 오늘 앞뒤로 길게 펼쳐지고, 사용자는 하단 가로 스크롤로 이동한다.
 
-import { DAY_MS, dayOffset } from "@/components/features/projects/roadmap-utils";
+import {
+  DAY_MS,
+  addDays,
+  dayOffset,
+  fromISO,
+  toISO,
+} from "@/components/features/projects/roadmap-utils";
 
 export const RANGE_OPTIONS = ["일", "주", "개월", "분기"] as const;
 export type RoadmapRange = (typeof RANGE_OPTIONS)[number];
@@ -47,24 +53,6 @@ const RANGE_CONFIG: Record<RoadmapRange, RangeConfig> = {
   개월: { dayWidth: 6, monthsBefore: 6, monthsAfter: 12, unit: "month" },
   분기: { dayWidth: 2.4, monthsBefore: 12, monthsAfter: 24, unit: "quarter" },
 };
-
-function toISO(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function fromISO(iso: string) {
-  const [year, month, day] = iso.split("-").map(Number);
-  return new Date(year, month - 1, day);
-}
-
-function addDays(date: Date, amount: number) {
-  const next = new Date(date);
-  next.setDate(next.getDate() + amount);
-  return next;
-}
 
 function addMonths(date: Date, amount: number) {
   return new Date(date.getFullYear(), date.getMonth() + amount, date.getDate());
