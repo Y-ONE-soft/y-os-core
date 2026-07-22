@@ -95,19 +95,6 @@ export function StageAddOverlay({
               {projectName} · 로드맵
             </p>
           </div>
-          <Button
-            variant="outline"
-            aria-pressed={showDeadline}
-            onClick={() => setShowDeadline((prev) => !prev)}
-            title="로드맵·보드에 이 단계의 마감을 표시합니다"
-            className={cn(
-              "rounded-[8px]",
-              showDeadline &&
-                "border-primary bg-primary/10 text-primary hover:bg-primary/15",
-            )}
-          >
-            {showDeadline ? "☑" : "☐"} 데드라인 표시
-          </Button>
         </header>
         <div className="flex min-h-0 flex-1 items-stretch">
           <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-10 py-8">
@@ -200,6 +187,35 @@ export function StageAddOverlay({
                 </p>
               )}
             </div>
+            <button
+              type="button"
+              aria-pressed={showDeadline}
+              onClick={() => setShowDeadline((prev) => !prev)}
+              className={cn(
+                "flex w-full items-start gap-2.5 rounded-[8px] border p-3 text-left transition-colors",
+                showDeadline
+                  ? "border-primary bg-primary/5"
+                  : "bg-background hover:bg-accent/40",
+              )}
+            >
+              <span
+                aria-hidden
+                className={cn(
+                  "mt-px flex size-4 shrink-0 items-center justify-center rounded-[4px] border text-[10px] leading-none",
+                  showDeadline
+                    ? "border-primary bg-primary text-primary-foreground"
+                    : "border-input bg-background",
+                )}
+              >
+                {showDeadline ? "✓" : ""}
+              </span>
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="text-[13px] font-medium">데드라인 표시</span>
+                <span className="text-[11px] leading-snug text-muted-foreground">
+                  캘린더에 이 단계의 마감일 라벨을 붙입니다
+                </span>
+              </span>
+            </button>
             <Button
               variant="outline"
               className="w-full"

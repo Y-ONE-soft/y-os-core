@@ -33,10 +33,10 @@ export function ProjectBoard({
   return (
     <div className="flex min-h-0 flex-1 gap-2.5 overflow-x-auto">
       {stages.map((stage) => {
-        const countLabel =
-          stage.showDeadline && stage.startDate
-            ? `${formatShort(stage.startDate)}~${stage.endDate ? formatShort(stage.endDate) : ""} · ${stage.tasks.length}`
-            : `${stage.tasks.length}`;
+        // 기간이 있으면 항상 표기한다 — 데드라인 표시는 캘린더 마감 라벨 전용
+        const countLabel = stage.startDate
+          ? `${formatShort(stage.startDate)}~${stage.endDate ? formatShort(stage.endDate) : ""} · ${stage.tasks.length}`
+          : `${stage.tasks.length}`;
         return (
           <section
             key={stage.id}
