@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 
 import { PROJECT_COLORS } from "@/components/features/projects/project-store";
+import { scheduleFor } from "@/components/features/projects/roadmap-utils";
 import * as cache from "@/components/features/projects/workspace-cache";
 import {
   createStageApi,
@@ -150,23 +151,35 @@ export const boardActions = {
     }));
     cache.persist(createTaskApi({ id, projectId, stageId: null, name }));
   },
+  /** 프로젝트 없이 작업을 만든다 — 내 작업 백로그의 기본 생성 경로 */
+  addUnassignedTask(name: string) {
+    const id = `tk-${crypto.randomUUID()}`;
+    cache.apply((prev) => ({
+      ...prev,
+      unassigned: [...prev.unassigned, { id, name, done: false }],
+    }));
+    cache.persist(createTaskApi({ id, projectId: null, stageId: null, name }));
+  },
   /**
-   * 작업의 소속(프로젝트·단계)을 한 번에 지정한다. `stageId: null`은 백로그를 뜻하며
-   * 같은 프로젝트 안의 단계 이동, 다른 프로젝트로의 이동, 백로그 편입을 모두 다룬다.
+   * 작업의 소속(프로젝트·단계)을 한 번에 지정한다. 프로젝트 `null`은 미배정,
+   * 단계 `null`은 백로그를 뜻하며 단계 이동·프로젝트 이동·미배정 전환을 모두 다룬다.
    */
   assignTask(
-    fromProjectId: string,
+    fromProjectId: string | null,
     taskId: string,
-    toProjectId: string,
+    toProjectId: string | null,
     toStageId: string | null,
   ) {
-    const from = cache.getSnapshot().boards[fromProjectId];
+    const snapshot = cache.getSnapshot();
+    const from = fromProjectId === null ? null : snapshot.boards[fromProjectId];
     const currentStage = from?.stages.find((stage) =>
       stage.tasks.some((candidate) => candidate.id === taskId),
     );
     const task =
-      currentStage?.tasks.find((candidate) => candidate.id === taskId) ??
-      from?.backlog.find((candidate) => candidate.id === taskId);
+      fromProjectId === null
+        ? snapshot.unassigned.find((candidate) => candidate.id === taskId)
+        : (currentStage?.tasks.find((candidate) => candidate.id === taskId) ??
+          from?.backlog.find((candidate) => candidate.id === taskId));
     if (!task) return;
     if (
       fromProjectId === toProjectId &&
@@ -175,92 +188,145 @@ export const boardActions = {
       return;
     }
 
-    // 출발 보드에서 제거 (단계·백로그 어느 쪽이든)
-    updateBoard(fromProjectId, (board) => ({
-      ...board,
-      backlog: board.backlog.filter((item) => item.id !== taskId),
-      stages: board.stages.map((stage) => ({
-        ...stage,
-        tasks: stage.tasks.filter((item) => item.id !== taskId),
-      })),
-    }));
-    // 대상 보드에 추가
-    updateBoard(toProjectId, (board) =>
-      toStageId === null
-        ? { ...board, backlog: [...board.backlog, task] }
-        : {
-            ...board,
-            stages: board.stages.map((stage) =>
-              stage.id === toStageId
-                ? { ...stage, tasks: [...stage.tasks, task] }
-                : stage,
-            ),
-          },
-    );
+    // 출발 위치에서 제거 (미배정·단계·백로그 어느 쪽이든)
+    if (fromProjectId === null) {
+      cache.apply((prev) => ({
+        ...prev,
+        unassigned: prev.unassigned.filter((item) => item.id !== taskId),
+      }));
+    } else {
+      updateBoard(fromProjectId, (board) => ({
+        ...board,
+        backlog: board.backlog.filter((item) => item.id !== taskId),
+        stages: board.stages.map((stage) => ({
+          ...stage,
+          tasks: stage.tasks.filter((item) => item.id !== taskId),
+        })),
+      }));
+    }
+    // 단계에 편입되면 예정일이 잡힌다 — 단계 시작일과 오늘 중 더 늦은 날짜.
+    // 단계를 벗어나면(백로그·미배정) 일정 미정 상태로 되돌린다.
+    const toStage =
+      toProjectId === null || toStageId === null
+        ? undefined
+        : snapshot.boards[toProjectId]?.stages.find(
+            (stage) => stage.id === toStageId,
+          );
+    const scheduledDate = toStageId === null ? null : scheduleFor(toStage?.startDate);
+    const moved: BoardTask = { ...task, scheduledDate: scheduledDate ?? undefined };
+
+    // 대상 위치에 추가
+    if (toProjectId === null) {
+      cache.apply((prev) => ({
+        ...prev,
+        unassigned: [...prev.unassigned, moved],
+      }));
+    } else {
+      updateBoard(toProjectId, (board) =>
+        toStageId === null
+          ? { ...board, backlog: [...board.backlog, moved] }
+          : {
+              ...board,
+              stages: board.stages.map((stage) =>
+                stage.id === toStageId
+                  ? { ...stage, tasks: [...stage.tasks, moved] }
+                  : stage,
+              ),
+            },
+      );
+    }
     cache.persist(
-      patchTaskApi(taskId, { projectId: toProjectId, stageId: toStageId }),
+      patchTaskApi(taskId, {
+        projectId: toProjectId,
+        stageId: toStageId,
+        scheduledDate,
+      }),
     );
   },
-  /** 작업 삭제 — 백로그·단계 어디에 있든 해당 프로젝트 보드에서 제거한다 */
-  deleteTask(projectId: string, taskId: string) {
-    updateBoard(projectId, (board) => ({
-      ...board,
-      backlog: board.backlog.filter((task) => task.id !== taskId),
-      stages: board.stages.map((stage) => ({
-        ...stage,
-        tasks: stage.tasks.filter((task) => task.id !== taskId),
-      })),
-    }));
+  /** 작업 삭제 — 미배정이거나 백로그·단계 어디에 있든 제거한다 */
+  deleteTask(projectId: string | null, taskId: string) {
+    if (projectId === null) {
+      cache.apply((prev) => ({
+        ...prev,
+        unassigned: prev.unassigned.filter((task) => task.id !== taskId),
+      }));
+    } else {
+      updateBoard(projectId, (board) => ({
+        ...board,
+        backlog: board.backlog.filter((task) => task.id !== taskId),
+        stages: board.stages.map((stage) => ({
+          ...stage,
+          tasks: stage.tasks.filter((task) => task.id !== taskId),
+        })),
+      }));
+    }
     cache.persist(deleteTaskApi(taskId));
   },
-  toggleTask(projectId: string, stageId: string | null, taskId: string) {
-    const board = cache.getSnapshot().boards[projectId];
+  toggleTask(projectId: string | null, stageId: string | null, taskId: string) {
+    const snapshot = cache.getSnapshot();
+    const board = projectId === null ? null : snapshot.boards[projectId];
     const current =
-      stageId === null
-        ? board?.backlog.find((task) => task.id === taskId)
-        : board?.stages
-            .find((stage) => stage.id === stageId)
-            ?.tasks.find((task) => task.id === taskId);
+      projectId === null
+        ? snapshot.unassigned.find((task) => task.id === taskId)
+        : stageId === null
+          ? board?.backlog.find((task) => task.id === taskId)
+          : board?.stages
+              .find((stage) => stage.id === stageId)
+              ?.tasks.find((task) => task.id === taskId);
     if (!current) return;
     const done = !current.done;
 
     const toggle = (task: BoardTask) =>
       task.id === taskId ? { ...task, done } : task;
-    updateBoard(projectId, (prev) =>
-      stageId === null
-        ? { ...prev, backlog: prev.backlog.map(toggle) }
-        : {
-            ...prev,
-            stages: prev.stages.map((stage) =>
-              stage.id === stageId
-                ? { ...stage, tasks: stage.tasks.map(toggle) }
-                : stage,
-            ),
-          },
-    );
+    if (projectId === null) {
+      cache.apply((prev) => ({
+        ...prev,
+        unassigned: prev.unassigned.map(toggle),
+      }));
+    } else {
+      updateBoard(projectId, (prev) =>
+        stageId === null
+          ? { ...prev, backlog: prev.backlog.map(toggle) }
+          : {
+              ...prev,
+              stages: prev.stages.map((stage) =>
+                stage.id === stageId
+                  ? { ...stage, tasks: stage.tasks.map(toggle) }
+                  : stage,
+              ),
+            },
+      );
+    }
     cache.persist(patchTaskApi(taskId, { done }));
   },
   /** 작업 이름·내용 수정 (작업 상세 오버레이) */
   updateTask(
-    projectId: string,
+    projectId: string | null,
     stageId: string | null,
     taskId: string,
     patch: Partial<Pick<BoardTask, "name" | "description">>,
   ) {
     const apply = (task: BoardTask) =>
       task.id === taskId ? { ...task, ...patch } : task;
-    updateBoard(projectId, (board) =>
-      stageId === null
-        ? { ...board, backlog: board.backlog.map(apply) }
-        : {
-            ...board,
-            stages: board.stages.map((stage) =>
-              stage.id === stageId
-                ? { ...stage, tasks: stage.tasks.map(apply) }
-                : stage,
-            ),
-          },
-    );
+    if (projectId === null) {
+      cache.apply((prev) => ({
+        ...prev,
+        unassigned: prev.unassigned.map(apply),
+      }));
+    } else {
+      updateBoard(projectId, (board) =>
+        stageId === null
+          ? { ...board, backlog: board.backlog.map(apply) }
+          : {
+              ...board,
+              stages: board.stages.map((stage) =>
+                stage.id === stageId
+                  ? { ...stage, tasks: stage.tasks.map(apply) }
+                  : stage,
+              ),
+            },
+      );
+    }
     cache.persist(
       patchTaskApi(taskId, {
         ...patch,
@@ -287,4 +353,14 @@ export function useBoardState(): BoardState {
     cache.getServerSnapshot,
   );
   return workspace.boards;
+}
+
+/** 미배정 작업(projectId = null) — 내 작업 백로그의 기본 자리 */
+export function useUnassignedTasks(): BoardTask[] {
+  const workspace = useSyncExternalStore(
+    cache.subscribe,
+    cache.getSnapshot,
+    cache.getServerSnapshot,
+  );
+  return workspace.unassigned;
 }

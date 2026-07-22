@@ -32,12 +32,14 @@ import { useProjectStore } from "@/components/features/projects/project-store";
 import {
   boardActions,
   useBoardState,
+  useUnassignedTasks,
 } from "@/components/features/projects/board-store";
 import type { BoardStage, BoardTask } from "@/types/workspace";
 import { TEAM_MEMBERS } from "@/components/features/projects/project-detail-data";
 
-// 단계 Select에서 백로그(stageId = null)를 가리키는 센티널 — Radix Select는 빈 문자열 값을 허용하지 않는다
+// Select에서 null(백로그·미배정)을 가리키는 센티널 — Radix Select는 빈 문자열 값을 허용하지 않는다
 const BACKLOG_VALUE = "__backlog__";
+const UNASSIGNED_VALUE = "__unassigned__";
 
 // 자리표시 상수 — 키 체계·유형·난이도는 DB 도메인 태스크에서 실데이터로 교체
 const TASK_TYPES = ["문서", "개발", "디자인", "기획", "기타"];
@@ -79,6 +81,7 @@ export function TaskDetailOverlay({
   const { user } = useSession();
   const { groups } = useProjectStore();
   const boards = useBoardState();
+  const unassigned = useUnassignedTasks();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [taskType, setTaskType] = useState(TASK_TYPES[0]);
@@ -92,40 +95,47 @@ export function TaskDetailOverlay({
   const [requestMembers, setRequestMembers] = useState<Set<string>>(new Set());
 
   const projects = groups.flatMap((group) => group.projects);
-  // 작업이 놓인 위치(프로젝트·단계)를 스토어에서 직접 찾는다. 단계에 편성된 작업과
-  // 백로그 작업(stageId = null)을 모두 지원하며, 오버레이 안에서 프로젝트를 바꿔도
-  // 새 위치를 그대로 따라가므로 열린 상태가 유지된다.
-  const located = taskId
-    ? projects.reduce<{
-        projectId: string;
-        stage: BoardStage | null;
-        task: BoardTask;
-      } | null>((found, candidate) => {
-        if (found) return found;
-        const board = boards[candidate.id];
-        if (!board) return null;
-        const stage = board.stages.find((item) =>
-          item.tasks.some((entry) => entry.id === taskId),
-        );
-        const task = stage
-          ? stage.tasks.find((entry) => entry.id === taskId)
-          : board.backlog.find((entry) => entry.id === taskId);
-        return task ? { projectId: candidate.id, stage: stage ?? null, task } : null;
-      }, null)
-    : null;
+  // 작업이 놓인 위치(프로젝트·단계)를 스토어에서 직접 찾는다. 단계에 편성된 작업,
+  // 백로그 작업(stageId = null), 미배정 작업(projectId = null)을 모두 지원하며,
+  // 오버레이 안에서 소속을 바꿔도 새 위치를 따라가므로 열린 상태가 유지된다.
+  const unassignedTask = taskId
+    ? unassigned.find((entry) => entry.id === taskId)
+    : undefined;
+  const located = unassignedTask
+    ? { projectId: null, stage: null, task: unassignedTask }
+    : taskId
+      ? projects.reduce<{
+          projectId: string | null;
+          stage: BoardStage | null;
+          task: BoardTask;
+        } | null>((found, candidate) => {
+          if (found) return found;
+          const board = boards[candidate.id];
+          if (!board) return null;
+          const stage = board.stages.find((item) =>
+            item.tasks.some((entry) => entry.id === taskId),
+          );
+          const task = stage
+            ? stage.tasks.find((entry) => entry.id === taskId)
+            : board.backlog.find((entry) => entry.id === taskId);
+          return task
+            ? { projectId: candidate.id, stage: stage ?? null, task }
+            : null;
+        }, null)
+      : null;
 
-  const project = projects.find(
-    (candidate) => candidate.id === located?.projectId,
-  );
-  if (!located || !project) return null;
+  if (!located) return null;
 
   const { projectId, stage, task } = located;
-  const stages = boards[projectId]?.stages ?? [];
+  const project = projects.find((candidate) => candidate.id === projectId);
+  const stages = projectId === null ? [] : (boards[projectId]?.stages ?? []);
   const stageId = stage?.id ?? null;
-  const stageLabel = stage?.name ?? "백로그";
+  // 미배정 작업은 단계 개념이 없으므로 "미배정"으로 표기한다
+  const stageLabel = project ? (stage?.name ?? "백로그") : "미배정";
+  const projectLabel = project?.name ?? "프로젝트 없음";
 
   const keyPrefix =
-    project.name.replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 3) || "YOS";
+    project?.name.replace(/[^A-Za-z]/g, "").toUpperCase().slice(0, 3) || "YOS";
   const taskKey = `${keyPrefix}-${taskKeyNumber(task.id)}`;
 
   const addFiles = (files: FileList | null) => {
@@ -202,7 +212,7 @@ export function TaskDetailOverlay({
               {taskKey}
             </span>
             <span className="text-[13px] text-muted-foreground">
-              {project.name}&nbsp;&nbsp;·&nbsp;&nbsp;{stageLabel}
+              {projectLabel}&nbsp;&nbsp;·&nbsp;&nbsp;{stageLabel}
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -439,15 +449,21 @@ export function TaskDetailOverlay({
                 프로젝트
               </p>
               <Select
-                value={projectId}
+                value={projectId ?? UNASSIGNED_VALUE}
                 onValueChange={(next) =>
-                  boardActions.assignTask(projectId, task.id, next, null)
+                  boardActions.assignTask(
+                    projectId,
+                    task.id,
+                    next === UNASSIGNED_VALUE ? null : next,
+                    null,
+                  )
                 }
               >
                 <SelectTrigger className="h-9 w-full rounded-[8px] bg-background">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value={UNASSIGNED_VALUE}>프로젝트 없음</SelectItem>
                   {projects.map((candidate) => (
                     <SelectItem key={candidate.id} value={candidate.id}>
                       <span
@@ -465,7 +481,9 @@ export function TaskDetailOverlay({
               <p className="text-xs font-medium text-muted-foreground">단계</p>
               <Select
                 value={stageId ?? BACKLOG_VALUE}
+                disabled={projectId === null}
                 onValueChange={(next) =>
+                  projectId !== null &&
                   boardActions.assignTask(
                     projectId,
                     task.id,
@@ -475,7 +493,13 @@ export function TaskDetailOverlay({
                 }
               >
                 <SelectTrigger className="h-9 w-full rounded-[8px] bg-background">
-                  <SelectValue />
+                  {projectId === null ? (
+                    <span className="text-muted-foreground">
+                      프로젝트를 먼저 선택하세요
+                    </span>
+                  ) : (
+                    <SelectValue />
+                  )}
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={BACKLOG_VALUE}>백로그</SelectItem>
@@ -547,7 +571,7 @@ export function TaskDetailOverlay({
               variant="destructive"
               className="w-full rounded-[8px]"
               onClick={() => {
-                boardActions.deleteTask(project.id, task.id);
+                boardActions.deleteTask(projectId, task.id);
                 onClose();
               }}
             >
