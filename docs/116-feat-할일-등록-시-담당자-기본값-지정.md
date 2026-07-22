@@ -105,6 +105,30 @@ assigneeId: input.ownerId,
 
 `createProjectWithEvenStages`(직접 만들기)는 할일을 만들지 않아 해당 없음.
 
+### 리베이스에서 하나 더 찾았다 — `applyPresetToProject`
+
+머지 직전 최신 main으로 리베이스했더니, 그 사이 들어온 **'프리셋 사용하기'**
+(이미 만들어진 프로젝트에 프리셋을 적용)가 같은 방식으로 할일을 만들고 있었다.
+작업 시작 시점에는 없던 함수라 처음 조사에서 잡히지 않았다.
+
+이 경로는 **기존** 프로젝트에 적용하므로 요청자와 프로젝트 소유자가 다를 수 있다
+(마스터가 남의 프로젝트에 적용). 그래서 소유자를 조회해 쓴다.
+
+```ts
+// 담당자 기본값은 **프로젝트 소유자** 기준이다 — 여기서는 기존 프로젝트에
+// 적용하므로 요청자와 소유자가 다를 수 있다(마스터가 남의 프로젝트에 적용).
+const project = await tx.project.findUnique({
+  where: { id: input.projectId },
+  select: { ownerId: true },
+});
+const assigneeId = project?.ownerId ?? input.ownerId;
+```
+
+할일을 만드는 경로가 넷(`createTask`, `createProjectFromPreset`,
+`applyPresetToProject`, 그리고 앞으로 생길 것)으로 흩어져 있는 게 근본 원인이다.
+지금은 각 경로가 같은 규칙을 따르도록 맞춰 뒀지만, 새 경로가 또 생기면 같은 실수가
+반복될 수 있다.
+
 ## 기존 할일은 건드리지 않았다
 
 이미 미배정으로 쌓인 할일을 소유자로 채우는 **데이터 보정은 하지 않았다**(사용자
