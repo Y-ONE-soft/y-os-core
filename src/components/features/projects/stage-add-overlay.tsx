@@ -16,7 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { boardActions } from "@/components/features/projects/board-store";
 import { CollaboratorRequestDialog } from "@/components/features/projects/collaborator-request-dialog";
 import { OverlayBreadcrumb } from "@/components/features/projects/overlay-breadcrumb";
-import { TEAM_MEMBERS } from "@/components/features/projects/project-detail-data";
+import { useUsers } from "@/hooks/use-users";
+import { requestActions } from "@/hooks/use-requests";
 import { todayISO } from "@/components/features/projects/roadmap-utils";
 
 // 단계 상세 오버레이(stage-detail-overlay)의 생성 모드 — 셸·타이포·세부 사항 스펙을 그대로 따른다.
@@ -39,6 +40,7 @@ export function StageAddOverlay({
   /** 생성 직후 상세 오버레이로 이어가고 싶을 때 사용 */
   onCreated?: (stageId: string) => void;
 }) {
+  const { users } = useUsers();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   // 단계는 항상 기간을 갖는다 — 세부 사항의 시작·종료일을 오늘로 채워 두고 시작한다
@@ -70,7 +72,7 @@ export function StageAddOverlay({
     // 단계는 항상 기간을 갖는다 — 비워두면 시작·종료 모두 오늘로 잡는다.
     // (할일을 단계에 편입할 때 예정일을 계산할 기준이 늘 있어야 한다)
     const today = todayISO();
-    // 생성 API가 받지 않는 내용·공동작업자는 extra로 넘기면
+    // 생성 API가 받지 않는 내용은 extra로 넘기면
     // 스토어가 생성 완료 후 patch로 이어 저장한다 (순서 보장)
     const stageId = boardActions.addStage(
       projectId,
@@ -80,8 +82,19 @@ export function StageAddOverlay({
         endDate: endDate || today,
         showDeadline,
       },
-      { description, requestedCollaborators: collaborators },
+      { description },
     );
+    // 공동 작업자는 더 이상 즉시 지정하지 않는다 — 단계가 생긴 뒤 요청을 보내고
+    // 상대가 수락해야 반영된다 (docs/84 요청 도메인)
+    if (collaborators.length > 0) {
+      void requestActions.send({
+        kind: "ASSIGN",
+        toUserIds: collaborators,
+        message: null,
+        taskId: null,
+        stageId,
+      });
+    }
     handleOpenChange(false);
     onCreated?.(stageId);
   };
@@ -260,9 +273,8 @@ export function StageAddOverlay({
             </Button>
             {collaborators.length > 0 && (
               <p className="text-[11px] text-muted-foreground">
-                {TEAM_MEMBERS.filter((member) =>
-                  collaborators.includes(member.id),
-                )
+                {users
+                  .filter((member) => collaborators.includes(member.id))
                   .map((member) => member.name)
                   .join(", ")}
               </p>
@@ -288,7 +300,8 @@ export function StageAddOverlay({
           <CollaboratorRequestDialog
             open={collabOpen}
             onOpenChange={setCollabOpen}
-            initialSelected={collaborators}
+            // 생성 전이라 아직 보낸 요청이 없다 — 고른 사람은 생성 직후 일괄 발송한다
+            alreadyRequested={[]}
             onSubmit={(memberIds) => {
               setCollaborators(memberIds);
               setCollabOpen(false);

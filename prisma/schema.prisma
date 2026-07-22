@@ -34,6 +34,9 @@ model User {
   ownedProjects Project[]
   stagePresets  StagePreset[]
 
+  sentRequests     Request[] @relation("SentRequests")
+  receivedRequests Request[] @relation("ReceivedRequests")
+
   @@index([groupId])
 }
 
@@ -93,6 +96,7 @@ model Stage {
   project                Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   tasks                  Task[]
   comments               StageComment[]
+  requests               Request[]
 
   @@index([projectId])
 }
@@ -122,8 +126,51 @@ model Task {
   project       Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
   stageId       String? // null = 백로그
   stage         Stage?   @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  requests      Request[]
 
   @@index([projectId])
+  @@index([stageId])
+}
+
+// ── 요청(알림) ────────────────────────────────────────────────
+// 내 할일의 "요청 알림"에 뜨는 사람 간 요청.
+// 두 종류뿐이다 — 공동 작업자로 지정하는 할일 요청, 막힌 일을 봐달라는 도움 요청.
+
+enum RequestKind {
+  ASSIGN // 할일 요청 — 공동 작업자 지정
+  HELP // 도움 요청
+}
+
+enum RequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELED // 보낸 사람이 회수
+}
+
+model Request {
+  id          String        @id // "rq-<uuid>" — 클라이언트가 생성해 보낸다(낙관적 업데이트)
+  kind        RequestKind
+  status      RequestStatus @default(PENDING)
+  message     String? // 요청 사유 (선택)
+  createdAt   DateTime      @default(now())
+  respondedAt DateTime? // 수락·거절·취소 시각
+
+  fromUserId String
+  fromUser   User   @relation("SentRequests", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUserId   String
+  toUser     User   @relation("ReceivedRequests", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  // 요청 대상 — 할일 또는 단계 중 하나만 채워진다.
+  // 대상이 지워지면 요청도 의미가 없으므로 Cascade.
+  taskId  String?
+  task    Task?   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  stageId String?
+  stage   Stage?  @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@index([toUserId, status])
+  @@index([fromUserId, status])
+  @@index([taskId])
   @@index([stageId])
 }
 

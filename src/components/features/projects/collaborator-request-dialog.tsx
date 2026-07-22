@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 
-import { TEAM_MEMBERS } from "@/lib/constants";
+import { cn } from "@/lib/utils";
+import { avatarColor } from "@/lib/avatar-color";
+import { useUsers } from "@/hooks/use-users";
+import { useSession } from "@/components/features/auth/session-context";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -17,18 +20,21 @@ import {
 export function CollaboratorRequestDialog({
   open,
   onOpenChange,
-  initialSelected,
+  alreadyRequested,
   onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  initialSelected: string[];
+  /** 이미 공동 작업자이거나 응답 대기 중인 사용자 id — 중복 요청을 막는다 */
+  alreadyRequested: string[];
   onSubmit: (memberIds: string[], message: string) => void;
 }) {
-  const [selected, setSelected] = useState<Set<string>>(
-    () => new Set(initialSelected),
-  );
+  const { user } = useSession();
+  const { users, loading } = useUsers();
+  // 새로 고르는 사람만 담는다 — 기존 대상은 체크된 상태가 아니라 '요청됨' 표기로 보여준다
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [message, setMessage] = useState("");
+  const requested = new Set(alreadyRequested);
 
   const toggle = (id: string) =>
     setSelected((prev) => {
@@ -38,12 +44,12 @@ export function CollaboratorRequestDialog({
       return next;
     });
 
-  const selectedMembers = TEAM_MEMBERS.filter((member) =>
-    selected.has(member.id),
-  );
+  // 자기 자신에게 요청할 수는 없다
+  const members = users.filter((candidate) => candidate.id !== user?.id);
+  const selectedMembers = members.filter((member) => selected.has(member.id));
   const summary =
     selectedMembers.length === 0
-      ? "작업자를 선택하세요"
+      ? "요청할 작업자를 선택하세요"
       : selectedMembers.length === 1
         ? `${selectedMembers[0].name} 선택됨`
         : `${selectedMembers[0].name} 외 ${selectedMembers.length - 1}명 선택됨`;
@@ -64,31 +70,55 @@ export function CollaboratorRequestDialog({
             </div>
           </div>
           <ul className="flex flex-col">
-            {TEAM_MEMBERS.map((member) => (
-              <li key={member.id}>
-                <label className="flex h-10 cursor-pointer items-center gap-2.5 rounded-[8px] px-1.5 transition-colors hover:bg-accent/60">
-                  <Checkbox
-                    checked={selected.has(member.id)}
-                    onCheckedChange={() => toggle(member.id)}
-                    aria-label={`${member.name} 선택`}
-                    className="rounded-[4px] border-primary"
-                  />
-                  <span
-                    aria-hidden
-                    className="flex size-6 items-center justify-center rounded-full text-[10px] font-medium text-white"
-                    style={{ backgroundColor: member.color }}
-                  >
-                    {member.name.charAt(0)}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
-                    {member.name}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {member.title}
-                  </span>
-                </label>
+            {loading ? (
+              <li className="px-1.5 py-2 text-[13px] text-muted-foreground">
+                작업자 목록을 불러오는 중…
               </li>
-            ))}
+            ) : members.length === 0 ? (
+              <li className="px-1.5 py-2 text-[13px] text-muted-foreground">
+                요청할 수 있는 다른 작업자가 없습니다.
+              </li>
+            ) : (
+              members.map((member) => {
+                const done = requested.has(member.id);
+                return (
+                  <li key={member.id}>
+                    <label
+                      className={cn(
+                        "flex h-10 items-center gap-2.5 rounded-[8px] px-1.5 transition-colors",
+                        done
+                          ? "cursor-default opacity-60"
+                          : "cursor-pointer hover:bg-accent/60",
+                      )}
+                    >
+                      <Checkbox
+                        checked={done || selected.has(member.id)}
+                        disabled={done}
+                        onCheckedChange={() => toggle(member.id)}
+                        aria-label={`${member.name} 선택`}
+                        className="rounded-[4px] border-primary"
+                      />
+                      <span
+                        aria-hidden
+                        className="flex size-6 items-center justify-center rounded-full text-[10px] font-medium text-white"
+                        style={{ backgroundColor: avatarColor(member.id) }}
+                      >
+                        {member.name.charAt(0)}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+                        {member.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {done
+                          ? "요청됨"
+                          : (member.title ??
+                            (member.role === "MASTER" ? "마스터" : "스탭"))}
+                      </span>
+                    </label>
+                  </li>
+                );
+              })
+            )}
           </ul>
           <div className="flex flex-col gap-2">
             <p className="text-xs font-medium text-foreground">메시지</p>
