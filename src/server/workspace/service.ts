@@ -112,8 +112,15 @@ export function createProject(input: {
   return db.project.create({ data: input });
 }
 
-export function deleteProject(id: string) {
-  return db.project.deleteMany({ where: { id } });
+/**
+ * 프로젝트 삭제. ownerId를 주면 그 작업자의 프로젝트만 지운다 — 스탭이 남의
+ * 프로젝트 id를 직접 호출해도 조건에서 걸러지도록 쿼리 레벨에서 막는다.
+ * 반환값 count로 호출부가 "권한 없음/이미 없음"을 판별한다.
+ */
+export function deleteProject(id: string, opts?: { ownerId?: string }) {
+  return db.project.deleteMany({
+    where: { id, ...(opts?.ownerId ? { ownerId: opts.ownerId } : {}) },
+  });
 }
 
 export function createStage(input: {
@@ -194,15 +201,15 @@ export async function updateTask(id: string, patch: TaskPatch) {
   return db.task.updateMany({ where: { id }, data: { ...patch, stageId } });
 }
 
-/** 데이터 초기화 — 워크스페이스 전체를 시드 상태로 되돌린다 (User/Session은 무관) */
+/**
+ * 데이터 초기화 — 프로젝트·단계·작업을 모두 지우고 그룹 골격만 남긴다.
+ * (User/Session은 무관. 그룹을 남기는 이유는 seed-data.ts 주석 참고)
+ */
 export async function resetWorkspace(): Promise<void> {
   const seed = workspaceSeedRows();
   await db.$transaction([
-    db.projectGroup.deleteMany(),
+    db.projectGroup.deleteMany(), // 프로젝트·단계·작업까지 cascade 삭제
     db.task.deleteMany(), // 그룹 밖에 남을 수 있는 잔여 행 방어
     db.projectGroup.createMany({ data: seed.groups }),
-    db.project.createMany({ data: seed.projects }),
-    db.stage.createMany({ data: seed.stages }),
-    db.task.createMany({ data: seed.tasks }),
   ]);
 }
