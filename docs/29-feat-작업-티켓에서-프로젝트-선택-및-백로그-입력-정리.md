@@ -1,4 +1,4 @@
-# 28. 작업 티켓에서 프로젝트 선택 및 백로그 입력 정리
+# 29. 작업 티켓에서 프로젝트 선택 및 백로그 입력 정리
 
 - **예정 커밋 메시지**: `feat: 작업 티켓에서 프로젝트 선택 및 백로그 입력 정리`
 - **작업일**: 2026-07-22
@@ -47,7 +47,7 @@
 | `src/components/features/projects/board-store.tsx` | `moveTaskToProject` 추가 |
 | `src/app/api/admin/tasks/[taskId]/route.ts` | `projectId` 패치 허용 |
 | `src/server/workspace/service.ts` | `TaskPatch.projectId` + 프로젝트 변경 시 stageId null 강제 |
-| `docs/28-…` | 이 문서 |
+| `docs/29-…` | 이 문서 |
 
 ## 4. 검증
 
