@@ -23,9 +23,16 @@ import {
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
 const DATE_ROW_PX = 24; // 날짜 숫자 영역
-const LANE_PX = 26; // 스팬 레인 1단 높이
+const LANE_PX = 28; // 스팬 레인 1단 높이
 const STAGE_PX = 22; // 단계 막대 높이 — 겹쳐도 집어낼 수 있게 두껍게
 const TASK_PX = 20; // 할일 칩 높이
+
+// 프로젝트 박스의 세로 기하. 레인 높이(28) = 할일 칩(20) + 여백 2 + 간격 4 + 여백 2로,
+// 위아래 박스가 각자 여백을 갖고도 사이에 간격이 남도록 맞춰 둔 값이다.
+// 이 셋과 LANE_PX·TASK_PX는 함께 움직인다 — 하나만 바꾸면 박스가 다시 겹치거나
+// 내용이 테두리에 닿는다.
+const BOX_PAD_PX = 2; // 테두리와 내용 사이 여백
+const BOX_GAP_PX = 4; // 위아래 프로젝트 박스 사이 간격
 
 /** 클릭과 드래그를 가르는 이동량(px) — 로드맵 막대와 같은 기준 */
 const DRAG_THRESHOLD = 3;
@@ -81,8 +88,10 @@ function ProjectBoxItem({
       style={{
         left: colLeft(box.col),
         width: colWidth(box.span),
-        top: laneTop(box.lane) - 3,
-        height: box.lanes * LANE_PX + 4,
+        // 레인 블록에서 아래쪽 간격만큼을 덜어내 다음 박스와 붙지 않게 한다.
+        // (예전에는 높이가 레인 블록보다 커서 아래 박스와 4px 겹쳤다)
+        top: laneTop(box.lane) - BOX_PAD_PX,
+        height: box.lanes * LANE_PX - BOX_GAP_PX,
         backgroundColor: hexToRgba(color, 0.07),
         borderColor: hexToRgba(color, 0.3),
       }}
@@ -273,6 +282,9 @@ function OverlayItem({
       >
         {overlay.done ? "✓" : ""}
       </button>
+      {/* flex items-center로 제목을 세로 가운데 맞춘다. 그냥 두면 이 버튼이
+          물려받은 큰 폰트 기준으로 라인박스가 잡히고, 10px 제목이 그 베이스라인에
+          걸려 체크박스보다 아래로 내려간다 */}
       <button
         type="button"
         title={overlay.label}
@@ -280,12 +292,13 @@ function OverlayItem({
           onDragStart?.(event, { kind: "task", taskId: overlay.taskId })
         }
         onClick={() => onOpenTask?.(overlay.taskId)}
-        className="min-w-0 flex-1 truncate text-left transition-shadow hover:ring-1 focus-visible:outline-none focus-visible:ring-2"
+        className="flex min-w-0 flex-1 items-center text-left transition-shadow hover:ring-1 focus-visible:outline-none focus-visible:ring-2"
         style={{ ["--tw-ring-color" as string]: hexToRgba(color, 0.8) }}
       >
         <span
           className={cn(
-            "truncate text-[10px] font-medium",
+            // flex 아이템은 기본 min-width가 auto라 min-w-0 없이는 truncate가 먹지 않는다
+            "min-w-0 flex-1 truncate text-[10px] font-medium",
             overlay.done && "line-through",
           )}
           style={{ color: overlay.done ? hexToRgba(text, 0.7) : text }}
