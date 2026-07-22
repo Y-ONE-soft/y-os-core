@@ -10,7 +10,7 @@ import {
 
 // 프로젝트별 보드(단계/작업/백로그) 상태 — localStorage 영속.
 // project-store와 동일한 useSyncExternalStore 패턴 (DB/API 전환 전 임시 계층).
-const STORAGE_KEY = "yos.board.v1";
+const STORAGE_KEY = "yos.board.v2";
 
 const EMPTY_BOARD: ProjectBoardData = { stages: [], backlog: [] };
 
@@ -140,4 +140,9 @@ export const boardActions = {
 export function useProjectBoard(projectId: string): ProjectBoardData {
   const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   return state[projectId] ?? EMPTY_BOARD;
+}
+
+/** 전체 프로젝트의 보드 상태 — 작업 현황처럼 여러 프로젝트를 집계하는 화면용 */
+export function useBoardState(): BoardState {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }

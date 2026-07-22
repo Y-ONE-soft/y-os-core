@@ -3,28 +3,14 @@
 import { cn } from "@/lib/utils";
 import { ROADMAP } from "@/components/features/projects/project-detail-data";
 import { useProjectBoard } from "@/components/features/projects/board-store";
+import {
+  barRange,
+  formatShort,
+  hexToRgba,
+} from "@/components/features/projects/roadmap-utils";
 
 const RANGE_OPTIONS = ["오늘", "일", "주", "개월", "분기"] as const;
 const ACTIVE_RANGE = "주";
-
-const DAY_MS = 86_400_000;
-
-function dayOffset(date: string) {
-  return Math.round(
-    (new Date(date).getTime() - new Date(ROADMAP.start).getTime()) / DAY_MS,
-  );
-}
-
-function formatShort(date: string) {
-  return date.slice(5).replace("-", "/");
-}
-
-function hexToRgba(hex: string, alpha: number) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
 
 export function ProjectRoadmap({
   projectId,
@@ -100,16 +86,10 @@ export function ProjectRoadmap({
           const done = stage.tasks.filter((task) => task.done).length;
           const total = stage.tasks.length;
           const percent = total === 0 ? 0 : Math.round((done / total) * 100);
-          const hasBar = Boolean(
-            stage.showDeadline && stage.startDate && stage.endDate,
-          );
-          const startDay = hasBar ? Math.max(0, dayOffset(stage.startDate!)) : 0;
-          const barDays = hasBar
-            ? Math.min(
-                ROADMAP.days - startDay,
-                dayOffset(stage.endDate!) - dayOffset(stage.startDate!) + 1,
-              )
-            : 0;
+          const hasBar = Boolean(stage.showDeadline && stage.startDate);
+          const { startDay, days: barDays } = hasBar
+            ? barRange(ROADMAP.start, ROADMAP.days, stage.startDate!, stage.endDate)
+            : { startDay: 0, days: 0 };
           return (
             <div
               key={stage.id}
@@ -144,7 +124,7 @@ export function ProjectRoadmap({
                       style={{ color: stage.color }}
                     >
                       {percent}% · {formatShort(stage.startDate!)}~
-                      {formatShort(stage.endDate!)}
+                      {stage.endDate ? formatShort(stage.endDate) : ""}
                     </span>
                   </div>
                 )}
