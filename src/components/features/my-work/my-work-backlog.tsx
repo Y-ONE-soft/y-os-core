@@ -1,9 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useProjectStore } from "@/components/features/projects/project-store";
 import {
   boardActions,
@@ -73,6 +82,63 @@ export function MyWorkBacklog() {
           >
             {task.name}
           </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              aria-label={`${task.name} 소속 변경`}
+              className="flex max-w-[104px] shrink-0 items-center gap-1 rounded-[6px] border bg-background px-1.5 py-0.5 text-[10.5px] text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <span
+                aria-hidden
+                className="size-1.5 shrink-0 rounded-full"
+                style={{ backgroundColor: project.color }}
+              />
+              <span className="truncate">{project.name} · 백로그</span>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              {projects.map((candidate) => (
+                <DropdownMenuGroup key={candidate.id}>
+                  <DropdownMenuLabel className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span
+                      aria-hidden
+                      className="size-1.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: candidate.color }}
+                    />
+                    <span className="truncate">{candidate.name}</span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onSelect={() =>
+                      boardActions.assignTask(
+                        project.id,
+                        task.id,
+                        candidate.id,
+                        null,
+                      )
+                    }
+                  >
+                    백로그
+                    {candidate.id === project.id && (
+                      <Check aria-hidden className="ml-auto size-3.5" />
+                    )}
+                  </DropdownMenuItem>
+                  {(boards[candidate.id]?.stages ?? []).map((stage) => (
+                    <DropdownMenuItem
+                      key={stage.id}
+                      onSelect={() =>
+                        boardActions.assignTask(
+                          project.id,
+                          task.id,
+                          candidate.id,
+                          stage.id,
+                        )
+                      }
+                    >
+                      {stage.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       ))}
       <p className="text-[11px] leading-normal text-muted-foreground">
