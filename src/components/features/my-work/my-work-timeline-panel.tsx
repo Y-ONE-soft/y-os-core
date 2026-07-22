@@ -7,6 +7,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useSession } from "@/components/features/auth/session-context";
 import { useProjectStore } from "@/components/features/projects/project-store";
 import {
+  applyMyWorkFilter,
+  useMyWorkFilter,
+} from "@/components/features/my-work/my-work-filter-store";
+import {
   boardActions,
   useBoardState,
 } from "@/components/features/projects/board-store";
@@ -47,6 +51,7 @@ type TimelineTask = { task: BoardTask; stage: BoardStage | null };
 
 export function MyWorkTimelinePanel() {
   const { user } = useSession();
+  const filter = useMyWorkFilter();
   const { groups } = useProjectStore();
   const boards = useBoardState();
   const [range, setRange] = useState<RoadmapRange>("주");
@@ -54,13 +59,16 @@ export function MyWorkTimelinePanel() {
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   const [detailStageId, setDetailStageId] = useState<string | null>(null);
 
-  // 캘린더 뷰와 같은 "내 할일" 기준 — 내가 소유한 프로젝트
+  // 캘린더 뷰와 같은 "내 할일" 기준 — 내가 소유한 프로젝트.
+  // 필터 바 선택이 있으면 그 범위로 좁힌다 (캘린더와 같은 규칙).
   const myProjects = useMemo(
     () =>
-      groups
-        .flatMap((group) => group.projects)
-        .filter((project) => project.ownerId === user?.id),
-    [groups, user?.id],
+      applyMyWorkFilter(
+        groups.flatMap((group) => group.projects),
+        filter,
+        user?.id,
+      ),
+    [groups, user?.id, filter],
   );
 
   const timeline = useMemo(

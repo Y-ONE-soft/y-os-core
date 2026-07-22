@@ -25,10 +25,15 @@ import {
 } from "@/components/features/my-work/my-work-calendar";
 import { buildMonthGrid } from "@/components/features/my-work/my-work-month";
 import { buildCalendarSource } from "@/components/features/my-work/my-work-calendar-source";
+import {
+  applyMyWorkFilter,
+  useMyWorkFilter,
+} from "@/components/features/my-work/my-work-filter-store";
 import { buildWeekLayouts } from "@/components/features/my-work/my-work-calendar-layout";
 
 export function MyWorkCalendarPanel() {
   const { user } = useSession();
+  const filter = useMyWorkFilter();
   const { groups } = useProjectStore();
   const boards = useBoardState();
   const unassigned = useUnassignedTasks();
@@ -45,12 +50,15 @@ export function MyWorkCalendarPanel() {
   );
 
   // "내 할일" 기준 — 작업 현황·사이드바와 같은 소유자 판정을 따른다.
+  // 필터 바에서 담당자·프로젝트를 고르면 그 범위로 좁힌다 (뷰에만 적용).
   const myProjects = useMemo(
     () =>
-      groups
-        .flatMap((group) => group.projects)
-        .filter((project) => project.ownerId === user?.id),
-    [groups, user?.id],
+      applyMyWorkFilter(
+        groups.flatMap((group) => group.projects),
+        filter,
+        user?.id,
+      ),
+    [groups, user?.id, filter],
   );
 
   // 드래그 중인 임시 상태 — 손을 뗄 때만 저장하고, 그 전까지는 화면만 미리 옮긴다.
