@@ -5,6 +5,7 @@ import type {
   BoardTask,
   ProjectBoardData,
   Workspace,
+  WorkspaceMember,
 } from "@/types/workspace";
 import type {
   Prisma,
@@ -20,7 +21,25 @@ const ORDER = [{ createdAt: "asc" as const }, { id: "asc" as const }];
  */
 const STAGE_ORDER = [{ order: "asc" as const }, { id: "asc" as const }];
 
-function toTask(task: Task): BoardTask {
+/**
+ * 화면에 사람을 그리는 데 필요한 최소 정보만 추린다.
+ * User 전체를 내려보내면 passwordHash 같은 필드가 딸려 나간다.
+ */
+function toMember(user: {
+  id: string;
+  name: string;
+  title: string | null;
+}): WorkspaceMember {
+  return { id: user.id, name: user.name, title: user.title ?? undefined };
+}
+
+/** 대상(할일·단계)별 수락된 공동 작업자 — 대상 id → 사람 목록 */
+type CollaboratorMap = Map<string, WorkspaceMember[]>;
+
+function toTask(
+  task: Task & { assignee?: { id: string; name: string; title: string | null } | null },
+  collaborators?: CollaboratorMap,
+): BoardTask {
   return {
     id: task.id,
     name: task.name,
@@ -29,11 +48,19 @@ function toTask(task: Task): BoardTask {
     scheduledDate: task.scheduledDate ?? undefined,
     completedDate: task.completedDate ?? undefined,
     assigneeId: task.assigneeId ?? undefined,
+    assignee: task.assignee ? toMember(task.assignee) : undefined,
+    collaborators: collaborators?.get(task.id),
   };
 }
 
 function toStage(
-  stage: Stage & { tasks: Task[]; comments: StageComment[] },
+  stage: Stage & {
+    tasks: (Task & {
+      assignee?: { id: string; name: string; title: string | null } | null;
+    })[];
+    comments: StageComment[];
+  },
+  collaborators?: CollaboratorMap,
 ): BoardStage {
   return {
     id: stage.id,
@@ -53,34 +80,77 @@ function toStage(
       text: comment.text,
       at: comment.createdAt.toISOString(),
     })),
-    tasks: stage.tasks.map(toTask),
+    collaborators: collaborators?.get(stage.id),
+    tasks: stage.tasks.map((task) => toTask(task, collaborators)),
   };
+}
+
+/** 화면에 사람을 그릴 때 필요한 필드만 — User 전체를 include하지 않는다 */
+const MEMBER_SELECT = { id: true, name: true, title: true } as const;
+
+/**
+ * 수락된 공동 작업자 지정 요청을 대상 id별로 묶는다.
+ * 요청 도메인의 진실은 Request 테이블이므로(Stage.requestedCollaborators는
+ * 요청을 보내기 전 선택값이라 다른 값이다) 여기서 직접 조회한다.
+ */
+async function acceptedCollaborators(): Promise<CollaboratorMap> {
+  const accepted = await db.request.findMany({
+    where: { kind: "ASSIGN", status: "ACCEPTED" },
+    select: { taskId: true, stageId: true, toUser: { select: MEMBER_SELECT } },
+    orderBy: { respondedAt: "asc" },
+  });
+
+  const map: CollaboratorMap = new Map();
+  for (const request of accepted) {
+    const targetId = request.taskId ?? request.stageId;
+    if (!targetId) continue;
+    const list = map.get(targetId) ?? [];
+    // 같은 사람이 여러 번 수락된 이력이 있어도 한 번만 보여준다
+    if (!list.some((member) => member.id === request.toUser.id)) {
+      list.push(toMember(request.toUser));
+    }
+    map.set(targetId, list);
+  }
+  return map;
 }
 
 /** 전체 워크스페이스 트리 — 스토어 부트스트랩 1회 호출용 */
 export async function getWorkspace(): Promise<Workspace> {
-  const [groups, projects, stages, backlogTasks] = await Promise.all([
-    db.projectGroup.findMany({ orderBy: ORDER }),
-    db.project.findMany({ orderBy: ORDER }),
-    db.stage.findMany({
-      orderBy: STAGE_ORDER,
-      include: {
-        tasks: { orderBy: ORDER },
-        comments: { orderBy: ORDER },
-      },
-    }),
-    db.task.findMany({ where: { stageId: null }, orderBy: ORDER }),
-  ]);
+  const [groups, projects, stages, backlogTasks, collaborators] =
+    await Promise.all([
+      db.projectGroup.findMany({ orderBy: ORDER }),
+      db.project.findMany({
+        orderBy: ORDER,
+        include: { owner: { select: MEMBER_SELECT } },
+      }),
+      db.stage.findMany({
+        orderBy: STAGE_ORDER,
+        include: {
+          tasks: {
+            orderBy: ORDER,
+            include: { assignee: { select: MEMBER_SELECT } },
+          },
+          comments: { orderBy: ORDER },
+        },
+      }),
+      db.task.findMany({
+        where: { stageId: null },
+        orderBy: ORDER,
+        include: { assignee: { select: MEMBER_SELECT } },
+      }),
+      acceptedCollaborators(),
+    ]);
 
   const boards: Record<string, ProjectBoardData> = {};
   for (const project of projects) boards[project.id] = { stages: [], backlog: [] };
-  for (const stage of stages) boards[stage.projectId]?.stages.push(toStage(stage));
+  for (const stage of stages)
+    boards[stage.projectId]?.stages.push(toStage(stage, collaborators));
 
   // projectId가 null인 할일은 어느 보드에도 속하지 않으므로 별도 버킷으로 내려보낸다
   const unassigned: BoardTask[] = [];
   for (const task of backlogTasks) {
-    if (task.projectId === null) unassigned.push(toTask(task));
-    else boards[task.projectId]?.backlog.push(toTask(task));
+    if (task.projectId === null) unassigned.push(toTask(task, collaborators));
+    else boards[task.projectId]?.backlog.push(toTask(task, collaborators));
   }
 
   return {
@@ -95,6 +165,7 @@ export async function getWorkspace(): Promise<Workspace> {
           name: project.name,
           color: project.color,
           ownerId: project.ownerId,
+          owner: project.owner ? toMember(project.owner) : undefined,
         })),
     })),
     boards,

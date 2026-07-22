@@ -37,6 +37,7 @@ import {
 import { clampStageToTasks } from "@/components/features/projects/roadmap-utils";
 import type { BoardStage, BoardTask } from "@/types/workspace";
 import { avatarColor } from "@/lib/avatar-color";
+import { AssigneeList } from "@/components/features/projects/assignee-list";
 import { useUsers } from "@/hooks/use-users";
 import { requestActions } from "@/hooks/use-requests";
 import { OverlayBreadcrumb } from "@/components/features/projects/overlay-breadcrumb";
@@ -463,6 +464,17 @@ export function TaskDetailOverlay({
           <div aria-hidden className="w-px shrink-0 bg-border" />
           <aside className="flex w-[330px] shrink-0 flex-col gap-5 overflow-y-auto bg-muted px-7 py-8">
             <h3 className="text-sm font-semibold">세부 사항</h3>
+            {/* 작업자는 세부 사항의 첫 항목 — 단계 상세와 같은 자리.
+                아래 배정 셀렉트는 "고르는 UI", 여기는 "지금 누가 하는지" 표시. */}
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                작업자
+              </p>
+              <AssigneeList
+                assignee={task.assignee}
+                collaborators={task.collaborators}
+              />
+            </div>
             <div className="flex flex-col gap-2">
               <p className="text-xs font-medium text-muted-foreground">
                 프로젝트
@@ -532,7 +544,7 @@ export function TaskDetailOverlay({
             </div>
             <div className="flex flex-col gap-2">
               <p className="text-xs font-medium text-muted-foreground">
-                담당자
+                작업자 배정
               </p>
               {/* 작업 현황의 담당자 보드가 이 값으로 컬럼을 묶는다 */}
               <Select

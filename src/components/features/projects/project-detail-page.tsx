@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useProjectStore } from "@/components/features/projects/project-store";
 import { useProjectBoard } from "@/components/features/projects/board-store";
+import { AssigneeList } from "@/components/features/projects/assignee-list";
 import { ProjectRoadmap } from "@/components/features/projects/project-roadmap";
 import { ProjectBoard } from "@/components/features/projects/project-board";
 import { ProjectBacklog } from "@/components/features/projects/project-backlog";
@@ -79,7 +80,19 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
             />
             <h1 className="text-xl font-semibold">{project.name}</h1>
           </div>
-          <p className="text-[13px] text-muted-foreground">진행률 {progress}%</p>
+          {/* 이 화면에는 세부 사항 aside가 없어, 오버레이들의 "세부 사항 첫 항목"에
+              대응하는 자리로 헤더 요약줄을 쓴다. 진행률과 같은 줄에 둔다. */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            <p className="text-[13px] text-muted-foreground">
+              진행률 {progress}%
+            </p>
+            <span aria-hidden className="text-xs text-muted-foreground">
+              ·
+            </span>
+            <span className="text-[13px] text-muted-foreground">작업자</span>
+            {/* 프로젝트에는 공동 작업자 개념이 없다 — Request 대상이 할일·단계뿐 */}
+            <AssigneeList assignee={project.owner} emptyLabel="미지정" />
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Button
