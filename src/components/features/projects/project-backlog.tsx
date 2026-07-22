@@ -22,6 +22,7 @@ import {
   useProjectBoard,
 } from "@/components/features/projects/board-store";
 import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
+import { setTaskDragData } from "@/components/features/projects/task-drag";
 
 // 내 작업 백로그와 같은 티켓 형태(작업명 클릭 → 상세, 소속 배지 드롭다운).
 // 다만 이 화면은 프로젝트 스코프가 이미 정해져 있으므로 프로젝트는 바꾸지 않고
@@ -57,7 +58,12 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
       {backlog.map((item) => (
         <ContextMenu key={item.id}>
           <ContextMenuTrigger asChild>
-            <div className="flex shrink-0 items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2">
+            <div
+              draggable
+              onDragStart={(event) => setTaskDragData(event, item.id)}
+              title="단계 컬럼으로 끌어다 놓으면 편입됩니다"
+              className="flex shrink-0 cursor-grab items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2 active:cursor-grabbing"
+            >
               <Checkbox
                 aria-label={`${item.name} 완료`}
                 checked={item.done}

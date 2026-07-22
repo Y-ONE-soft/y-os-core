@@ -3,7 +3,10 @@
 import { useMemo, useSyncExternalStore } from "react";
 
 import { stageTone } from "@/components/features/projects/project-palette";
-import { scheduleFor } from "@/components/features/projects/roadmap-utils";
+import {
+  scheduleFor,
+  todayISO,
+} from "@/components/features/projects/roadmap-utils";
 import * as cache from "@/components/features/projects/workspace-cache";
 import {
   createStageApi,
@@ -323,8 +326,11 @@ export const boardActions = {
     if (!current) return;
     const done = !current.done;
 
+    // 완료날짜는 서버(updateTask)가 done 전환에 맞춰 채운다. 낙관적 값도 같은
+    // 규칙으로 맞춰야 새로고침 시 날짜가 늦게 나타나거나 남아 있지 않는다.
+    const completedDate = done ? todayISO() : undefined;
     const toggle = (task: BoardTask) =>
-      task.id === taskId ? { ...task, done } : task;
+      task.id === taskId ? { ...task, done, completedDate } : task;
     if (projectId === null) {
       cache.apply((prev) => ({
         ...prev,

@@ -37,6 +37,7 @@ import {
 import { clampStageToTasks } from "@/components/features/projects/roadmap-utils";
 import type { BoardStage, BoardTask } from "@/types/workspace";
 import { TEAM_MEMBERS } from "@/components/features/projects/project-detail-data";
+import { OverlayBreadcrumb } from "@/components/features/projects/overlay-breadcrumb";
 
 // Select에서 null(백로그·미배정)을 가리키는 센티널 — Radix Select는 빈 문자열 값을 허용하지 않는다
 const BACKLOG_VALUE = "__backlog__";
@@ -128,14 +129,6 @@ export function TaskDetailOverlay({
   const stageLabel = project ? (stage?.name ?? "백로그") : "미배정";
   const projectLabel = project?.name ?? "프로젝트 없음";
 
-  // 단계 상세와 같은 표기 — 소속 안에서의 순번. (키 체계가 없어 만들어 쓰던
-  // 가짜 티켓 번호 YOS-202 식 표기는 뜻이 없어 걷어냈다)
-  const siblings = stage
-    ? stage.tasks
-    : projectId === null
-      ? unassigned
-      : (boards[projectId]?.backlog ?? []);
-  const taskIndex = siblings.findIndex((candidate) => candidate.id === task.id);
 
   /**
    * 예정일 변경 — 캘린더 드래그와 같은 규칙을 따른다.
@@ -228,11 +221,9 @@ export function TaskDetailOverlay({
         <header className="flex shrink-0 items-center justify-between border-b py-3.5 pl-7 pr-5">
           <div className="flex items-center gap-3">
             <span className="rounded-[6px] border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-              작업 {taskIndex + 1}
+              할 일
             </span>
-            <span className="text-[13px] text-muted-foreground">
-              {projectLabel}&nbsp;&nbsp;·&nbsp;&nbsp;{stageLabel}
-            </span>
+            <OverlayBreadcrumb items={[projectLabel, stageLabel, task.name]} />
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" className="rounded-[8px]">
@@ -555,6 +546,22 @@ export function TaskDetailOverlay({
                   단계에 편성하면 예정일이 잡힙니다
                 </p>
               )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                완료날짜
+              </p>
+              {/* 읽기 전용 — 위 체크박스를 켜면 서버가 오늘 날짜를 기록하고,
+                  풀면 지운다. 직접 고칠 수 있으면 완료 기록의 의미가 없다 */}
+              <div className="flex h-9 items-center rounded-[8px] bg-background px-3 text-sm">
+                {task.completedDate ? (
+                  task.completedDate
+                ) : (
+                  <span className="text-muted-foreground">
+                    완료 체크 시 자동 기록
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex flex-col gap-2">
               <p className="text-xs font-medium text-muted-foreground">
