@@ -180,3 +180,11 @@ export const BOARD_SEED: Record<string, ProjectBoardData> = {
     backlog: [],
   },
 };
+
+/** 자리표시 팀 멤버 — 작업 상세 오버레이의 요청 모달 작업자 목록 (멤버 도메인 도입 전) */
+export const TEAM_MEMBERS = [
+  { id: "m-kim", name: "김서연", role: "기획", color: "#3b82f6" },
+  { id: "m-park", name: "박지훈", role: "개발", color: "#8b5cf6" },
+  { id: "m-lee", name: "이민아", role: "디자인", color: "#10b981" },
+  { id: "m-choi", name: "최현우", role: "개발", color: "#ef4444" },
+] as const;

@@ -109,6 +109,33 @@ export const boardActions = {
       ],
     }));
   },
+  moveTask(
+    projectId: string,
+    fromStageId: string,
+    toStageId: string,
+    taskId: string,
+  ) {
+    if (fromStageId === toStageId) return;
+    updateBoard(projectId, (board) => {
+      const task = board.stages
+        .find((stage) => stage.id === fromStageId)
+        ?.tasks.find((candidate) => candidate.id === taskId);
+      if (!task) return board;
+      return {
+        ...board,
+        stages: board.stages.map((stage) =>
+          stage.id === fromStageId
+            ? {
+                ...stage,
+                tasks: stage.tasks.filter((item) => item.id !== taskId),
+              }
+            : stage.id === toStageId
+              ? { ...stage, tasks: [...stage.tasks, task] }
+              : stage,
+        ),
+      };
+    });
+  },
   toggleTask(projectId: string, stageId: string | null, taskId: string) {
     updateBoard(projectId, (board) =>
       stageId === null
