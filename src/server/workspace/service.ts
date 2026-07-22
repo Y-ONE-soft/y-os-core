@@ -104,8 +104,15 @@ export function createProject(input: {
   return db.project.create({ data: input });
 }
 
-export function deleteProject(id: string) {
-  return db.project.deleteMany({ where: { id } });
+/**
+ * 프로젝트 삭제. ownerId를 주면 그 작업자의 프로젝트만 지운다 — 스탭이 남의
+ * 프로젝트 id를 직접 호출해도 조건에서 걸러지도록 쿼리 레벨에서 막는다.
+ * 반환값 count로 호출부가 "권한 없음/이미 없음"을 판별한다.
+ */
+export function deleteProject(id: string, opts?: { ownerId?: string }) {
+  return db.project.deleteMany({
+    where: { id, ...(opts?.ownerId ? { ownerId: opts.ownerId } : {}) },
+  });
 }
 
 export function createStage(input: {
