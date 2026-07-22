@@ -37,6 +37,7 @@ import {
 import { clampStageToTasks } from "@/components/features/projects/roadmap-utils";
 import type { BoardStage, BoardTask } from "@/types/workspace";
 import { TEAM_MEMBERS } from "@/components/features/projects/project-detail-data";
+import { OverlayBreadcrumb } from "@/components/features/projects/overlay-breadcrumb";
 
 // Select에서 null(백로그·미배정)을 가리키는 센티널 — Radix Select는 빈 문자열 값을 허용하지 않는다
 const BACKLOG_VALUE = "__backlog__";
@@ -230,9 +231,7 @@ export function TaskDetailOverlay({
             <span className="rounded-[6px] border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
               작업 {taskIndex + 1}
             </span>
-            <span className="text-[13px] text-muted-foreground">
-              {projectLabel}&nbsp;&nbsp;·&nbsp;&nbsp;{stageLabel}
-            </span>
+            <OverlayBreadcrumb items={[projectLabel, stageLabel, task.name]} />
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" className="rounded-[8px]">
