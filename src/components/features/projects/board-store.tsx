@@ -45,14 +45,28 @@ export type NewStageInput = {
   showDeadline: boolean;
 };
 
+/** 생성 API가 받지 않는 필드 — 생성 완료 후 patch로 이어 저장한다 */
+export type NewStageExtra = {
+  description?: string;
+  requestedCollaborators?: string[];
+};
+
 export const boardActions = {
-  /** 생성된 단계 id를 돌려준다 — 생성 직후 상세 필드를 이어서 저장할 때 쓴다 */
-  addStage(projectId: string, input: NewStageInput): string {
+  /** 생성된 단계 id를 돌려준다. `extra`는 생성 API가 받지 않는 필드로, 생성 완료 후 patch로 이어 저장한다 */
+  addStage(
+    projectId: string,
+    input: NewStageInput,
+    extra?: NewStageExtra,
+  ): string {
     const id = `st-${crypto.randomUUID()}`;
     const count =
       cache.getSnapshot().boards[projectId]?.stages.length ?? 0;
     const color = PROJECT_COLORS[count % PROJECT_COLORS.length];
     const now = new Date().toISOString();
+    const description = extra?.description?.trim() || undefined;
+    const requestedCollaborators = extra?.requestedCollaborators?.length
+      ? extra.requestedCollaborators
+      : undefined;
     updateBoard(projectId, (board) => ({
       ...board,
       stages: [
@@ -66,21 +80,33 @@ export const boardActions = {
           showDeadline: input.showDeadline,
           tasks: [],
           comments: [],
+          description,
+          requestedCollaborators,
           createdAt: now,
           updatedAt: now,
         },
       ],
     }));
+    const created = createStageApi({
+      id,
+      projectId,
+      name: input.name,
+      color,
+      startDate: input.startDate || undefined,
+      endDate: input.endDate || undefined,
+      showDeadline: input.showDeadline,
+    });
+    // 생성 완료 후에 patch해야 한다 — 두 요청을 나란히 보내면 지연이 큰 환경에서
+    // patch가 먼저 도착해 대상 행이 없고, 서버는 0건 수정으로 200을 돌려줘 조용히 유실된다.
     cache.persist(
-      createStageApi({
-        id,
-        projectId,
-        name: input.name,
-        color,
-        startDate: input.startDate || undefined,
-        endDate: input.endDate || undefined,
-        showDeadline: input.showDeadline,
-      }),
+      description || requestedCollaborators
+        ? created.then(() =>
+            patchStageApi(id, {
+              ...(description ? { description } : {}),
+              ...(requestedCollaborators ? { requestedCollaborators } : {}),
+            }),
+          )
+        : created,
     );
     return id;
   },

@@ -60,22 +60,18 @@ export function StageAddOverlay({
 
   const submit = () => {
     if (!canSubmit) return;
-    const stageId = boardActions.addStage(projectId, {
-      name: name.trim(),
-      startDate: startDate || undefined,
-      endDate: endDate || undefined,
-      showDeadline,
-    });
-    // 생성 API가 받지 않는 필드는 생성 직후 patch로 이어 저장한다
-    const trimmedDescription = description.trim();
-    if (trimmedDescription || collaborators.length > 0) {
-      boardActions.updateStage(projectId, stageId, {
-        ...(trimmedDescription ? { description: trimmedDescription } : {}),
-        ...(collaborators.length > 0
-          ? { requestedCollaborators: collaborators }
-          : {}),
-      });
-    }
+    // 생성 API가 받지 않는 내용·공동작업자는 extra로 넘기면
+    // 스토어가 생성 완료 후 patch로 이어 저장한다 (순서 보장)
+    const stageId = boardActions.addStage(
+      projectId,
+      {
+        name: name.trim(),
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        showDeadline,
+      },
+      { description, requestedCollaborators: collaborators },
+    );
     handleOpenChange(false);
     onCreated?.(stageId);
   };
