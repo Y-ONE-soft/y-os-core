@@ -39,3 +39,73 @@ model Session {
 
   @@index([userId])
 }
+
+// ── 워크스페이스(프로젝트·보드) 도메인 ──────────────────────────────
+// id는 클라이언트가 접두사 uuid(g-/p-/st-/tk-/cm-)로 생성해 보낸다 — 낙관적 업데이트 시
+// 임시 id 치환이 필요 없도록. 정렬은 createdAt(동률 시 id) 기준.
+
+model ProjectGroup {
+  id        String    @id
+  name      String
+  createdAt DateTime  @default(now())
+  projects  Project[]
+}
+
+model Project {
+  id        String       @id
+  name      String
+  color     String
+  createdAt DateTime     @default(now())
+  groupId   String
+  group     ProjectGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  stages    Stage[]
+  tasks     Task[]
+
+  @@index([groupId])
+}
+
+model Stage {
+  id                     String         @id
+  name                   String
+  color                  String
+  startDate              String? // YYYY-MM-DD (화면 표기 규격 그대로 — TZ 이슈 회피)
+  endDate                String? // YYYY-MM-DD
+  showDeadline           Boolean        @default(false)
+  done                   Boolean        @default(false)
+  description            String?
+  requestedCollaborators String[]       @default([])
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  projectId              String
+  project                Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks                  Task[]
+  comments               StageComment[]
+
+  @@index([projectId])
+}
+
+model StageComment {
+  id        String   @id
+  author    String
+  text      String
+  createdAt DateTime @default(now())
+  stageId   String
+  stage     Stage    @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@index([stageId])
+}
+
+model Task {
+  id          String   @id
+  name        String
+  done        Boolean  @default(false)
+  description String?
+  createdAt   DateTime @default(now())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stageId     String? // null = 백로그
+  stage       Stage?   @relation(fields: [stageId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([stageId])
+}
