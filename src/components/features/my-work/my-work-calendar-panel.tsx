@@ -8,6 +8,7 @@ import { useProjectStore } from "@/components/features/projects/project-store";
 import {
   boardActions,
   useBoardState,
+  useUnassignedTasks,
 } from "@/components/features/projects/board-store";
 import {
   clampStageToTasks,
@@ -33,6 +34,7 @@ export function MyWorkCalendarPanel() {
   const { user } = useSession();
   const { groups } = useProjectStore();
   const boards = useBoardState();
+  const unassigned = useUnassignedTasks();
 
   // 보고 있는 달의 1일. 오늘 판정은 렌더 시점의 실제 날짜로 한다.
   const [monthAnchor, setMonthAnchor] = useState(() => {
@@ -90,8 +92,8 @@ export function MyWorkCalendarPanel() {
   }, [boards, preview]);
 
   const source = useMemo(
-    () => buildCalendarSource(grid, myProjects, previewBoards),
-    [grid, myProjects, previewBoards],
+    () => buildCalendarSource(grid, myProjects, previewBoards, unassigned),
+    [grid, myProjects, previewBoards, unassigned],
   );
 
   /** 드래그 결과 날짜 — 자기 할일을 항상 덮도록 늘려서 돌려준다 */
