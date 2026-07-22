@@ -37,6 +37,7 @@ function Bar({
   startDate,
   endDate,
   label,
+  badge,
   onClick,
   title,
 }: {
@@ -45,6 +46,8 @@ function Bar({
   startDate: string;
   endDate?: string;
   label: string;
+  /** 단계 순번 — 내 작업 캘린더와 같은 원형 배지로 표시 */
+  badge?: number;
   onClick?: () => void;
   title?: string;
 }) {
@@ -57,19 +60,33 @@ function Bar({
   if (days <= 0) return null;
   const style = {
     left: startDay * timeline.dayWidth,
-    width: Math.max(days * timeline.dayWidth, 26),
+    // 배지가 있으면 배지(11) + 여백이 잘리지 않을 만큼 최소폭을 넓힌다
+    width: Math.max(days * timeline.dayWidth, badge === undefined ? 26 : 32),
     backgroundColor: hexToRgba(color, 0.12),
     borderColor: hexToRgba(color, 0.8),
   };
-  const className =
-    "absolute top-1 flex h-[18px] items-center overflow-hidden rounded-[6px] border pl-2 text-left";
+  const className = cn(
+    "absolute top-1 flex h-[18px] items-center overflow-hidden rounded-[6px] border text-left",
+    badge === undefined ? "pl-2" : "gap-1 pl-1 pr-1.5",
+  );
   const content = (
-    <span
-      className="whitespace-nowrap text-[10.5px] font-medium"
-      style={{ color }}
-    >
-      {label}
-    </span>
+    <>
+      {badge !== undefined && (
+        <span
+          aria-hidden
+          className="flex size-[11px] shrink-0 items-center justify-center rounded-full text-[7.5px] font-medium text-white"
+          style={{ backgroundColor: color }}
+        >
+          {badge}
+        </span>
+      )}
+      <span
+        className="whitespace-nowrap text-[10.5px] font-medium"
+        style={{ color }}
+      >
+        {label}
+      </span>
+    </>
   );
 
   if (!onClick) {
@@ -319,7 +336,7 @@ export function WorkloadRoadmap({
                             )}
                           </div>
                         </div>
-                        {stages.map((stage) => {
+                        {stages.map((stage, stageIndex) => {
                           const done = stage.tasks.filter(
                             (task) => task.done,
                           ).length;
@@ -373,6 +390,7 @@ export function WorkloadRoadmap({
                                     color={stage.color}
                                     startDate={stage.startDate!}
                                     endDate={stage.endDate}
+                                    badge={stageIndex + 1}
                                     onClick={openStage}
                                     title={`${stage.name} 단계 상세 열기`}
                                     label={
