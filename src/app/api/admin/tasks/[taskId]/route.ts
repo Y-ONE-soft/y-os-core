@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { badRequest, currentUser, unauthorized } from "@/app/api/admin/guard";
-import { updateTask, type TaskPatch } from "@/server/workspace/service";
+import {
+  deleteTask,
+  updateTask,
+  type TaskPatch,
+} from "@/server/workspace/service";
 
 const PATCHABLE = [
   "name",
@@ -30,5 +34,17 @@ export async function PATCH(
 
   const { taskId } = await params;
   await updateTask(taskId, patch as TaskPatch);
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ taskId: string }> },
+) {
+  const user = await currentUser();
+  if (!user) return unauthorized();
+
+  const { taskId } = await params;
+  await deleteTask(taskId);
   return NextResponse.json({ ok: true });
 }

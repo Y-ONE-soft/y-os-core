@@ -8,6 +8,7 @@ import {
   createStageApi,
   createStageCommentApi,
   createTaskApi,
+  deleteTaskApi,
   patchStageApi,
   patchTaskApi,
 } from "@/lib/api/workspace";
@@ -199,6 +200,18 @@ export const boardActions = {
     cache.persist(
       patchTaskApi(taskId, { projectId: toProjectId, stageId: toStageId }),
     );
+  },
+  /** 작업 삭제 — 백로그·단계 어디에 있든 해당 프로젝트 보드에서 제거한다 */
+  deleteTask(projectId: string, taskId: string) {
+    updateBoard(projectId, (board) => ({
+      ...board,
+      backlog: board.backlog.filter((task) => task.id !== taskId),
+      stages: board.stages.map((stage) => ({
+        ...stage,
+        tasks: stage.tasks.filter((task) => task.id !== taskId),
+      })),
+    }));
+    cache.persist(deleteTaskApi(taskId));
   },
   toggleTask(projectId: string, stageId: string | null, taskId: string) {
     const board = cache.getSnapshot().boards[projectId];
