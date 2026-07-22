@@ -60,7 +60,6 @@ export function StageDetailOverlay({
     boardActions.updateStage(projectId, stage.id, partial);
 
   const comments = stage.comments ?? [];
-  const stageIndex = stages.findIndex((candidate) => candidate.id === stage.id);
   const collaboratorCount = stage.requestedCollaborators?.length ?? 0;
 
   const submitComment = () => {
@@ -79,7 +78,7 @@ export function StageDetailOverlay({
         <header className="flex shrink-0 items-center justify-between border-b py-3.5 pl-7 pr-5">
           <div className="flex items-center gap-3">
             <span className="rounded-[6px] border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-              단계 {stageIndex + 1}
+              단계
             </span>
             <OverlayBreadcrumb items={[projectName, stage.name]} />
           </div>

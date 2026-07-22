@@ -129,14 +129,6 @@ export function TaskDetailOverlay({
   const stageLabel = project ? (stage?.name ?? "백로그") : "미배정";
   const projectLabel = project?.name ?? "프로젝트 없음";
 
-  // 단계 상세와 같은 표기 — 소속 안에서의 순번. (키 체계가 없어 만들어 쓰던
-  // 가짜 티켓 번호 YOS-202 식 표기는 뜻이 없어 걷어냈다)
-  const siblings = stage
-    ? stage.tasks
-    : projectId === null
-      ? unassigned
-      : (boards[projectId]?.backlog ?? []);
-  const taskIndex = siblings.findIndex((candidate) => candidate.id === task.id);
 
   /**
    * 예정일 변경 — 캘린더 드래그와 같은 규칙을 따른다.
@@ -229,7 +221,7 @@ export function TaskDetailOverlay({
         <header className="flex shrink-0 items-center justify-between border-b py-3.5 pl-7 pr-5">
           <div className="flex items-center gap-3">
             <span className="rounded-[6px] border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
-              작업 {taskIndex + 1}
+              할 일
             </span>
             <OverlayBreadcrumb items={[projectLabel, stageLabel, task.name]} />
           </div>
