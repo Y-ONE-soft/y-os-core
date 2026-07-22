@@ -12,6 +12,7 @@ import { ProjectBoard } from "@/components/features/projects/project-board";
 import { ProjectBacklog } from "@/components/features/projects/project-backlog";
 import { StageAddOverlay } from "@/components/features/projects/stage-add-overlay";
 import { StageDetailOverlay } from "@/components/features/projects/stage-detail-overlay";
+import { PresetSaveDialog } from "@/components/features/projects/preset-save-dialog";
 
 const TABS = ["보드", "작업", "리포트", "산출물", "메모", "문의"] as const;
 const ACTIVE_TAB = "보드";
@@ -20,6 +21,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
   const { groups } = useProjectStore();
   const { stages } = useProjectBoard(projectId);
   const [stageDialogOpen, setStageDialogOpen] = useState(false);
+  const [presetDialogOpen, setPresetDialogOpen] = useState(false);
   const [detailStageId, setDetailStageId] = useState<string | null>(null);
   const project = groups
     .flatMap((group) => group.projects)
@@ -59,13 +61,22 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
           </span>
           <span className="text-xs text-muted-foreground">고객 Y.ONE 내부</span>
         </div>
-        <div className="flex items-center gap-2.5">
-          <span
-            aria-hidden
-            className="size-2.5 shrink-0 rounded-full"
-            style={{ backgroundColor: project.color }}
-          />
-          <h1 className="text-xl font-semibold">{project.name}</h1>
+        <div className="flex items-center justify-between gap-2.5">
+          <div className="flex items-center gap-2.5">
+            <span
+              aria-hidden
+              className="size-2.5 shrink-0 rounded-full"
+              style={{ backgroundColor: project.color }}
+            />
+            <h1 className="text-xl font-semibold">{project.name}</h1>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setPresetDialogOpen(true)}
+          >
+            프리셋 저장
+          </Button>
         </div>
         <p className="text-[13px] text-muted-foreground">진행률 {progress}%</p>
       </header>
@@ -114,6 +125,12 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
         open={stageDialogOpen}
         onOpenChange={setStageDialogOpen}
       />
+      {presetDialogOpen && (
+        <PresetSaveDialog
+          projectId={projectId}
+          onClose={() => setPresetDialogOpen(false)}
+        />
+      )}
       <StageDetailOverlay
         projectId={projectId}
         projectName={project.name}

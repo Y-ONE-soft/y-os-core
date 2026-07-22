@@ -44,5 +44,8 @@ export const api = {
     }),
   patch: <T>(path: string, body: Record<string, unknown>) =>
     request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),
+  // 부분 수정이 아니라 통째 교체일 때 (예: 프리셋 덮어쓰기)
+  put: <T>(path: string, body: Record<string, unknown>) =>
+    request<T>(path, { method: "PUT", body: JSON.stringify(body) }),
   del: <T>(path: string) => request<T>(path, { method: "DELETE" }),
 };
