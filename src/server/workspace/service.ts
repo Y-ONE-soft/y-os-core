@@ -135,6 +135,37 @@ export function createStage(input: {
   return db.stage.create({ data: input });
 }
 
+/**
+ * 단계 삭제 — 그 단계의 작업은 지우지 않고 백로그(stageId = null)로 옮긴다.
+ * Task.stage가 onDelete: Cascade이므로 **반드시 작업을 먼저 떼어낸 뒤** 단계를
+ * 지워야 한다. 순서가 뒤바뀌면 작업까지 함께 삭제된다.
+ *
+ * opts.ownerId를 주면 해당 사용자가 작업자인 프로젝트의 단계만 지운다
+ * (deleteProject와 동일한 스탭 가드).
+ */
+export async function deleteStage(
+  id: string,
+  opts?: { ownerId?: string },
+): Promise<{ count: number }> {
+  const where = {
+    id,
+    ...(opts?.ownerId ? { project: { ownerId: opts.ownerId } } : {}),
+  };
+
+  return db.$transaction(async (tx) => {
+    // 가드를 통과하는 단계인지 먼저 확인 — 통과하지 못하면 아무것도 건드리지 않는다
+    const stage = await tx.stage.findFirst({ where, select: { id: true } });
+    if (!stage) return { count: 0 };
+
+    await tx.task.updateMany({
+      where: { stageId: id },
+      data: { stageId: null },
+    });
+    const { count } = await tx.stage.deleteMany({ where: { id } });
+    return { count };
+  });
+}
+
 export type StagePatch = Partial<
   Pick<
     Stage,
