@@ -44,6 +44,7 @@ import { OverlayBreadcrumb } from "@/components/features/projects/overlay-breadc
 // Select에서 null(백로그·미배정)을 가리키는 센티널 — Radix Select는 빈 문자열 값을 허용하지 않는다
 const BACKLOG_VALUE = "__backlog__";
 const UNASSIGNED_VALUE = "__unassigned__";
+const NO_ASSIGNEE_VALUE = "__no_assignee__";
 
 // 자리표시 상수 — 키 체계·유형·난이도는 DB 도메인 태스크에서 실데이터로 교체
 const TASK_TYPES = ["문서", "개발", "디자인", "기획", "기타"];
@@ -528,6 +529,49 @@ export function TaskDetailOverlay({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <p className="text-xs font-medium text-muted-foreground">
+                담당자
+              </p>
+              {/* 작업 현황의 담당자 보드가 이 값으로 컬럼을 묶는다 */}
+              <Select
+                value={task.assigneeId ?? NO_ASSIGNEE_VALUE}
+                onValueChange={(next) =>
+                  boardActions.updateTask(projectId, stageId, task.id, {
+                    assigneeId: next === NO_ASSIGNEE_VALUE ? null : next,
+                  })
+                }
+              >
+                <SelectTrigger className="h-9 w-full rounded-[8px] bg-background">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_ASSIGNEE_VALUE}>미배정</SelectItem>
+                  {users.map((member) => (
+                    <SelectItem key={member.id} value={member.id}>
+                      <span
+                        aria-hidden
+                        className="flex size-4 shrink-0 items-center justify-center rounded-full text-[9px] font-medium text-background"
+                        style={{ backgroundColor: avatarColor(member.id) }}
+                      >
+                        {member.name.slice(0, 1)}
+                      </span>
+                      <span className="truncate">{member.name}</span>
+                      {member.title && (
+                        <span className="text-xs text-muted-foreground">
+                          {member.title}
+                        </span>
+                      )}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {usersLoading && (
+                <p className="text-[11px] text-muted-foreground">
+                  직원 목록을 불러오는 중입니다.
+                </p>
+              )}
             </div>
             <div className="flex flex-col gap-2">
               <label

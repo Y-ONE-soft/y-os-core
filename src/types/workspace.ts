@@ -25,6 +25,8 @@ export type BoardTask = {
   scheduledDate?: string;
   /** YYYY-MM-DD — 완료 체크 시 서버가 기록. 체크를 풀면 사라진다 */
   completedDate?: string;
+  /** 담당자 User.id — 없으면 미배정. 작업 현황 담당자 보드가 이 값으로 묶는다 */
+  assigneeId?: string;
 };
 
 export type StageComment = {

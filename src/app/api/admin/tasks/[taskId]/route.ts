@@ -16,6 +16,7 @@ const PATCHABLE = [
   "stageId",
   "projectId",
   "scheduledDate",
+  "assigneeId",
 ] as const;
 
 export async function PATCH(

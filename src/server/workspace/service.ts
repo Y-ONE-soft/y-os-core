@@ -28,6 +28,7 @@ function toTask(task: Task): BoardTask {
     description: task.description ?? undefined,
     scheduledDate: task.scheduledDate ?? undefined,
     completedDate: task.completedDate ?? undefined,
+    assigneeId: task.assigneeId ?? undefined,
   };
 }
 
@@ -312,6 +313,8 @@ export function createTask(input: {
   projectId: string | null;
   stageId: string | null;
   name: string;
+  /** null = 미배정 */
+  assigneeId?: string | null;
 }) {
   return db.task.create({ data: input });
 }
@@ -323,6 +326,8 @@ export type TaskPatch = Partial<{
   stageId: string | null;
   projectId: string | null;
   scheduledDate: string | null;
+  /** null = 미배정으로 되돌린다 */
+  assigneeId: string | null;
   /** 서버가 done 전환에 맞춰 채운다 — 클라이언트가 직접 보내는 값은 무시된다 */
   completedDate: string | null;
 }>;

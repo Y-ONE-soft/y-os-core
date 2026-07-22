@@ -86,6 +86,8 @@ export const createTaskApi = (input: {
   projectId: string | null;
   stageId: string | null;
   name: string;
+  /** null = 미배정 */
+  assigneeId?: string | null;
 }) => api.post<{ ok: boolean }>("/api/admin/tasks", input);
 
 export const patchTaskApi = (taskId: string, patch: Record<string, unknown>) =>
