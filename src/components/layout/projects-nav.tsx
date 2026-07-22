@@ -169,28 +169,42 @@ export function ProjectsNav() {
             </p>
             <ul className="flex flex-col gap-0.5">
               {!isMaster &&
-                staffProjects.map(({ project }) => {
+                staffProjects.map(({ project, groupId }) => {
                   const href = `/projects/${project.id}`;
                   const selected = pathname === href;
                   return (
                     <li key={project.id}>
-                      <Link
-                        href={href}
-                        aria-current={selected ? "page" : undefined}
-                        className={cn(
-                          "flex w-full items-center gap-2.5 rounded-[8px] px-3 py-2 transition-colors",
-                          selected ? "bg-muted" : "hover:bg-accent/60",
-                        )}
-                      >
-                        <span
-                          aria-hidden
-                          className="size-2 shrink-0 rounded-full"
-                          style={{ backgroundColor: project.color }}
-                        />
-                        <span className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-foreground">
-                          {project.name}
-                        </span>
-                      </Link>
+                      {/* 스탭 목록은 자기가 작업자인 프로젝트만 담기므로(staffProjects)
+                          여기 걸리는 행은 모두 삭제 권한이 있다. 서버도 ownerId로 재검증. */}
+                      <ContextMenu>
+                        <ContextMenuTrigger asChild>
+                          <Link
+                            href={href}
+                            aria-current={selected ? "page" : undefined}
+                            className={cn(
+                              "flex w-full items-center gap-2.5 rounded-[8px] px-3 py-2 transition-colors",
+                              selected ? "bg-muted" : "hover:bg-accent/60",
+                            )}
+                          >
+                            <span
+                              aria-hidden
+                              className="size-2 shrink-0 rounded-full"
+                              style={{ backgroundColor: project.color }}
+                            />
+                            <span className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-foreground">
+                              {project.name}
+                            </span>
+                          </Link>
+                        </ContextMenuTrigger>
+                        <ContextMenuContent className="w-44">
+                          <ContextMenuItem
+                            variant="destructive"
+                            onSelect={() => deleteProject(groupId, project.id)}
+                          >
+                            프로젝트 삭제
+                          </ContextMenuItem>
+                        </ContextMenuContent>
+                      </ContextMenu>
                     </li>
                   );
                 })}
