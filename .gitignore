@@ -49,5 +49,5 @@ next-env.d.ts
 .vercel
 .env*
 
-# claude worktrees (parallel work sessions)
-/.claude/worktrees/
+# claude code local worktrees
+.claude/worktrees/
