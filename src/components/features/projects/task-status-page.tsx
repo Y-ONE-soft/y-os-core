@@ -14,7 +14,18 @@ import {
 import { StageDetailOverlay } from "@/components/features/projects/stage-detail-overlay";
 
 const VIEW_OPTIONS = ["로드맵", "담당자", "캘린더"] as const;
-const ACTIVE_VIEW = "로드맵";
+type TaskStatusView = (typeof VIEW_OPTIONS)[number];
+
+/** 아직 화면이 없는 뷰의 자리 — 탭은 눌리되 내용은 준비 중임을 알린다 */
+function ViewPlaceholder({ view }: { view: TaskStatusView }) {
+  return (
+    <div className="flex min-h-0 flex-1 items-center justify-center rounded-[12px] border border-dashed">
+      <p className="text-[13px] text-muted-foreground">
+        {view} 뷰는 준비 중입니다.
+      </p>
+    </div>
+  );
+}
 
 function FilterChip({
   checked,
@@ -84,6 +95,7 @@ export function TaskStatusPage() {
     projectId: string;
     stageId: string;
   } | null>(null);
+  const [view, setView] = useState<TaskStatusView>("로드맵");
 
   if (loading) {
     return (
@@ -191,29 +203,34 @@ export function TaskStatusPage() {
           선택: {visibleProjects.length}개 프로젝트 · {taskCount}개 할일
         </p>
         <div className="flex items-center gap-1">
-          {VIEW_OPTIONS.map((view) => (
+          {VIEW_OPTIONS.map((option) => (
             <button
-              key={view}
+              key={option}
               type="button"
-              aria-pressed={view === ACTIVE_VIEW}
+              aria-pressed={option === view}
+              onClick={() => setView(option)}
               className={cn(
                 "rounded-[6px] px-3 py-[5px] text-[12.5px] font-medium transition-colors",
-                view === ACTIVE_VIEW
+                option === view
                   ? "border bg-background text-foreground"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {view}
+              {option}
             </button>
           ))}
         </div>
       </div>
-      <WorkloadRoadmap
-        sections={sections}
-        onOpenStage={(projectId, stageId) =>
-          setDetailStage({ projectId, stageId })
-        }
-      />
+      {view === "로드맵" ? (
+        <WorkloadRoadmap
+          sections={sections}
+          onOpenStage={(projectId, stageId) =>
+            setDetailStage({ projectId, stageId })
+          }
+        />
+      ) : (
+        <ViewPlaceholder view={view} />
+      )}
       {detailStage && (
         <StageDetailOverlay
           projectId={detailStage.projectId}
