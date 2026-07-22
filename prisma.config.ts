@@ -10,8 +10,11 @@ export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
+    seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // 이 설정은 CLI(migrate/seed) 전용 — 런타임은 src/server/db.ts의 어댑터가 DATABASE_URL 사용.
+    // 마이그레이션은 커넥션 풀러(pgbouncer)를 우회해야 하므로 직결 URL(Neon UNPOOLED) 우선.
+    url: process.env["DATABASE_URL_UNPOOLED"] ?? process.env["DATABASE_URL"],
   },
 });
