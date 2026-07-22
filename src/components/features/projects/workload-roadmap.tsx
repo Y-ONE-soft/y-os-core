@@ -13,6 +13,7 @@ import { formatShort } from "@/components/features/projects/roadmap-utils";
 import { RoadmapBar } from "@/components/features/projects/roadmap-bar";
 import {
   RANGE_OPTIONS,
+  boundsOfStages,
   buildTimeline,
   formatPeriod,
   todayISO,
@@ -43,7 +44,18 @@ export function WorkloadRoadmap({
   // 세션 로딩 이후 클라이언트에서만 첫 렌더되므로 지연 초기화가 안전하다
   const [today] = useState(todayISO);
 
-  const timeline = buildTimeline(range, today);
+  // 표시 대상 프로젝트들의 단계 기간이 기본 범위(앞뒤 2년) 밖이면 그만큼 넓힌다
+  const timeline = buildTimeline(
+    range,
+    today,
+    boundsOfStages(
+      sections.flatMap((section) =>
+        section.projects.flatMap(
+          (project) => boardState[project.id]?.stages ?? [],
+        ),
+      ),
+    ),
+  );
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToToday = useCallback(

@@ -40,19 +40,41 @@ export type RoadmapTimeline = {
 
 type RangeConfig = {
   dayWidth: number;
-  /** 오늘 기준 과거 범위(개월) */
-  monthsBefore: number;
-  /** 오늘 기준 미래 범위(개월) */
-  monthsAfter: number;
   unit: "day" | "week" | "month" | "quarter";
 };
 
 const RANGE_CONFIG: Record<RoadmapRange, RangeConfig> = {
-  일: { dayWidth: 56, monthsBefore: 1, monthsAfter: 2, unit: "day" },
-  주: { dayWidth: 20, monthsBefore: 2, monthsAfter: 4, unit: "week" },
-  개월: { dayWidth: 6, monthsBefore: 6, monthsAfter: 12, unit: "month" },
-  분기: { dayWidth: 2.4, monthsBefore: 12, monthsAfter: 24, unit: "quarter" },
+  일: { dayWidth: 56, unit: "day" },
+  주: { dayWidth: 20, unit: "week" },
+  개월: { dayWidth: 6, unit: "month" },
+  분기: { dayWidth: 2.4, unit: "quarter" },
 };
+
+/**
+ * 데이터가 하나도 없어도 보장하는 최소 드래그 범위 — 오늘 기준 앞뒤 2년.
+ * 배율(일/주/개월/분기)과 무관하게 동일하며, 데이터가 이 범위를 벗어나면 그만큼 넓어진다.
+ */
+const MIN_MONTHS_BEFORE = 24;
+const MIN_MONTHS_AFTER = 24;
+
+/** 타임라인이 반드시 포함해야 하는 데이터 구간 (YYYY-MM-DD) */
+export type TimelineBounds = { min?: string; max?: string };
+
+/** 단계 목록에서 타임라인이 감싸야 할 최소·최대 날짜를 뽑는다 */
+export function boundsOfStages(
+  stages: { startDate?: string; endDate?: string }[],
+): TimelineBounds {
+  let min: string | undefined;
+  let max: string | undefined;
+  for (const stage of stages) {
+    for (const date of [stage.startDate, stage.endDate]) {
+      if (!date) continue;
+      if (!min || date < min) min = date;
+      if (!max || date > max) max = date;
+    }
+  }
+  return { min, max };
+}
 
 function addMonths(date: Date, amount: number) {
   return new Date(date.getFullYear(), date.getMonth() + amount, date.getDate());
@@ -86,13 +108,26 @@ export function formatPeriod(timeline: { start: string; days: number }) {
 export function buildTimeline(
   range: RoadmapRange,
   today: string,
+  bounds?: TimelineBounds,
 ): RoadmapTimeline {
   const config = RANGE_CONFIG[range];
   const todayDate = fromISO(today);
 
+  // 기본은 오늘 앞뒤 2년. 데이터가 그 밖에 있으면 거기까지 스크롤해 갈 수 있도록 넓힌다.
+  let startDate = addMonths(todayDate, -MIN_MONTHS_BEFORE);
+  let endDate = addMonths(todayDate, MIN_MONTHS_AFTER);
+
+  if (bounds?.min) {
+    const boundMin = fromISO(bounds.min);
+    if (boundMin.getTime() < startDate.getTime()) startDate = boundMin;
+  }
+  if (bounds?.max) {
+    // 종료일 당일이 온전히 보이도록 하루 더 확보한다
+    const boundMax = addDays(fromISO(bounds.max), 1);
+    if (boundMax.getTime() > endDate.getTime()) endDate = boundMax;
+  }
+
   // 시작을 눈금 단위 경계에 맞춰 잘라 눈금이 어긋나지 않게 한다
-  let startDate = addMonths(todayDate, -config.monthsBefore);
-  const endDate = addMonths(todayDate, config.monthsAfter);
 
   if (config.unit === "week") startDate = startOfWeek(startDate);
   if (config.unit === "month")

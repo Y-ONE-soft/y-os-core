@@ -11,6 +11,7 @@ import { formatShort } from "@/components/features/projects/roadmap-utils";
 import { RoadmapBar } from "@/components/features/projects/roadmap-bar";
 import {
   RANGE_OPTIONS,
+  boundsOfStages,
   buildTimeline,
   formatPeriod,
   todayISO,
@@ -35,7 +36,8 @@ export function ProjectRoadmap({
   // 세션 로딩 이후 클라이언트에서만 첫 렌더되므로 지연 초기화가 안전하다
   const [today] = useState(todayISO);
 
-  const timeline = buildTimeline(range, today);
+  // 단계 기간이 기본 범위(앞뒤 2년) 밖이면 그 막대까지 스크롤해 갈 수 있어야 한다
+  const timeline = buildTimeline(range, today, boundsOfStages(stages));
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const scrollToToday = useCallback(
