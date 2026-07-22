@@ -571,7 +571,7 @@ export function TaskDetailOverlay({
               variant="destructive"
               className="w-full rounded-[8px]"
               onClick={() => {
-                boardActions.deleteTask(project.id, task.id);
+                boardActions.deleteTask(projectId, task.id);
                 onClose();
               }}
             >
