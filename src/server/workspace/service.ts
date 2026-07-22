@@ -78,6 +78,7 @@ export async function getWorkspace(): Promise<Workspace> {
           id: project.id,
           name: project.name,
           color: project.color,
+          ownerId: project.ownerId,
         })),
     })),
     boards,
@@ -97,6 +98,8 @@ export function createProject(input: {
   groupId: string;
   name: string;
   color: string;
+  /** 작업자 — 생성한 사용자. 배정 도메인 도입 전까지 "만든 사람 = 작업자" */
+  ownerId: string | null;
 }) {
   return db.project.create({ data: input });
 }

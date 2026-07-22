@@ -6,7 +6,8 @@ export type SessionUser = {
   username: string;
   name: string;
   role: UserRole;
-  group: string | null;
+  /** 소속 그룹 id — ProjectGroup.id (구 group 자유 문자열 대체) */
+  groupId: string | null;
   title: string | null;
   email: string | null;
 };

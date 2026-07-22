@@ -5,6 +5,8 @@ export type Project = {
   id: string;
   name: string;
   color: string;
+  /** 작업자(User.id) — 스탭 화면의 "내 프로젝트" 판정 기준. 미지정이면 null */
+  ownerId: string | null;
 };
 
 export type ProjectGroup = {

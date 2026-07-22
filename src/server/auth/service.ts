@@ -14,7 +14,7 @@ function toSessionUser(user: User): SessionUser {
     username: user.username,
     name: user.name,
     role: user.role,
-    group: user.group,
+    groupId: user.groupId,
     title: user.title,
     email: user.email,
   };

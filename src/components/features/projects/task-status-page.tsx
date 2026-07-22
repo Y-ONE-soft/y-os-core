@@ -3,7 +3,6 @@
 import { useState } from "react";
 
 import { cn } from "@/lib/utils";
-import { STAFF_ASSIGNED_PROJECT_IDS } from "@/lib/constants";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSession } from "@/components/features/auth/session-context";
 import { useProjectStore } from "@/components/features/projects/project-store";
@@ -105,7 +104,7 @@ export function TaskStatusPage() {
     ? includedGroups.flatMap((group) => group.projects)
     : groups
         .flatMap((group) => group.projects)
-        .filter((project) => STAFF_ASSIGNED_PROJECT_IDS.includes(project.id));
+        .filter((project) => !!user && project.ownerId === user.id);
 
   const sections: RoadmapSection[] = isMaster
     ? includedGroups.map((group) => ({
