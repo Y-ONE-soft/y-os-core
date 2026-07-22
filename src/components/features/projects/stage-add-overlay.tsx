@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { Users } from "lucide-react";
 
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { boardActions } from "@/components/features/projects/board-store";
 import { CollaboratorRequestDialog } from "@/components/features/projects/collaborator-request-dialog";
 import { TEAM_MEMBERS } from "@/components/features/projects/project-detail-data";
@@ -86,13 +86,28 @@ export function StageAddOverlay({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="flex h-[87dvh] w-[92vw] flex-col gap-0 overflow-hidden p-0 sm:max-w-[1280px]">
         <DialogTitle className="sr-only">단계 추가</DialogTitle>
-        <header className="flex h-[68px] shrink-0 items-center gap-3 border-b px-7">
-          <span className="rounded-[6px] bg-muted px-2.5 py-1 text-xs font-medium">
-            단계
-          </span>
-          <p className="text-[13px] text-muted-foreground">
-            {projectName} · 로드맵
-          </p>
+        <header className="flex h-[68px] shrink-0 items-center justify-between gap-3 border-b px-7">
+          <div className="flex items-center gap-3">
+            <span className="rounded-[6px] bg-muted px-2.5 py-1 text-xs font-medium">
+              단계
+            </span>
+            <p className="text-[13px] text-muted-foreground">
+              {projectName} · 로드맵
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            aria-pressed={showDeadline}
+            onClick={() => setShowDeadline((prev) => !prev)}
+            title="로드맵·보드에 이 단계의 마감을 표시합니다"
+            className={cn(
+              "rounded-[8px]",
+              showDeadline &&
+                "border-primary bg-primary/10 text-primary hover:bg-primary/15",
+            )}
+          >
+            {showDeadline ? "☑" : "☐"} 데드라인 표시
+          </Button>
         </header>
         <div className="flex min-h-0 flex-1 items-stretch">
           <div className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-auto px-10 py-8">
@@ -203,24 +218,6 @@ export function StageAddOverlay({
                   .join(", ")}
               </p>
             )}
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col gap-[3px]">
-                <Label
-                  htmlFor="stage-add-deadline"
-                  className="text-[13px] font-medium"
-                >
-                  데드라인 표시
-                </Label>
-                <p className="text-[11px] text-muted-foreground">
-                  로드맵·보드에 마감 표시
-                </p>
-              </div>
-              <Switch
-                id="stage-add-deadline"
-                checked={showDeadline}
-                onCheckedChange={setShowDeadline}
-              />
-            </div>
             <div className="border-t" />
             <div className="mt-auto flex flex-col gap-2">
               <Button onClick={submit} disabled={!canSubmit}>
