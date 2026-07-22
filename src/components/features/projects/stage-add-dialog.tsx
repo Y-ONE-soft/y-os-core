@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { useSession } from "@/components/features/auth/session-context";
+import { todayISO } from "@/components/features/projects/roadmap-utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -50,10 +51,13 @@ export function StageAddDialog({
 
   const submit = () => {
     if (!canSubmit) return;
+    // 단계는 항상 기간을 갖는다 — 비워두면 시작·종료 모두 오늘로 잡는다.
+    // (작업을 단계에 편입할 때 예정일을 계산할 기준이 늘 있어야 한다)
+    const today = todayISO();
     const input: NewStageInput = {
       name: name.trim(),
-      startDate: startDate || undefined,
-      endDate: endDate || undefined,
+      startDate: startDate || today,
+      endDate: endDate || today,
       showDeadline,
     };
     boardActions.addStage(projectId, input);

@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 
 import { PROJECT_COLORS } from "@/components/features/projects/project-store";
+import { scheduleFor } from "@/components/features/projects/roadmap-utils";
 import * as cache from "@/components/features/projects/workspace-cache";
 import {
   createStageApi,
@@ -200,28 +201,43 @@ export const boardActions = {
         })),
       }));
     }
+    // 단계에 편입되면 예정일이 잡힌다 — 단계 시작일과 오늘 중 더 늦은 날짜.
+    // 단계를 벗어나면(백로그·미배정) 일정 미정 상태로 되돌린다.
+    const toStage =
+      toProjectId === null || toStageId === null
+        ? undefined
+        : snapshot.boards[toProjectId]?.stages.find(
+            (stage) => stage.id === toStageId,
+          );
+    const scheduledDate = toStageId === null ? null : scheduleFor(toStage?.startDate);
+    const moved: BoardTask = { ...task, scheduledDate: scheduledDate ?? undefined };
+
     // 대상 위치에 추가
     if (toProjectId === null) {
       cache.apply((prev) => ({
         ...prev,
-        unassigned: [...prev.unassigned, task],
+        unassigned: [...prev.unassigned, moved],
       }));
     } else {
       updateBoard(toProjectId, (board) =>
         toStageId === null
-          ? { ...board, backlog: [...board.backlog, task] }
+          ? { ...board, backlog: [...board.backlog, moved] }
           : {
               ...board,
               stages: board.stages.map((stage) =>
                 stage.id === toStageId
-                  ? { ...stage, tasks: [...stage.tasks, task] }
+                  ? { ...stage, tasks: [...stage.tasks, moved] }
                   : stage,
               ),
             },
       );
     }
     cache.persist(
-      patchTaskApi(taskId, { projectId: toProjectId, stageId: toStageId }),
+      patchTaskApi(taskId, {
+        projectId: toProjectId,
+        stageId: toStageId,
+        scheduledDate,
+      }),
     );
   },
   toggleTask(projectId: string | null, stageId: string | null, taskId: string) {
