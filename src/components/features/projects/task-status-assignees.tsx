@@ -283,14 +283,25 @@ export function TaskStatusAssignees({
                 >
                   {card.task.name}
                 </span>
-                {card.overdue && (
-                  <span
-                    title={`예정일 ${card.task.scheduledDate} — 지났습니다`}
-                    className="shrink-0 text-[10.5px] font-medium text-destructive"
-                  >
-                    지연
-                  </span>
-                )}
+                {/* 상태는 할 일 / 완료 둘뿐이다. 예정일이 지난 할일은 상태를
+                    늘리는 대신 같은 칩을 경고색으로 칠해 알린다 */}
+                <span
+                  title={
+                    card.overdue
+                      ? `예정일 ${card.task.scheduledDate} — 지났습니다`
+                      : undefined
+                  }
+                  className={cn(
+                    "shrink-0 rounded-full border px-1.5 py-px text-[10.5px] font-medium",
+                    card.task.done
+                      ? "text-muted-foreground"
+                      : card.overdue
+                        ? "border-destructive/40 text-destructive"
+                        : "text-foreground",
+                  )}
+                >
+                  {card.task.done ? "완료" : "할 일"}
+                </span>
               </div>
             ))}
             {column.cards.length === 0 && (
