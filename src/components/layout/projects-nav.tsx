@@ -82,8 +82,6 @@ export function ProjectsNav() {
   const { sidebarCollapsed: collapsed } = useShell();
   const {
     groups,
-    selectedProjectId,
-    selectProject,
     addGroup,
     addProject,
     deleteGroup,
@@ -196,12 +194,12 @@ export function ProjectsNav() {
                     {expanded && (
                       <ul className="flex flex-col gap-0.5 pt-0.5">
                         {group.projects.map((project) => {
-                          const selected = selectedProjectId === project.id;
+                          const href = `/projects/${project.id}`;
+                          const selected = pathname === href;
                           const projectRow = (
-                            <button
-                              type="button"
-                              onClick={() => selectProject(project.id)}
-                              aria-current={selected ? "true" : undefined}
+                            <Link
+                              href={href}
+                              aria-current={selected ? "page" : undefined}
                               className={cn(
                                 "flex w-full items-center gap-2.5 rounded-[8px] py-2 pl-[34px] pr-3 transition-colors",
                                 selected
@@ -217,7 +215,7 @@ export function ProjectsNav() {
                               <span className="min-w-0 flex-1 truncate text-left text-[13px] font-medium text-foreground">
                                 {project.name}
                               </span>
-                            </button>
+                            </Link>
                           );
                           return (
                             <li key={project.id}>
