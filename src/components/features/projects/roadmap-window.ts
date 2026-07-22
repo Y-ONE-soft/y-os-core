@@ -1,5 +1,6 @@
-// 로드맵 표시 창(range) 계산 — 일/주/개월/분기 스위처가 이 모듈로 창을 만든다.
-// 고정 상수(ROADMAP)를 대체하며, 오늘 기준으로 창을 잡고 page로 앞뒤 이동한다.
+// 로드맵 타임라인 계산 — Jira 로드맵식.
+// 범위(일/주/개월/분기)는 "화면에 맞추는 창"이 아니라 **확대 배율**이다.
+// 타임라인은 오늘 앞뒤로 길게 펼쳐지고, 사용자는 하단 가로 스크롤로 이동한다.
 
 import { DAY_MS, dayOffset } from "@/components/features/projects/roadmap-utils";
 
@@ -7,21 +8,44 @@ export const RANGE_OPTIONS = ["일", "주", "개월", "분기"] as const;
 export type RoadmapRange = (typeof RANGE_OPTIONS)[number];
 
 export type RoadmapTick = {
+  key: string;
   label: string;
-  /** 창 시작일로부터의 오프셋(일) */
+  /** 타임라인 시작일로부터의 오프셋(일) */
   offsetDays: number;
   /** 이 눈금이 속한 연도 — 첫 눈금·연도가 바뀌는 눈금에 표시한다 */
   year: number;
+  /** 연도 경계(1월·Q1 등)에서 굵게 표시 */
+  yearStart: boolean;
 };
 
-export type RoadmapWindow = {
+export type RoadmapTimeline = {
   /** YYYY-MM-DD */
   start: string;
-  /** 창 전체 길이(일) */
+  /** 전체 길이(일) */
   days: number;
+  /** 하루당 픽셀 — 범위(배율)에 따라 달라진다 */
+  dayWidth: number;
+  /** 타임라인 총 픽셀 폭 */
+  width: number;
   ticks: RoadmapTick[];
-  /** 오늘 위치(일). 창 밖이면 null */
+  /** 오늘 위치(일). 타임라인 밖이면 null */
   todayOffset: number | null;
+};
+
+type RangeConfig = {
+  dayWidth: number;
+  /** 오늘 기준 과거 범위(개월) */
+  monthsBefore: number;
+  /** 오늘 기준 미래 범위(개월) */
+  monthsAfter: number;
+  unit: "day" | "week" | "month" | "quarter";
+};
+
+const RANGE_CONFIG: Record<RoadmapRange, RangeConfig> = {
+  일: { dayWidth: 56, monthsBefore: 1, monthsAfter: 2, unit: "day" },
+  주: { dayWidth: 20, monthsBefore: 2, monthsAfter: 4, unit: "week" },
+  개월: { dayWidth: 6, monthsBefore: 6, monthsAfter: 12, unit: "month" },
+  분기: { dayWidth: 2.4, monthsBefore: 12, monthsAfter: 24, unit: "quarter" },
 };
 
 function toISO(date: Date) {
@@ -43,7 +67,7 @@ function addDays(date: Date, amount: number) {
 }
 
 function addMonths(date: Date, amount: number) {
-  return new Date(date.getFullYear(), date.getMonth() + amount, 1);
+  return new Date(date.getFullYear(), date.getMonth() + amount, date.getDate());
 }
 
 /** 주 시작 = 월요일 */
@@ -60,10 +84,10 @@ export function todayISO() {
   return toISO(new Date());
 }
 
-/** 헤더용 창 기간 표기 — 연도를 명시한다. 예: 2026.07.13 ~ 2026.08.09 */
-export function formatWindowPeriod(view: { start: string; days: number }) {
-  const startDate = fromISO(view.start);
-  const endDate = addDays(startDate, view.days - 1);
+/** 헤더용 기간 표기 — 연도를 명시한다. 예: 2026.06.22 ~ 2026.11.22 */
+export function formatPeriod(timeline: { start: string; days: number }) {
+  const startDate = fromISO(timeline.start);
+  const endDate = addDays(startDate, timeline.days - 1);
   const format = (date: Date) =>
     `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(
       date.getDate(),
@@ -71,77 +95,71 @@ export function formatWindowPeriod(view: { start: string; days: number }) {
   return `${format(startDate)} ~ ${format(endDate)}`;
 }
 
-/**
- * 오늘을 기준으로 창을 만든다. 각 범위는 "직전 1단위 + 이후"를 보여줘
- * 오늘이 두 번째 칸에 오도록 맞춘다 (기존 주간 뷰의 배치와 동일).
- * page: -1 = 이전 창, +1 = 다음 창
- */
-export function buildRoadmapWindow(
+export function buildTimeline(
   range: RoadmapRange,
   today: string,
-  page = 0,
-): RoadmapWindow {
+): RoadmapTimeline {
+  const config = RANGE_CONFIG[range];
   const todayDate = fromISO(today);
-  let startDate: Date;
-  let days: number;
+
+  // 시작을 눈금 단위 경계에 맞춰 잘라 눈금이 어긋나지 않게 한다
+  let startDate = addMonths(todayDate, -config.monthsBefore);
+  const endDate = addMonths(todayDate, config.monthsAfter);
+
+  if (config.unit === "week") startDate = startOfWeek(startDate);
+  if (config.unit === "month")
+    startDate = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+  if (config.unit === "quarter")
+    startDate = new Date(
+      startDate.getFullYear(),
+      Math.floor(startDate.getMonth() / 3) * 3,
+      1,
+    );
+
+  const days = diffDays(startDate, endDate);
   const ticks: RoadmapTick[] = [];
 
-  if (range === "일") {
-    const COLUMNS = 7;
-    startDate = addDays(todayDate, -1 + page * COLUMNS);
-    days = COLUMNS;
-    for (let index = 0; index < COLUMNS; index += 1) {
+  if (config.unit === "day") {
+    for (let index = 0; index < days; index += 1) {
       const tickDate = addDays(startDate, index);
       ticks.push({
+        key: toISO(tickDate),
         label: `${tickDate.getMonth() + 1}/${tickDate.getDate()}`,
         offsetDays: index,
         year: tickDate.getFullYear(),
+        yearStart: tickDate.getMonth() === 0 && tickDate.getDate() === 1,
       });
     }
-  } else if (range === "주") {
-    const COLUMNS = 4;
-    startDate = addDays(startOfWeek(todayDate), -7 + page * COLUMNS * 7);
-    days = COLUMNS * 7;
-    for (let index = 0; index < COLUMNS; index += 1) {
-      const tickDate = addDays(startDate, index * 7);
+  } else if (config.unit === "week") {
+    for (let cursor = 0; cursor < days; cursor += 7) {
+      const tickDate = addDays(startDate, cursor);
       ticks.push({
+        key: toISO(tickDate),
         label: `${tickDate.getMonth() + 1}/${tickDate.getDate()}`,
-        offsetDays: index * 7,
+        offsetDays: cursor,
         year: tickDate.getFullYear(),
-      });
-    }
-  } else if (range === "개월") {
-    const COLUMNS = 3;
-    const monthStart = new Date(
-      todayDate.getFullYear(),
-      todayDate.getMonth(),
-      1,
-    );
-    startDate = addMonths(monthStart, -1 + page * COLUMNS);
-    days = diffDays(startDate, addMonths(startDate, COLUMNS));
-    for (let index = 0; index < COLUMNS; index += 1) {
-      const tickDate = addMonths(startDate, index);
-      ticks.push({
-        label: `${tickDate.getMonth() + 1}월`,
-        offsetDays: diffDays(startDate, tickDate),
-        year: tickDate.getFullYear(),
+        yearStart: tickDate.getMonth() === 0 && tickDate.getDate() <= 7,
       });
     }
   } else {
-    const COLUMNS = 4;
-    const quarterStart = new Date(
-      todayDate.getFullYear(),
-      Math.floor(todayDate.getMonth() / 3) * 3,
-      1,
-    );
-    startDate = addMonths(quarterStart, -3 + page * COLUMNS * 3);
-    days = diffDays(startDate, addMonths(startDate, COLUMNS * 3));
-    for (let index = 0; index < COLUMNS; index += 1) {
-      const tickDate = addMonths(startDate, index * 3);
+    const step = config.unit === "month" ? 1 : 3;
+    for (let index = 0; ; index += 1) {
+      const tickDate = new Date(
+        startDate.getFullYear(),
+        startDate.getMonth() + index * step,
+        1,
+      );
+      const offsetDays = diffDays(startDate, tickDate);
+      if (offsetDays >= days) break;
       ticks.push({
-        label: `Q${Math.floor(tickDate.getMonth() / 3) + 1}`,
-        offsetDays: diffDays(startDate, tickDate),
+        key: toISO(tickDate),
+        label:
+          config.unit === "month"
+            ? `${tickDate.getMonth() + 1}월`
+            : `Q${Math.floor(tickDate.getMonth() / 3) + 1}`,
+        offsetDays,
         year: tickDate.getFullYear(),
+        yearStart: tickDate.getMonth() === 0,
       });
     }
   }
@@ -152,6 +170,8 @@ export function buildRoadmapWindow(
   return {
     start,
     days,
+    dayWidth: config.dayWidth,
+    width: days * config.dayWidth,
     ticks,
     todayOffset: offset >= 0 && offset < days ? offset : null,
   };
