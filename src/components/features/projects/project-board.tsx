@@ -9,10 +9,7 @@ import {
   boardActions,
   useProjectBoard,
 } from "@/components/features/projects/board-store";
-
-function formatShort(date: string) {
-  return date.slice(5).replace("-", "/");
-}
+import { formatShort } from "@/components/features/projects/roadmap-utils";
 
 export function ProjectBoard({
   projectId,
@@ -28,8 +25,8 @@ export function ProjectBoard({
     <div className="flex min-h-0 flex-1 items-start gap-2.5 overflow-x-auto">
       {stages.map((stage) => {
         const countLabel =
-          stage.showDeadline && stage.startDate && stage.endDate
-            ? `${formatShort(stage.startDate)}~${formatShort(stage.endDate)} · ${stage.tasks.length}`
+          stage.showDeadline && stage.startDate
+            ? `${formatShort(stage.startDate)}~${stage.endDate ? formatShort(stage.endDate) : ""} · ${stage.tasks.length}`
             : `${stage.tasks.length}`;
         return (
           <section
