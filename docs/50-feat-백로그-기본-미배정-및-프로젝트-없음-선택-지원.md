@@ -1,9 +1,9 @@
-# 47. 백로그 기본 미배정 및 프로젝트 없음 선택 지원
+# 50. 백로그 기본 미배정 및 프로젝트 없음 선택 지원
 
 - **예정 커밋 메시지**: `feat: 백로그 기본 미배정 및 프로젝트 없음 선택 지원`
 - **작업일**: 2026-07-22
 - **작업 브랜치**: `작업-미배정-예정일` (워크트리 `.claude/worktrees/task-unassigned-schedule`, base: main `24ce0a8`)
-- **요청 사이클 태스크 2/3** — 태스크 1(docs/46)의 데이터 계층 위에 화면을 얹는다. 다음은 태스크 3(단계 지정 시 예정일 자동 계산).
+- **요청 사이클 태스크 2/3** — 태스크 1(docs/49)의 데이터 계층 위에 화면을 얹는다. 다음은 태스크 3(단계 지정 시 예정일 자동 계산).
 
 ---
 
@@ -40,7 +40,7 @@
 - 위치 해석에 **미배정 작업 탐색**을 추가 — `unassigned`를 먼저 보고, 없으면 기존대로 보드를 훑는다
 - 헤더 브레드크럼: 미배정이면 `프로젝트 없음 · 미배정`
 - 프로젝트 Select에 **"프로젝트 없음"** 옵션 추가 (센티널 `__unassigned__`)
-- 단계 Select는 미배정일 때 **비활성 + "프로젝트를 먼저 선택하세요"** — 프로젝트 없는 작업이 단계에 들어가는 모순을 UI에서 차단 (서버도 같은 규칙을 강제한다, docs/46 3절)
+- 단계 Select는 미배정일 때 **비활성 + "프로젝트를 먼저 선택하세요"** — 프로젝트 없는 작업이 단계에 들어가는 모순을 UI에서 차단 (서버도 같은 규칙을 강제한다, docs/49 3절)
 
 ## 3. 변경 파일 내역
 
@@ -49,7 +49,7 @@
 | `src/components/features/projects/board-store.tsx` | `addUnassignedTask` 신규, `assignTask`·`toggleTask`·`updateTask`의 projectId nullable화 |
 | `src/components/features/my-work/my-work-backlog.tsx` | 기본 미배정 생성, 미배정 목록 통합, "프로젝트 없음" 라벨·드롭다운 항목 |
 | `src/components/features/projects/task-detail-overlay.tsx` | 미배정 작업 위치 해석, 프로젝트 Select에 "프로젝트 없음", 단계 Select 비활성 처리 |
-| `docs/47-…` | 이 문서 |
+| `docs/50-…` | 이 문서 |
 
 ## 4. 검증
 
