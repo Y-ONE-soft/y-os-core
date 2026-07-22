@@ -1,0 +1,47 @@
+# 116. feat: 내 할일 요청 알림을 요청 종류별 줄로 분리
+
+## 작업 요약
+
+내 할일 화면의 `요청 알림` 띠를 **`할일 요청` / `도움 요청` 두 줄로** 나눴다. 종류가 섞여 한 줄에 나열되던 것을 성격별로 묶는다.
+
+```
+요청 알림 · 3        전체 보기
+
+할일 요청 · 2
+[카드] [카드]
+
+도움 요청 · 1
+[카드]
+```
+
+## 변경 내용
+
+### `src/components/features/my-work/my-work-requests.tsx`
+
+- `KIND_ROWS` 상수로 줄 순서와 라벨을 고정 — `ASSIGN`(할일 요청) → `HELP`(도움 요청)
+- 줄마다 라벨 + 그 종류의 건수를 붙인다
+- **비어 있는 종류는 줄을 만들지 않는다.** 도움 요청이 하나도 없으면 그 줄 자체가 사라진다
+- 카드 정렬은 그대로 — 각 줄 안에서 대기 중인 요청이 먼저 온다(기존 `sorted`를 종류로 거르기만 한다)
+- 헤더의 `요청 알림 · N`은 그대로 **받은 요청 중 대기 중 전체 건수**다. 줄별 건수와 역할이 다르다(헤더는 처리할 게 몇 건인지, 줄은 그 종류가 몇 건인지)
+
+기존 동작은 유지된다 — 받은 요청만 노출(docs/111), 가로 스크롤, 카드 형식 모두 그대로다.
+
+## 검증
+
+```bash
+npx tsc --noEmit          # 통과 (출력 없음)
+npm run lint              # 통과
+npm run build             # 성공 — Compiled successfully
+```
+
+**시각 확인은 프리뷰로 사용자가 한다.** 저장소에 브라우저 자동화 도구가 없다.
+
+## 사후 검증 결과 (추록)
+
+- **PR**: [#105](https://github.com/Y-ONE-soft/y-os-core/pull/105)
+- **프리뷰 배포**: `● Ready` — https://y-os-core-2nge20oc9-project-hosting-center.vercel.app
+- **PR 체크**: `Vercel` pass, `Vercel Preview Comments` pass
+
+## 병렬 작업 메모
+
+착수 시점 main = `0001498`. `my-work-requests.tsx`·`request-card.tsx`를 만지는 세션이 없음을 확인하고 진행했다. 문서 번호는 115까지 사용되어 116으로 잡았다.

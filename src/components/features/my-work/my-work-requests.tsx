@@ -4,6 +4,13 @@ import Link from "next/link";
 
 import { useRequests } from "@/hooks/use-requests";
 import { RequestCard } from "@/components/features/requests/request-card";
+import type { WorkRequest } from "@/types/requests";
+
+// 종류마다 한 줄씩 — 할일 요청과 도움 요청은 성격이 달라 섞이면 훑기 어렵다
+const KIND_ROWS: { kind: WorkRequest["kind"]; label: string }[] = [
+  { kind: "ASSIGN", label: "할일 요청" },
+  { kind: "HELP", label: "도움 요청" },
+];
 
 export function MyWorkRequests() {
   const { requests, loading } = useRequests();
@@ -37,10 +44,28 @@ export function MyWorkRequests() {
       ) : sorted.length === 0 ? (
         <p className="text-xs text-muted-foreground">받은 요청이 없습니다.</p>
       ) : (
-        <div className="flex w-full items-start gap-3 overflow-x-auto">
-          {sorted.map((request) => (
-            <RequestCard key={request.id} request={request} className="flex-1" />
-          ))}
+        <div className="flex w-full flex-col gap-2.5">
+          {KIND_ROWS.map(({ kind, label }) => {
+            const rows = sorted.filter((item) => item.kind === kind);
+            // 없는 종류는 빈 줄을 만들지 않는다
+            if (rows.length === 0) return null;
+            return (
+              <div key={kind} className="flex w-full flex-col gap-1.5">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {label} · {rows.length}
+                </p>
+                <div className="flex w-full items-start gap-3 overflow-x-auto">
+                  {rows.map((request) => (
+                    <RequestCard
+                      key={request.id}
+                      request={request}
+                      className="flex-1"
+                    />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </section>
