@@ -113,6 +113,9 @@ model Task {
   done          Boolean  @default(false)
   description   String?
   scheduledDate String? // YYYY-MM-DD (Stage와 동일 표기 규격 — TZ 이슈 회피). null = 일정 미정
+  // 완료 체크 시 서버가 기록하는 날짜. 체크를 풀면 null로 되돌린다.
+  // scheduledDate와 같은 YYYY-MM-DD 문자열 규격 (DateTime이 아님 — 화면이 날짜만 쓴다)
+  completedDate String?
   createdAt     DateTime @default(now())
   projectId     String? // null = 미배정 (내 작업에서 만든 직후 상태)
   project       Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)

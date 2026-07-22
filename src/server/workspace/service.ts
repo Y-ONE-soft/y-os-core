@@ -21,6 +21,7 @@ function toTask(task: Task): BoardTask {
     done: task.done,
     description: task.description ?? undefined,
     scheduledDate: task.scheduledDate ?? undefined,
+    completedDate: task.completedDate ?? undefined,
   };
 }
 
@@ -209,13 +210,34 @@ export type TaskPatch = Partial<{
   stageId: string | null;
   projectId: string | null;
   scheduledDate: string | null;
+  /** 서버가 done 전환에 맞춰 채운다 — 클라이언트가 직접 보내는 값은 무시된다 */
+  completedDate: string | null;
 }>;
 
 export function deleteTask(id: string) {
   return db.task.deleteMany({ where: { id } });
 }
 
+/** 오늘 날짜(YYYY-MM-DD) — 서버 로컬 기준. scheduledDate와 같은 표기 규격 */
+function todayISO() {
+  const now = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
+/**
+ * 완료 상태 전환에 따른 완료날짜 자동 기록.
+ * 체크하면 오늘, 해제하면 null. 날짜는 **서버가 만든다** — 클라이언트 시계를
+ * 신뢰하면 기기 설정만 바꿔도 임의 날짜로 완료 기록을 남길 수 있다.
+ * done이 패치에 없으면 완료날짜도 건드리지 않는다.
+ */
+function withCompletedDate(patch: TaskPatch): TaskPatch {
+  if (patch.done === undefined) return patch;
+  return { ...patch, completedDate: patch.done ? todayISO() : null };
+}
+
 export async function updateTask(id: string, patch: TaskPatch) {
+  patch = withCompletedDate(patch);
   if (patch.projectId === undefined) {
     return db.task.updateMany({ where: { id }, data: patch });
   }
