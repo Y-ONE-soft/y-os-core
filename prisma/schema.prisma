@@ -16,15 +16,26 @@ enum UserRole {
 }
 
 model User {
-  id           String   @id @default(cuid())
-  username     String   @unique // 로그인 아이디
+  id           String    @id @default(cuid())
+  username     String    @unique // 로그인 아이디
   passwordHash String // bcrypt 해시 — 평문 저장 금지
   role         UserRole
   name         String
   group        String? // 소속 그룹
   title        String? // 직책
   phone        String?
-  email        String?  @unique
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  email        String?   @unique
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  sessions     Session[]
+}
+
+model Session {
+  id        String   @id // 불투명 랜덤 세션 토큰 (base64url 32바이트)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }

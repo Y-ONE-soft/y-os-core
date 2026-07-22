@@ -1,8 +1,2 @@
-export type UserRole = "master" | "staff";
-
-export const CURRENT_USER = {
-  name: "노윤기",
-  title: "대표",
-  initial: "노",
-  role: "master" as UserRole,
-};
+// 세션 쿠키 이름 — proxy(edge)와 서버 코드 양쪽에서 쓰므로 서버 전용 모듈에 두지 않는다.
+export const SESSION_COOKIE = "yos_session";

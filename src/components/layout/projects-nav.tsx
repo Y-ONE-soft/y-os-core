@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import { CURRENT_USER } from "@/lib/constants";
+import { useSession } from "@/components/features/auth/session-context";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -93,7 +93,8 @@ export function ProjectsNav() {
   );
   const [adding, setAdding] = useState<AddingState>(null);
 
-  const isMaster = CURRENT_USER.role === "master";
+  const { user } = useSession();
+  const isMaster = user?.role === "MASTER";
 
   const toggleGroup = (groupId: string) =>
     setCollapsedGroupIds((prev) => {
