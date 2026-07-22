@@ -87,6 +87,14 @@ dev 서버가 `Jest worker encountered 2 child process exceptions`로 500을 뱉
 - **프리셋 적용은 아직 없다.** 태스크 3(새 프로젝트 시작 다이얼로그)에서 붙인다. `projects-nav.tsx`를 `project-color-system` 세션이 점유 중이라 이번 PR에서 제외했다.
 - 저장한 프리셋을 확인·수정·삭제할 화면(`/projects/presets`, `193:1696`)이 아직 없다. 별도 요청 사이클 대상.
 
+## 사후 검증 결과 (추록)
+
+푸시 이후에만 확정되는 검증 결과. 이번 요청 사이클(docs/69·70) 공통.
+
+- **PR**: [#65](https://github.com/Y-ONE-soft/y-os-core/pull/65)
+- **프리뷰 배포**: `● Ready` — https://y-os-core-m175olzew-project-hosting-center.vercel.app
+- **PR 체크**: `Vercel` pass, `Vercel Preview Comments` pass
+
 ## 병렬 작업 메모
 
 작업 중 다른 세션이 문서 번호 68을 선점해 **docs/69·70으로 조정**했다(태스크 1 문서는 커밋을 amend해 68 → 69로 옮김).
