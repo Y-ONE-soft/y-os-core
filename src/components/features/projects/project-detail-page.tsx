@@ -61,25 +61,13 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
           </span>
           <span className="text-xs text-muted-foreground">고객 Y.ONE 내부</span>
         </div>
-        <div className="flex items-center justify-between gap-2.5">
-          <div className="flex items-center gap-2.5">
-            <span
-              aria-hidden
-              className="size-2.5 shrink-0 rounded-full"
-              style={{ backgroundColor: project.color }}
-            />
-            <h1 className="text-xl font-semibold">{project.name}</h1>
-          </div>
-          {/* 이 화면은 ＋단계(11.5px)·탭(13px)·레인지 스위처(11px)로 촘촘하다.
-              Figma 36px를 그대로 옮기면 페이지에서 혼자 커지므로 sm으로 맞춘다. */}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setPresetDialogOpen(true)}
-          >
-            프리셋 저장
-          </Button>
+        <div className="flex items-center gap-2.5">
+          <span
+            aria-hidden
+            className="size-2.5 shrink-0 rounded-full"
+            style={{ backgroundColor: project.color }}
+          />
+          <h1 className="text-xl font-semibold">{project.name}</h1>
         </div>
         <p className="text-[13px] text-muted-foreground">진행률 {progress}%</p>
       </header>
@@ -111,6 +99,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
           <ProjectRoadmap
             projectId={projectId}
             onAddStage={openStageDialog}
+            onSavePreset={() => setPresetDialogOpen(true)}
             onOpenStage={setDetailStageId}
           />
           <ProjectBoard
