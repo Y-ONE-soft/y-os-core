@@ -10,6 +10,7 @@ import {
   ContextMenuItem,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import {
   boardActions,
   useProjectBoard,
@@ -185,7 +186,7 @@ export function ProjectBoard({
                         }
                       }}
                       className={cn(
-                        "flex w-full shrink-0 cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 transition-shadow outline-none",
+                        "group flex w-full shrink-0 cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 transition-shadow outline-none",
                         "hover:ring-2 hover:ring-primary/50 focus-visible:ring-2 focus-visible:ring-ring",
                         task.done
                           ? "bg-muted opacity-60"
@@ -200,7 +201,11 @@ export function ProjectBoard({
                           aria-label={`${task.name} 완료`}
                           checked={task.done}
                           onCheckedChange={() =>
-                            boardActions.toggleTask(projectId, stage.id, task.id)
+                            boardActions.toggleTask(
+                              projectId,
+                              stage.id,
+                              task.id,
+                            )
                           }
                           className="rounded-[4px] border-primary"
                         />
@@ -213,6 +218,17 @@ export function ProjectBoard({
                       >
                         {task.name}
                       </span>
+                      <RowActions
+                        label={task.name}
+                        actions={[
+                          {
+                            label: "할일 삭제",
+                            destructive: true,
+                            onSelect: () =>
+                              boardActions.deleteTask(projectId, task.id),
+                          },
+                        ]}
+                      />
                     </div>
                   </ContextMenuTrigger>
                   <ContextMenuContent className="w-44">

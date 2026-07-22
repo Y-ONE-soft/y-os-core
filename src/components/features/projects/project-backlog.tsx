@@ -17,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { RowActions } from "@/components/ui/row-actions";
 import {
   boardActions,
   useProjectBoard,
@@ -75,7 +76,7 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
               }}
               title="단계 컬럼으로 끌어다 놓으면 편입됩니다"
               className={cn(
-                "flex shrink-0 cursor-grab items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2 transition-shadow outline-none active:cursor-grabbing",
+                "group flex shrink-0 cursor-grab items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2 transition-shadow outline-none active:cursor-grabbing",
                 "hover:ring-2 hover:ring-primary/50 focus-visible:ring-2 focus-visible:ring-ring",
                 // 완료 항목은 행 전체를 흐린다 — 보드 카드·내 할일 백로그와 같은 규칙
                 item.done && "opacity-60",
@@ -146,6 +147,16 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+              <RowActions
+                label={item.name}
+                actions={[
+                  {
+                    label: "할일 삭제",
+                    destructive: true,
+                    onSelect: () => boardActions.deleteTask(projectId, item.id),
+                  },
+                ]}
+              />
             </div>
           </ContextMenuTrigger>
           <ContextMenuContent className="w-44">
