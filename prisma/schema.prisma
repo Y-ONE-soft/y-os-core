@@ -16,22 +16,23 @@ enum UserRole {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  username     String        @unique // 로그인 아이디
-  passwordHash String // bcrypt 해시 — 평문 저장 금지
-  role         UserRole
-  name         String
+  id            String        @id @default(cuid())
+  username      String        @unique // 로그인 아이디
+  passwordHash  String // bcrypt 해시 — 평문 저장 금지
+  role          UserRole
+  name          String
   // 소속 그룹 — 프로젝트 그룹과 동일한 축이어야 "내 소속 프로젝트" 판정이 가능하다.
   // (구 group String? 자유 문자열은 ProjectGroup과 연결되지 않아 FK로 교체)
-  groupId      String?
-  group        ProjectGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  title        String? // 직책
-  phone        String?
-  email        String?       @unique
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  sessions     Session[]
+  groupId       String?
+  group         ProjectGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  title         String? // 직책
+  phone         String?
+  email         String?       @unique
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  sessions      Session[]
   ownedProjects Project[]
+  stagePresets  StagePreset[]
 
   @@index([groupId])
 }
@@ -123,5 +124,53 @@ model Task {
   stage         Stage?   @relation(fields: [stageId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
+  @@index([stageId])
+}
+
+// ── 단계 프리셋 ──────────────────────────────────────────────
+// 프로젝트의 단계·할일 구성을 통째로 담는 개인용 템플릿.
+// 실제 날짜 대신 기준일(저장 시점 가장 이른 단계 시작일) 기준 상대 오프셋을 담아,
+// 적용할 때 지정한 시작일부터 같은 간격·길이로 재현한다.
+// 완료 여부·설명·댓글 등 인스턴스 데이터는 담지 않는다.
+
+model StagePreset {
+  id        String             @id // "ps-<uuid>"
+  ownerId   String // 개인용 — 만든 사람만 조회·수정할 수 있다
+  owner     User               @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  stages    StagePresetStage[]
+
+  // 이름 중복은 사용자 안에서만 막는다 (덮어쓰기 대상이 모호해지지 않도록)
+  @@unique([ownerId, name])
+  @@index([ownerId])
+}
+
+model StagePresetStage {
+  id           String            @id // "pss-<uuid>"
+  presetId     String
+  preset       StagePreset       @relation(fields: [presetId], references: [id], onDelete: Cascade)
+  name         String
+  color        String
+  order        Int
+  // 기준일로부터 며칠 뒤 시작하는지. null = 날짜가 없던 단계
+  offsetDays   Int?
+  // 기간(일). null = 종료일이 없던 진행형 막대
+  durationDays Int?
+  tasks        StagePresetTask[]
+
+  @@index([presetId])
+}
+
+model StagePresetTask {
+  id         String           @id // "pst-<uuid>"
+  stageId    String
+  stage      StagePresetStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  name       String
+  order      Int
+  // 예정일 오프셋. null = 일정 미정이던 할일
+  offsetDays Int?
+
   @@index([stageId])
 }
