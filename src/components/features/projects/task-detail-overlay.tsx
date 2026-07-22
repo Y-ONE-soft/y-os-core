@@ -36,7 +36,8 @@ import {
 } from "@/components/features/projects/board-store";
 import { clampStageToTasks } from "@/components/features/projects/roadmap-utils";
 import type { BoardStage, BoardTask } from "@/types/workspace";
-import { TEAM_MEMBERS } from "@/components/features/projects/project-detail-data";
+import { avatarColor } from "@/lib/avatar-color";
+import { useUsers } from "@/hooks/use-users";
 import { OverlayBreadcrumb } from "@/components/features/projects/overlay-breadcrumb";
 
 // Select에서 null(백로그·미배정)을 가리키는 센티널 — Radix Select는 빈 문자열 값을 허용하지 않는다
@@ -74,6 +75,7 @@ export function TaskDetailOverlay({
   onClose: () => void;
 }) {
   const { user } = useSession();
+  const { users, loading: usersLoading } = useUsers();
   const { groups } = useProjectStore();
   const boards = useBoardState();
   const unassigned = useUnassignedTasks();
@@ -202,9 +204,13 @@ export function TaskDetailOverlay({
 
   const requestTitle =
     request === "collab" ? "공동 작업자 지정 요청" : "도움 요청하기";
-  const selectedNames = TEAM_MEMBERS.filter((member) =>
-    requestMembers.has(member.id),
-  ).map((member) => member.name);
+  // 자기 자신에게 요청할 수는 없다
+  const requestCandidates = users.filter(
+    (candidate) => candidate.id !== user?.id,
+  );
+  const selectedNames = requestCandidates
+    .filter((member) => requestMembers.has(member.id))
+    .map((member) => member.name);
   const requestSummary =
     selectedNames.length === 0
       ? "작업자 선택"
@@ -660,38 +666,47 @@ export function TaskDetailOverlay({
                 />
               </div>
               <div className="flex flex-col gap-1 py-1.5">
-                {TEAM_MEMBERS.map((member) => (
-                  <label
-                    key={member.id}
-                    className="flex cursor-pointer items-center gap-2.5 rounded-[6px] px-1 py-1.5 transition-colors hover:bg-accent/60"
-                  >
-                    <Checkbox
-                      checked={requestMembers.has(member.id)}
-                      onCheckedChange={(checked) =>
-                        setRequestMembers((prev) => {
-                          const next = new Set(prev);
-                          if (checked) next.add(member.id);
-                          else next.delete(member.id);
-                          return next;
-                        })
-                      }
-                      className="rounded-[4px] border-primary"
-                    />
-                    <span
-                      aria-hidden
-                      className="flex size-5 items-center justify-center rounded-full text-[9px] font-medium text-white"
-                      style={{ backgroundColor: member.color }}
+                {requestCandidates.length === 0 ? (
+                  <p className="px-1 py-1.5 text-[13px] text-muted-foreground">
+                    {usersLoading
+                      ? "작업자 목록을 불러오는 중…"
+                      : "요청할 수 있는 다른 작업자가 없습니다."}
+                  </p>
+                ) : (
+                  requestCandidates.map((member) => (
+                    <label
+                      key={member.id}
+                      className="flex cursor-pointer items-center gap-2.5 rounded-[6px] px-1 py-1.5 transition-colors hover:bg-accent/60"
                     >
-                      {member.name.charAt(0)}
-                    </span>
-                    <span className="flex-1 text-[13px] font-medium">
-                      {member.name}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {member.role}
-                    </span>
-                  </label>
-                ))}
+                      <Checkbox
+                        checked={requestMembers.has(member.id)}
+                        onCheckedChange={(checked) =>
+                          setRequestMembers((prev) => {
+                            const next = new Set(prev);
+                            if (checked) next.add(member.id);
+                            else next.delete(member.id);
+                            return next;
+                          })
+                        }
+                        className="rounded-[4px] border-primary"
+                      />
+                      <span
+                        aria-hidden
+                        className="flex size-5 items-center justify-center rounded-full text-[9px] font-medium text-white"
+                        style={{ backgroundColor: avatarColor(member.id) }}
+                      >
+                        {member.name.charAt(0)}
+                      </span>
+                      <span className="flex-1 text-[13px] font-medium">
+                        {member.name}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {member.title ??
+                          (member.role === "MASTER" ? "마스터" : "스탭")}
+                      </span>
+                    </label>
+                  ))
+                )}
               </div>
               <p className="text-xs font-medium text-muted-foreground">
                 메시지

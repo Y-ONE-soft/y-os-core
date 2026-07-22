@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { boardActions } from "@/components/features/projects/board-store";
 import { CollaboratorRequestDialog } from "@/components/features/projects/collaborator-request-dialog";
 import { OverlayBreadcrumb } from "@/components/features/projects/overlay-breadcrumb";
-import { TEAM_MEMBERS } from "@/components/features/projects/project-detail-data";
+import { useUsers } from "@/hooks/use-users";
 import { todayISO } from "@/components/features/projects/roadmap-utils";
 
 // 단계 상세 오버레이(stage-detail-overlay)의 생성 모드 — 셸·타이포·세부 사항 스펙을 그대로 따른다.
@@ -39,6 +39,7 @@ export function StageAddOverlay({
   /** 생성 직후 상세 오버레이로 이어가고 싶을 때 사용 */
   onCreated?: (stageId: string) => void;
 }) {
+  const { users } = useUsers();
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   // 단계는 항상 기간을 갖는다 — 세부 사항의 시작·종료일을 오늘로 채워 두고 시작한다
@@ -260,9 +261,8 @@ export function StageAddOverlay({
             </Button>
             {collaborators.length > 0 && (
               <p className="text-[11px] text-muted-foreground">
-                {TEAM_MEMBERS.filter((member) =>
-                  collaborators.includes(member.id),
-                )
+                {users
+                  .filter((member) => collaborators.includes(member.id))
                   .map((member) => member.name)
                   .join(", ")}
               </p>

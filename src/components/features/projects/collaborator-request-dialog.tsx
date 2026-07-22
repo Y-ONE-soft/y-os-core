@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 
-import { TEAM_MEMBERS } from "@/lib/constants";
+import { avatarColor } from "@/lib/avatar-color";
+import { useUsers } from "@/hooks/use-users";
+import { useSession } from "@/components/features/auth/session-context";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -25,6 +27,8 @@ export function CollaboratorRequestDialog({
   initialSelected: string[];
   onSubmit: (memberIds: string[], message: string) => void;
 }) {
+  const { user } = useSession();
+  const { users, loading } = useUsers();
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(initialSelected),
   );
@@ -38,9 +42,9 @@ export function CollaboratorRequestDialog({
       return next;
     });
 
-  const selectedMembers = TEAM_MEMBERS.filter((member) =>
-    selected.has(member.id),
-  );
+  // 자기 자신에게 요청할 수는 없다
+  const members = users.filter((candidate) => candidate.id !== user?.id);
+  const selectedMembers = members.filter((member) => selected.has(member.id));
   const summary =
     selectedMembers.length === 0
       ? "작업자를 선택하세요"
@@ -64,31 +68,41 @@ export function CollaboratorRequestDialog({
             </div>
           </div>
           <ul className="flex flex-col">
-            {TEAM_MEMBERS.map((member) => (
-              <li key={member.id}>
-                <label className="flex h-10 cursor-pointer items-center gap-2.5 rounded-[8px] px-1.5 transition-colors hover:bg-accent/60">
-                  <Checkbox
-                    checked={selected.has(member.id)}
-                    onCheckedChange={() => toggle(member.id)}
-                    aria-label={`${member.name} 선택`}
-                    className="rounded-[4px] border-primary"
-                  />
-                  <span
-                    aria-hidden
-                    className="flex size-6 items-center justify-center rounded-full text-[10px] font-medium text-white"
-                    style={{ backgroundColor: member.color }}
-                  >
-                    {member.name.charAt(0)}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
-                    {member.name}
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {member.title}
-                  </span>
-                </label>
+            {loading ? (
+              <li className="px-1.5 py-2 text-[13px] text-muted-foreground">
+                작업자 목록을 불러오는 중…
               </li>
-            ))}
+            ) : members.length === 0 ? (
+              <li className="px-1.5 py-2 text-[13px] text-muted-foreground">
+                요청할 수 있는 다른 작업자가 없습니다.
+              </li>
+            ) : (
+              members.map((member) => (
+                <li key={member.id}>
+                  <label className="flex h-10 cursor-pointer items-center gap-2.5 rounded-[8px] px-1.5 transition-colors hover:bg-accent/60">
+                    <Checkbox
+                      checked={selected.has(member.id)}
+                      onCheckedChange={() => toggle(member.id)}
+                      aria-label={`${member.name} 선택`}
+                      className="rounded-[4px] border-primary"
+                    />
+                    <span
+                      aria-hidden
+                      className="flex size-6 items-center justify-center rounded-full text-[10px] font-medium text-white"
+                      style={{ backgroundColor: avatarColor(member.id) }}
+                    >
+                      {member.name.charAt(0)}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+                      {member.name}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {member.title ?? (member.role === "MASTER" ? "마스터" : "스탭")}
+                    </span>
+                  </label>
+                </li>
+              ))
+            )}
           </ul>
           <div className="flex flex-col gap-2">
             <p className="text-xs font-medium text-foreground">메시지</p>
