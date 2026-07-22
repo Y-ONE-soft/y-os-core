@@ -89,6 +89,14 @@ dev 서버에서 실제 렌더 HTML을 받아 배치를 확인했다 (`master01`
 - `CAL_OVERLAYS`는 여전히 Figma My Work Layout(147:495) 예시 값 재현이다. 내 작업/일정 도메인 DB 전환 시 데이터만 API 경계 흐름으로 교체하면 되고, 배치 모듈은 그대로 쓴다.
 - 한 프로젝트에 단계가 많아 한 레인에 과하게 포개지는 경우의 가독성(라벨 잘림)은 이번 범위 밖이다. 실데이터 연결 후 재평가 대상.
 
+## 사후 검증 결과 (추록)
+
+푸시 이후에만 확정되는 검증 결과.
+
+- **PR**: [#25](https://github.com/Y-ONE-soft/y-os-core/pull/25)
+- **프리뷰 배포**: `● Ready` (36s) — https://y-os-core-hmsov52vw-project-hosting-center.vercel.app
+- **PR 체크**: `Vercel` pass, `Vercel Preview Comments` pass
+
 ## 병렬 작업 메모
 
 착수 시점 main = `a15947b` (PR #21 내 작업 백로그, PR #22 보드 높이 정합 머지 직후). 동시 진행 중이던 `로드맵-스크롤-연도-단계링크` 브랜치는 `src/components/features/projects/` 파일만 만지고 있어 `my-work/`와 겹치지 않음을 확인하고 시작했다.
