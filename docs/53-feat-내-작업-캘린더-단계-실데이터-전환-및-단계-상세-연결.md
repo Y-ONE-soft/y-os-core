@@ -143,6 +143,14 @@ npm run dev -- -p 3024
 - **개발 DB에 넣은 단계 날짜는 남겨뒀다.** 지우면 캘린더가 다시 빈 화면이 되고, 로드맵 드래그 작업 중인 세션에도 날짜 있는 단계가 필요하다.
 - 기간 세그먼트(기간/시작일/종료일)와 상단 필터 칩은 여전히 동작 없는 자리표시다.
 
+## 사후 검증 결과 (추록)
+
+푸시 이후에만 확정되는 검증 결과.
+
+- **PR**: [#49](https://github.com/Y-ONE-soft/y-os-core/pull/49)
+- **프리뷰 배포**: `● Ready` — https://y-os-core-b5uzom1e8-project-hosting-center.vercel.app
+- **PR 체크**: `Vercel` pass, `Vercel Preview Comments` pass
+
 ## 병렬 작업 메모
 
 착수 시점 main = `e731c00`. 진행 중 main이 크게 움직였다(docs 49~52 — 작업 미배정·예정일 모델, 백로그 미배정, 단계 지정 시 예정일 자동 계산, tailwind 스캔 범위). 이번 변경은 `my-work/` 캘린더 파일에 한정되고 그 작업들과 파일이 겹치지 않는다.
