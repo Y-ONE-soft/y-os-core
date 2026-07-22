@@ -54,8 +54,8 @@ function ProjectBoxItem({ box }: { box: ProjectBox }) {
           {box.label}
         </span>
       )}
-      {/* 박스 안 줄 구분선 — 단계 줄과 할일 줄을 한 프로젝트 안에서 나눠 보여준다 */}
-      {Array.from({ length: box.lanes - 1 }, (_, index) => (
+      {/* 박스 안 줄 구분선 — 실제 할일 줄 위에만 긋는다. 빈 자리에는 선이 남지 않는다 */}
+      {Array.from({ length: box.taskLanes }, (_, index) => (
         <div
           key={index}
           className="absolute inset-x-0 h-px"
