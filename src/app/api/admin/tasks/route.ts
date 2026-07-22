@@ -18,13 +18,12 @@ export async function POST(request: Request) {
     stageId?: unknown;
     name?: unknown;
   } | null;
-  if (!body || !isName(body.id) || !isName(body.projectId) || !isName(body.name)) {
-    return badRequest();
-  }
+  if (!body || !isName(body.id) || !isName(body.name)) return badRequest();
 
   await createTask({
     id: body.id,
-    projectId: body.projectId,
+    // projectId 미지정(null)은 미배정 작업 — 내 작업에서 만든 직후 상태
+    projectId: isName(body.projectId) ? body.projectId : null,
     stageId: isName(body.stageId) ? body.stageId : null,
     name: body.name.trim(),
   });

@@ -5,7 +5,7 @@
 import { fetchWorkspace } from "@/lib/api/workspace";
 import type { Workspace } from "@/types/workspace";
 
-const EMPTY: Workspace = { groups: [], boards: {} };
+const EMPTY: Workspace = { groups: [], boards: {}, unassigned: [] };
 
 let state: Workspace = EMPTY;
 let status: "idle" | "loading" | "ready" = "idle";

@@ -273,3 +273,13 @@ export function useBoardState(): BoardState {
   );
   return workspace.boards;
 }
+
+/** 미배정 작업(projectId = null) — 내 작업 백로그의 기본 자리 */
+export function useUnassignedTasks(): BoardTask[] {
+  const workspace = useSyncExternalStore(
+    cache.subscribe,
+    cache.getSnapshot,
+    cache.getServerSnapshot,
+  );
+  return workspace.unassigned;
+}

@@ -86,6 +86,7 @@ export function ProjectStoreProvider({
       );
       const color = PROJECT_COLORS[totalProjects % PROJECT_COLORS.length];
       cache.apply((prev) => ({
+        ...prev,
         groups: prev.groups.map((group) =>
           group.id === groupId
             ? {
@@ -108,6 +109,7 @@ export function ProjectStoreProvider({
         const boards = { ...prev.boards };
         target?.projects.forEach((project) => delete boards[project.id]);
         return {
+          ...prev,
           groups: prev.groups.filter((group) => group.id !== groupId),
           boards,
         };
@@ -119,6 +121,7 @@ export function ProjectStoreProvider({
         const boards = { ...prev.boards };
         delete boards[projectId];
         return {
+          ...prev,
           groups: prev.groups.map((group) =>
             group.id === groupId
               ? {

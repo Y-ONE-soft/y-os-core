@@ -108,15 +108,16 @@ model StageComment {
 }
 
 model Task {
-  id          String   @id
-  name        String
-  done        Boolean  @default(false)
-  description String?
-  createdAt   DateTime @default(now())
-  projectId   String
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  stageId     String? // null = 백로그
-  stage       Stage?   @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  id            String   @id
+  name          String
+  done          Boolean  @default(false)
+  description   String?
+  scheduledDate String? // YYYY-MM-DD (Stage와 동일 표기 규격 — TZ 이슈 회피). null = 일정 미정
+  createdAt     DateTime @default(now())
+  projectId     String? // null = 미배정 (내 작업에서 만든 직후 상태)
+  project       Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  stageId       String? // null = 백로그
+  stage         Stage?   @relation(fields: [stageId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
   @@index([stageId])
