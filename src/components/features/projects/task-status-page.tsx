@@ -12,9 +12,12 @@ import {
   type RoadmapSection,
 } from "@/components/features/projects/workload-roadmap";
 import { StageDetailOverlay } from "@/components/features/projects/stage-detail-overlay";
+import { TaskStatusCalendar } from "@/components/features/projects/task-status-calendar";
 
 const VIEW_OPTIONS = ["로드맵", "담당자", "캘린더"] as const;
-const ACTIVE_VIEW = "로드맵";
+type ViewOption = (typeof VIEW_OPTIONS)[number];
+/** 담당자 뷰는 아직 구현 전 — 누를 수 있게 두면 빈 화면이 되므로 막아 둔다 */
+const UNAVAILABLE_VIEWS: ViewOption[] = ["담당자"];
 
 function FilterChip({
   checked,
@@ -84,6 +87,7 @@ export function TaskStatusPage() {
     projectId: string;
     stageId: string;
   } | null>(null);
+  const [activeView, setActiveView] = useState<ViewOption>("로드맵");
 
   if (loading) {
     return (
@@ -191,29 +195,45 @@ export function TaskStatusPage() {
           선택: {visibleProjects.length}개 프로젝트 · {taskCount}개 할일
         </p>
         <div className="flex items-center gap-1">
-          {VIEW_OPTIONS.map((view) => (
-            <button
-              key={view}
-              type="button"
-              aria-pressed={view === ACTIVE_VIEW}
-              className={cn(
-                "rounded-[6px] px-3 py-[5px] text-[12.5px] font-medium transition-colors",
-                view === ACTIVE_VIEW
-                  ? "border bg-background text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              {view}
-            </button>
-          ))}
+          {VIEW_OPTIONS.map((view) => {
+            const unavailable = UNAVAILABLE_VIEWS.includes(view);
+            return (
+              <button
+                key={view}
+                type="button"
+                aria-pressed={view === activeView}
+                disabled={unavailable}
+                title={unavailable ? "준비 중입니다" : undefined}
+                onClick={() => setActiveView(view)}
+                className={cn(
+                  "rounded-[6px] px-3 py-[5px] text-[12.5px] font-medium transition-colors",
+                  view === activeView
+                    ? "border bg-background text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                  unavailable && "cursor-not-allowed opacity-50 hover:text-muted-foreground",
+                )}
+              >
+                {view}
+              </button>
+            );
+          })}
         </div>
       </div>
-      <WorkloadRoadmap
-        sections={sections}
-        onOpenStage={(projectId, stageId) =>
-          setDetailStage({ projectId, stageId })
-        }
-      />
+      {activeView === "캘린더" ? (
+        <TaskStatusCalendar
+          projects={visibleProjects}
+          onOpenStage={(projectId, stageId) =>
+            setDetailStage({ projectId, stageId })
+          }
+        />
+      ) : (
+        <WorkloadRoadmap
+          sections={sections}
+          onOpenStage={(projectId, stageId) =>
+            setDetailStage({ projectId, stageId })
+          }
+        />
+      )}
       {detailStage && (
         <StageDetailOverlay
           projectId={detailStage.projectId}
