@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/lib/api/client";
 import { login } from "@/lib/api/auth";
+import { AFTER_LOGIN_PATH } from "@/lib/constants";
 
 export function LoginForm() {
   const router = useRouter();
@@ -31,7 +32,7 @@ export function LoginForm() {
     setError(null);
     try {
       await login(username, password);
-      router.replace("/");
+      router.replace(AFTER_LOGIN_PATH);
       router.refresh();
     } catch (caught) {
       setError(

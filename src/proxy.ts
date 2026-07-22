@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { SESSION_COOKIE } from "@/lib/constants";
+import { AFTER_LOGIN_PATH, SESSION_COOKIE } from "@/lib/constants";
 
 // 비로그인 상태로 접근 가능한 경로
 const PUBLIC_PATHS = new Set(["/login", "/reset-password"]);
@@ -16,7 +16,7 @@ export function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
   if (hasSession && pathname === "/login") {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL(AFTER_LOGIN_PATH, request.url));
   }
   return NextResponse.next();
 }
