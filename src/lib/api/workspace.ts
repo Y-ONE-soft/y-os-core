@@ -32,6 +32,9 @@ export const createStageApi = (input: {
   showDeadline: boolean;
 }) => api.post<{ ok: boolean }>("/api/admin/stages", input);
 
+export const deleteStageApi = (stageId: string) =>
+  api.del<{ ok: boolean }>(`/api/admin/stages/${stageId}`);
+
 export const patchStageApi = (
   stageId: string,
   patch: Record<string, unknown>,
