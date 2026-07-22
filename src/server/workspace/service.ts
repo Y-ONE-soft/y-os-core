@@ -184,15 +184,15 @@ export async function updateTask(id: string, patch: TaskPatch) {
   return db.task.updateMany({ where: { id }, data: { ...patch, stageId } });
 }
 
-/** 데이터 초기화 — 워크스페이스 전체를 시드 상태로 되돌린다 (User/Session은 무관) */
+/**
+ * 데이터 초기화 — 프로젝트·단계·작업을 모두 지우고 그룹 골격만 남긴다.
+ * (User/Session은 무관. 그룹을 남기는 이유는 seed-data.ts 주석 참고)
+ */
 export async function resetWorkspace(): Promise<void> {
   const seed = workspaceSeedRows();
   await db.$transaction([
-    db.projectGroup.deleteMany(),
+    db.projectGroup.deleteMany(), // 프로젝트·단계·작업까지 cascade 삭제
     db.task.deleteMany(), // 그룹 밖에 남을 수 있는 잔여 행 방어
     db.projectGroup.createMany({ data: seed.groups }),
-    db.project.createMany({ data: seed.projects }),
-    db.stage.createMany({ data: seed.stages }),
-    db.task.createMany({ data: seed.tasks }),
   ]);
 }
