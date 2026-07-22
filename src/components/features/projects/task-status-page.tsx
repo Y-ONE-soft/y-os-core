@@ -4,7 +4,6 @@ import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { STAFF_ASSIGNED_PROJECT_IDS } from "@/lib/constants";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSession } from "@/components/features/auth/session-context";
 import { useProjectStore } from "@/components/features/projects/project-store";
@@ -139,14 +138,11 @@ export function TaskStatusPage() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3.5 overflow-y-auto p-6">
-      <header className="flex shrink-0 items-start justify-between gap-4">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-xl font-semibold">작업 현황</h1>
-          <p className="text-[13px] text-muted-foreground">
-            그룹·프로젝트를 골라 선택 범위의 로드맵을 봅니다
-          </p>
-        </div>
-        <Button className="h-9">＋ 작업</Button>
+      <header className="flex shrink-0 flex-col gap-1">
+        <h1 className="text-xl font-semibold">작업 현황</h1>
+        <p className="text-[13px] text-muted-foreground">
+          그룹·프로젝트를 골라 선택 범위의 로드맵을 봅니다
+        </p>
       </header>
       <section
         aria-label="선택 필터"
