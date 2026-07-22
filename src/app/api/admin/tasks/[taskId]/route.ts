@@ -3,7 +3,13 @@ import { NextResponse } from "next/server";
 import { badRequest, currentUser, unauthorized } from "@/app/api/admin/guard";
 import { updateTask, type TaskPatch } from "@/server/workspace/service";
 
-const PATCHABLE = ["name", "done", "description", "stageId"] as const;
+const PATCHABLE = [
+  "name",
+  "done",
+  "description",
+  "stageId",
+  "projectId",
+] as const;
 
 export async function PATCH(
   request: Request,
