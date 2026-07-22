@@ -74,11 +74,16 @@ export function MyWorkBacklog() {
       {items.map(({ project, task }) => (
         <ContextMenu key={task.id}>
           <ContextMenuTrigger asChild>
+            {/* 완료 항목은 행 전체를 흐려 목록에서 뒤로 물러나게 한다 —
+                보드 카드와 같은 규칙 (project-board.tsx) */}
             <div
               draggable
               onDragStart={(event) => setTaskDragData(event, task.id)}
               title="캘린더 날짜 칸으로 끌어다 놓으면 일정이 잡힙니다"
-              className="flex shrink-0 cursor-grab items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2 active:cursor-grabbing"
+              className={cn(
+                "flex shrink-0 cursor-grab items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2 active:cursor-grabbing",
+                task.done && "opacity-60",
+              )}
             >
               <Checkbox
                 aria-label={`${task.name} 완료`}
