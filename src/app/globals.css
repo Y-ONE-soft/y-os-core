@@ -2,6 +2,12 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Tailwind v4는 @source 지정이 없으면 프로젝트 루트를 자동 스캔한다.
+   docs/의 작업 결과 문서는 산문에 클래스명을 그대로 적기 때문에, 소스에서
+   지운 클래스가 문서 언급만으로 계속 CSS에 남는다(실제 사례: cursor-grab).
+   문서는 스캔 대상에서 제외한다. */
+@source not "../../docs";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
