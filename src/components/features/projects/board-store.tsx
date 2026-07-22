@@ -45,7 +45,8 @@ export type NewStageInput = {
 };
 
 export const boardActions = {
-  addStage(projectId: string, input: NewStageInput) {
+  /** 생성된 단계 id를 돌려준다 — 생성 직후 상세 필드를 이어서 저장할 때 쓴다 */
+  addStage(projectId: string, input: NewStageInput): string {
     const id = `st-${crypto.randomUUID()}`;
     const count =
       cache.getSnapshot().boards[projectId]?.stages.length ?? 0;
@@ -80,6 +81,7 @@ export const boardActions = {
         showDeadline: input.showDeadline,
       }),
     );
+    return id;
   },
   updateStage(
     projectId: string,
