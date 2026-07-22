@@ -10,4 +10,13 @@ export type SessionUser = {
   groupId: string | null;
   title: string | null;
   email: string | null;
+  phone: string | null;
 };
+
+/** 내 정보 페이지에서 본인이 바꿀 수 있는 필드 — 아이디·역할·소속은 제외 */
+export type ProfilePatch = Partial<{
+  name: string;
+  title: string | null;
+  email: string | null;
+  phone: string | null;
+}>;
