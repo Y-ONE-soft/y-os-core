@@ -11,7 +11,13 @@ import {
 } from "@/components/features/projects/board-store";
 import { formatShort } from "@/components/features/projects/roadmap-utils";
 
-export function ProjectBoard({ projectId }: { projectId: string }) {
+export function ProjectBoard({
+  projectId,
+  onOpenStage,
+}: {
+  projectId: string;
+  onOpenStage: (stageId: string) => void;
+}) {
   const { stages } = useProjectBoard(projectId);
   const [addingStageId, setAddingStageId] = useState<string | null>(null);
 
@@ -34,7 +40,13 @@ export function ProjectBoard({ projectId }: { projectId: string }) {
                 style={{ backgroundColor: stage.color }}
               />
               <h3 className="min-w-0 flex-1 truncate text-[13px] font-semibold">
-                {stage.name}
+                <button
+                  type="button"
+                  onClick={() => onOpenStage(stage.id)}
+                  className="max-w-full truncate text-left transition-colors hover:text-primary/80 hover:underline"
+                >
+                  {stage.name}
+                </button>
               </h3>
               <span className="rounded-full bg-background px-[7px] py-0.5 text-[10.5px] text-muted-foreground">
                 {countLabel}

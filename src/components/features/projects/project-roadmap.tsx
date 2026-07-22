@@ -15,9 +15,11 @@ const ACTIVE_RANGE = "주";
 export function ProjectRoadmap({
   projectId,
   onAddStage,
+  onOpenStage,
 }: {
   projectId: string;
   onAddStage: () => void;
+  onOpenStage: (stageId: string) => void;
 }) {
   const { stages } = useProjectBoard(projectId);
 
@@ -107,9 +109,13 @@ export function ProjectRoadmap({
                   className="size-1.5 shrink-0 rounded-full"
                   style={{ backgroundColor: stage.color }}
                 />
-                <span className="min-w-0 flex-1 truncate text-xs font-medium">
+                <button
+                  type="button"
+                  onClick={() => onOpenStage(stage.id)}
+                  className="min-w-0 flex-1 truncate text-left text-xs font-medium transition-colors hover:text-primary/80 hover:underline"
+                >
                   {stage.name}
-                </span>
+                </button>
                 <span className="text-[11px] text-muted-foreground">
                   {done}/{total}
                 </span>
