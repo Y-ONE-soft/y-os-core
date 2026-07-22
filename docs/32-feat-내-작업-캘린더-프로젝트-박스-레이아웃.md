@@ -133,6 +133,14 @@ dev 서버 렌더 HTML로 배치를 확인했다 (`master01` 로그인 후 `/pro
 - `착수` 단계의 프로젝트 귀속은 docs/30에서 정한 대로 색 기준(CMS)을 유지했다.
 - `CAL_OVERLAYS`는 여전히 Figma My Work Layout(147:495) 예시 값이다. DB 전환 시 데이터만 API 경계 흐름으로 교체하면 되고, 배치 모듈과 렌더는 그대로 쓴다.
 
+## 사후 검증 결과 (추록)
+
+푸시 이후에만 확정되는 검증 결과.
+
+- **PR**: [#27](https://github.com/Y-ONE-soft/y-os-core/pull/27)
+- **프리뷰 배포**: `● Ready` (36s) — https://y-os-core-mjabw1as5-project-hosting-center.vercel.app
+- **PR 체크**: `Vercel` pass, `Vercel Preview Comments` pass
+
 ## 병렬 작업 메모
 
 착수 시점 main = `2335394`(docs/30 머지 직후). 동시 진행 중이던 워크트리 4개(`backlog-assign-label`·`board-stage-add`·`roadmap-timeline`·`staff-project-create`)의 작업 파일을 확인해 `my-work-calendar.tsx`·`my-work-data.ts`를 만지는 세션이 없음을 확인하고 시작했다. `backlog-assign-label`이 `my-work-backlog.tsx`를 만지지만 캘린더와 별개 파일이다.
