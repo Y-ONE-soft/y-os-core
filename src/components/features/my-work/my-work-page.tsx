@@ -5,6 +5,7 @@ import { MyWorkCalendarPanel } from "@/components/features/my-work/my-work-calen
 import { MyWorkTimelinePanel } from "@/components/features/my-work/my-work-timeline-panel";
 import { MyWorkRequests } from "@/components/features/my-work/my-work-requests";
 import { MyWorkBacklog } from "@/components/features/my-work/my-work-backlog";
+import { ProjectCreateButton } from "@/components/features/projects/project-create-button";
 
 export type MyWorkView = "calendar" | "timeline";
 
@@ -18,11 +19,14 @@ const FILTERS = ["🔍 필터", "담당자 1 ▾", "프로젝트 ▾"] as const;
 export function MyWorkPage({ view }: { view: MyWorkView }) {
   return (
     <div className="flex h-full min-h-0 flex-col gap-4 px-6 pb-6 pt-5">
-      <header className="flex shrink-0 flex-col gap-1.5">
-        <h1 className="text-[22px] font-semibold">내 할일</h1>
-        <p className="text-[13px] text-muted-foreground">
-          백로그를 날짜로 드래그해 일정을 잡으세요
-        </p>
+      <header className="flex shrink-0 items-start justify-between gap-4">
+        <div className="flex flex-col gap-1.5">
+          <h1 className="text-[22px] font-semibold">내 할일</h1>
+          <p className="text-[13px] text-muted-foreground">
+            백로그를 날짜로 드래그해 일정을 잡으세요
+          </p>
+        </div>
+        <ProjectCreateButton />
       </header>
       <nav aria-label="내 할일 뷰 전환" className="shrink-0">
         <ul className="flex items-center gap-1">
