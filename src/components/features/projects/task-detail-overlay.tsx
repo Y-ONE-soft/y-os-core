@@ -441,7 +441,7 @@ export function TaskDetailOverlay({
               <Select
                 value={projectId}
                 onValueChange={(next) =>
-                  boardActions.moveTaskToProject(projectId, next, task.id)
+                  boardActions.assignTask(projectId, task.id, next, null)
                 }
               >
                 <SelectTrigger className="h-9 w-full rounded-[8px] bg-background">
@@ -466,11 +466,11 @@ export function TaskDetailOverlay({
               <Select
                 value={stageId ?? BACKLOG_VALUE}
                 onValueChange={(next) =>
-                  boardActions.moveTask(
+                  boardActions.assignTask(
                     projectId,
-                    stageId,
-                    next === BACKLOG_VALUE ? null : next,
                     task.id,
+                    projectId,
+                    next === BACKLOG_VALUE ? null : next,
                   )
                 }
               >
