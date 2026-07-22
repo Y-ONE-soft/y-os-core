@@ -14,11 +14,9 @@ import { formatShort } from "@/components/features/projects/roadmap-utils";
 
 export function ProjectBoard({
   projectId,
-  onAddStage,
   onOpenStage,
 }: {
   projectId: string;
-  onAddStage: () => void;
   onOpenStage: (stageId: string) => void;
 }) {
   const { stages } = useProjectBoard(projectId);
@@ -35,7 +33,7 @@ export function ProjectBoard({
         return (
           <section
             key={stage.id}
-            className="flex w-[260px] shrink-0 flex-col gap-1.5 rounded-[12px] bg-border p-2"
+            className="flex w-[260px] shrink-0 flex-col gap-1.5 rounded-[8px] bg-border p-2"
           >
             <header className="flex items-center gap-[7px] py-0.5 pl-1 pr-0.5">
               <span
@@ -121,13 +119,6 @@ export function ProjectBoard({
           </section>
         );
       })}
-      <button
-        type="button"
-        onClick={onAddStage}
-        className="flex min-h-[220px] w-[260px] shrink-0 items-center justify-center self-stretch rounded-[12px] border-2 border-dashed border-border text-[13px] font-medium text-muted-foreground transition-colors hover:border-muted-foreground/40 hover:text-foreground"
-      >
-        ＋ 단계 추가
-      </button>
       <TaskDetailOverlay
         projectId={projectId}
         taskId={detailTaskId}
