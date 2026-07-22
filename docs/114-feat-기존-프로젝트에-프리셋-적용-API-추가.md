@@ -27,7 +27,9 @@
 | 수정 | `src/server/workspace/compose.ts` | `applyPresetToProject()` + `ProjectNotEmptyError` 추가 |
 | 추가 | `src/app/api/admin/projects/[projectId]/apply-preset/route.ts` | `POST` — 인증·검증·에러 매핑 |
 | 수정 | `src/lib/api/workspace.ts` | `applyPresetToProjectApi()` |
-| 추가 | `docs/112-feat-기존-프로젝트에-프리셋-적용-API-추가.md` | 본 문서 |
+| 추가 | `docs/114-feat-기존-프로젝트에-프리셋-적용-API-추가.md` | 본 문서 |
+
+> 문서 번호는 작성 시점에 112였으나, 같은 번호를 쓴 `호버-점메뉴-삭제`(PR #101)가 **먼저 머지**되어(22:55 vs 23:00) 규칙대로 나중 머지인 이쪽이 **114**로 조정했다. 짝 문서도 113→115.
 
 ## 4. 설계 결정
 
@@ -43,7 +45,7 @@
 
 `npm run lint` ✓ · `npx tsc --noEmit` ✓ · `npm run build` ✓
 
-API 동작은 화면이 붙는 태스크 2에서 함께 검증했다 (docs/113). 요약하면:
+API 동작은 화면이 붙는 태스크 2에서 함께 검증했다 (docs/115). 요약하면:
 
 | 검증 | 결과 |
 |---|---|
