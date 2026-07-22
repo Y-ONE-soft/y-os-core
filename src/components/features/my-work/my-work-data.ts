@@ -16,27 +16,16 @@ export const WEEKS: (number | null)[][] = [
 ];
 
 /**
- * 레인(행)은 데이터에 박지 않는다 — `my-work-calendar-layout.ts`가 열 범위로 배치를 계산한다.
- * 같은 `project`의 단계 막대는 기간이 겹쳐도 한 레인에 겹쳐 그려진다.
+ * 레인(행)과 프로젝트 박스 범위는 데이터에 박지 않는다.
+ * `my-work-calendar-layout.ts`가 소속 항목의 열 범위에서 계산한다.
  */
 export type CalOverlay =
-  | {
-      kind: "projectBg";
-      week: number;
-      col: number;
-      span: number;
-      project: string;
-      color: string;
-      label?: string;
-    }
   | {
       kind: "stage";
       week: number;
       col: number;
       span: number;
       project: string;
-      color: string;
-      text: string;
       label: string;
       count: number;
       deadline?: boolean;
@@ -46,7 +35,7 @@ export type CalOverlay =
       week: number;
       col: number;
       span: number;
-      text: string;
+      project: string;
       label: string;
       done?: boolean;
     };
@@ -58,28 +47,38 @@ const PURPLE_TEXT = "#6d28d9";
 const GREEN = "#10b981";
 const GREEN_TEXT = "#047857";
 
-// 프로젝트 식별자 — 색이 아니라 이 키로 단계 막대를 묶는다.
+// 프로젝트 식별자 — 색이 아니라 이 키로 단계·할일을 묶는다.
 const CMS = "CMS";
 const YOS = "YOS";
 const YOC = "YOC";
 
+export type ProjectMeta = { color: string; text: string };
+
+/** 프로젝트별 색 — 오버레이 행마다 색을 반복하지 않는다. */
+export const PROJECTS: Record<string, ProjectMeta> = {
+  [CMS]: { color: BLUE, text: BLUE_TEXT },
+  [YOS]: { color: PURPLE, text: PURPLE_TEXT },
+  [YOC]: { color: GREEN, text: GREEN_TEXT },
+};
+
+/** 프로젝트 박스에 이름을 띄울 주차 — 지정한 곳에만 라벨이 붙는다. */
+export const PROJECT_BOX_LABELS: { week: number; project: string; label: string }[] = [
+  { week: 2, project: CMS, label: "CMS" },
+];
+
 export const CAL_OVERLAYS: CalOverlay[] = [
   // W3 (7/12~18) — CMS 통합테스트·운영 단계
-  { kind: "projectBg", week: 2, col: 4, span: 3, project: CMS, color: BLUE, label: "CMS" },
-  { kind: "stage", week: 2, col: 4, span: 1, project: CMS, color: BLUE, text: BLUE_TEXT, label: "통합테스트", count: 3 },
-  { kind: "stage", week: 2, col: 5, span: 2, project: CMS, color: BLUE, text: BLUE_TEXT, label: "운영·유지보수", count: 4 },
+  { kind: "stage", week: 2, col: 4, span: 1, project: CMS, label: "통합테스트", count: 3 },
+  { kind: "stage", week: 2, col: 5, span: 2, project: CMS, label: "운영·유지보수", count: 4 },
   // W4 (7/19~25) — CMS 개발구현(마감)·착수, YOS 프로젝트 정의(마감)
-  { kind: "projectBg", week: 3, col: 0, span: 6, project: CMS, color: BLUE },
-  { kind: "stage", week: 3, col: 0, span: 6, project: CMS, color: BLUE, text: BLUE_TEXT, label: "개발구현", count: 2, deadline: true },
-  { kind: "stage", week: 3, col: 1, span: 3, project: CMS, color: BLUE, text: BLUE_TEXT, label: "착수", count: 1 },
-  { kind: "projectBg", week: 3, col: 1, span: 3, project: YOS, color: PURPLE },
-  { kind: "stage", week: 3, col: 1, span: 3, project: YOS, color: PURPLE, text: PURPLE_TEXT, label: "프로젝트 정의", count: 1, deadline: true },
+  { kind: "stage", week: 3, col: 0, span: 6, project: CMS, label: "개발구현", count: 2, deadline: true },
+  { kind: "stage", week: 3, col: 1, span: 3, project: CMS, label: "착수", count: 1 },
+  { kind: "stage", week: 3, col: 1, span: 3, project: YOS, label: "프로젝트 정의", count: 1, deadline: true },
   // W5 (7/26~8/1) — YOS 작업 칩, YOC 요구사항 분석(마감)·회의1
-  { kind: "task", week: 4, col: 1, span: 1, text: PURPLE_TEXT, label: "PRD" },
-  { kind: "task", week: 4, col: 2, span: 1, text: PURPLE_TEXT, label: "설계서 검토", done: true },
-  { kind: "projectBg", week: 4, col: 4, span: 2, project: YOC, color: GREEN },
-  { kind: "stage", week: 4, col: 4, span: 2, project: YOC, color: GREEN, text: GREEN_TEXT, label: "요구사항 분석", count: 1, deadline: true },
-  { kind: "task", week: 4, col: 4, span: 1, text: GREEN_TEXT, label: "회의1" },
+  { kind: "task", week: 4, col: 1, span: 1, project: YOS, label: "PRD" },
+  { kind: "task", week: 4, col: 2, span: 1, project: YOS, label: "설계서 검토", done: true },
+  { kind: "stage", week: 4, col: 4, span: 2, project: YOC, label: "요구사항 분석", count: 1, deadline: true },
+  { kind: "task", week: 4, col: 4, span: 1, project: YOC, label: "회의1" },
 ];
 
 export type WorkRequest = {
