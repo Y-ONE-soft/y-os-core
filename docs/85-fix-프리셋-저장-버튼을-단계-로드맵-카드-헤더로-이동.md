@@ -56,6 +56,15 @@ npm run build             # 성공 — Compiled successfully
 
 Figma의 좌표를 그대로 따르는 것도 함정이었다. 디자인 프레임 폭(1184px)과 실제 렌더 폭이 다르면 **같은 좌표가 다른 관계를 만든다.**
 
+## 사후 검증 결과 (추록)
+
+푸시 이후에만 확정되는 검증 결과.
+
+- **PR**: [#79](https://github.com/Y-ONE-soft/y-os-core/pull/79)
+- **프리뷰 배포**: `● Ready` — https://y-os-core-hpyf8yx2p-project-hosting-center.vercel.app
+- **PR 체크**: `Vercel` pass, `Vercel Preview Comments` pass
+- 사용자가 프리뷰를 확인한 뒤 반영 승인
+
 ## 병렬 작업 메모
 
 착수 시점 main = `9e2c1a8`. `project-roadmap.tsx`·`project-detail-page.tsx`를 만지는 다른 세션이 없음을 확인하고 진행했다. 문서 번호는 84까지 사용되어 85로 잡았다.
