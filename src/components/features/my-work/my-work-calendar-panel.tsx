@@ -5,7 +5,17 @@ import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/components/features/auth/session-context";
 import { useProjectStore } from "@/components/features/projects/project-store";
-import { useBoardState } from "@/components/features/projects/board-store";
+import {
+  boardActions,
+  useBoardState,
+} from "@/components/features/projects/board-store";
+import {
+  clampStageToTasks,
+  dragStageDates,
+  taskDateRange,
+  type DragMode,
+  type StageDates,
+} from "@/components/features/projects/roadmap-utils";
 import { StageDetailOverlay } from "@/components/features/projects/stage-detail-overlay";
 import { MyWorkCalendar } from "@/components/features/my-work/my-work-calendar";
 import { buildMonthGrid } from "@/components/features/my-work/my-work-month";
@@ -40,10 +50,87 @@ export function MyWorkCalendarPanel() {
     [groups, user?.id],
   );
 
+  // 드래그 중인 단계의 임시 날짜 — 손을 뗄 때만 저장하고, 그 전까지는 화면만 미리 옮긴다.
+  // 여러 주에 걸친 단계도 조각이 한꺼번에 따라오도록 소스 단계에서 갈아끼운다.
+  const [preview, setPreview] = useState<
+    ({ stageId: string } & StageDates) | null
+  >(null);
+
+  const previewBoards = useMemo(() => {
+    if (!preview) return boards;
+    const next: typeof boards = {};
+    for (const [projectId, board] of Object.entries(boards)) {
+      next[projectId] = {
+        ...board,
+        stages: board.stages.map((stage) =>
+          stage.id === preview.stageId
+            ? {
+                ...stage,
+                startDate: preview.startDate,
+                endDate: preview.endDate,
+              }
+            : stage,
+        ),
+      };
+    }
+    return next;
+  }, [boards, preview]);
+
   const source = useMemo(
-    () => buildCalendarSource(grid, myProjects, boards),
-    [grid, myProjects, boards],
+    () => buildCalendarSource(grid, myProjects, previewBoards),
+    [grid, myProjects, previewBoards],
   );
+
+  /** 드래그 결과 날짜 — 자기 할일을 항상 덮도록 늘려서 돌려준다 */
+  function nextStageDates(
+    stageId: string,
+    mode: DragMode,
+    deltaDays: number,
+  ): { projectId: string; dates: StageDates } | null {
+    for (const project of myProjects) {
+      const stage = boards[project.id]?.stages.find(
+        (candidate) => candidate.id === stageId,
+      );
+      if (!stage?.startDate) continue;
+      const dragged = dragStageDates(
+        mode,
+        stage.startDate,
+        stage.endDate,
+        deltaDays,
+      );
+      return {
+        projectId: project.id,
+        dates: clampStageToTasks(dragged, taskDateRange(stage.tasks)),
+      };
+    }
+    return null;
+  }
+
+  function handleStageDrag(
+    stageId: string,
+    mode: DragMode,
+    deltaDays: number,
+    phase: "move" | "commit" | "cancel",
+  ) {
+    if (phase === "cancel") {
+      setPreview(null);
+      return;
+    }
+    const next = nextStageDates(stageId, mode, deltaDays);
+    if (!next) {
+      setPreview(null);
+      return;
+    }
+    if (phase === "move") {
+      setPreview({ stageId, ...next.dates });
+      return;
+    }
+    setPreview(null);
+    boardActions.updateStage(next.projectId, stageId, {
+      startDate: next.dates.startDate,
+      endDate: next.dates.endDate,
+    });
+  }
 
   const layouts = useMemo(
     () => buildWeekLayouts(source.overlays, grid.weekCount),
@@ -123,6 +210,7 @@ export function MyWorkCalendarPanel() {
         onOpenStage={(projectId, stageId) =>
           setDetailStage({ projectId, stageId })
         }
+        onStageDrag={handleStageDrag}
       />
       {detailStage && (
         <StageDetailOverlay

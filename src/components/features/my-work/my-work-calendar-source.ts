@@ -65,6 +65,8 @@ function stageSegments(
       count: stage.tasks.length,
       // 마감 배지는 실제 종료일이 든 조각에만 붙인다.
       deadline: stage.showDeadline && segmentEnd === end && rawEnd === end,
+      startsHere: day === start && rawStart === start,
+      endsHere: segmentEnd === end && rawEnd === end,
     });
     day = segmentEnd + 1;
   }

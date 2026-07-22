@@ -1,7 +1,12 @@
 "use client";
 
+import { useRef } from "react";
+
 import { cn } from "@/lib/utils";
-import { hexToRgba } from "@/components/features/projects/roadmap-utils";
+import {
+  hexToRgba,
+  type DragMode,
+} from "@/components/features/projects/roadmap-utils";
 import type { MonthGrid } from "@/components/features/my-work/my-work-month";
 import type { CalendarProject } from "@/components/features/my-work/my-work-calendar-source";
 import {
@@ -16,6 +21,13 @@ const DATE_ROW_PX = 24; // 날짜 숫자 영역
 const LANE_PX = 26; // 스팬 레인 1단 높이
 const STAGE_PX = 22; // 단계 막대 높이 — 겹쳐도 집어낼 수 있게 두껍게
 const TASK_PX = 20; // 할일 칩 높이
+
+/** 클릭과 드래그를 가르는 이동량(px) — 로드맵 막대와 같은 기준 */
+const DRAG_THRESHOLD = 3;
+/** 막대 양 끝 리사이즈 손잡이 폭(px) */
+const HANDLE_PX = 8;
+
+export type StageDragPhase = "move" | "commit" | "cancel";
 
 function laneTop(lane: number) {
   return DATE_ROW_PX + lane * LANE_PX;
@@ -92,9 +104,15 @@ function ProjectBoxItem({
 function OverlayItem({
   overlay,
   onOpenStage,
+  onStageDragStart,
 }: {
   overlay: PlacedOverlay;
   onOpenStage?: (projectId: string, stageId: string) => void;
+  onStageDragStart?: (
+    event: React.PointerEvent,
+    stageId: string,
+    mode: DragMode,
+  ) => void;
 }) {
   const color = overlay.color;
   const text = shade(color, 0.6);
@@ -102,41 +120,80 @@ function OverlayItem({
   const width = colWidth(overlay.span);
 
   if (overlay.kind === "stage") {
+    const draggable = Boolean(onStageDragStart);
     return (
-      <button
-        type="button"
-        onClick={() => onOpenStage?.(overlay.project, overlay.stageId)}
-        title={overlay.label}
-        className="absolute flex items-center gap-1 overflow-hidden rounded-[4px] px-1 text-left transition-shadow hover:ring-1 focus-visible:outline-none focus-visible:ring-2"
+      <div
+        className="absolute"
         style={{
           left: `calc(${left} + 4px)`,
           width: `calc(${width} - 8px)`,
           top: laneTop(overlay.lane),
           height: STAGE_PX,
-          backgroundColor: hexToRgba(color, 0.18),
-          // ring 색을 단계 색에 맞춘다 (임의 색 클래스 대신 CSS 변수)
-          ["--tw-ring-color" as string]: hexToRgba(color, 0.8),
         }}
       >
-        <span
-          aria-hidden
-          className="flex size-[11px] shrink-0 items-center justify-center rounded-full text-[7.5px] font-medium text-white"
-          style={{ backgroundColor: color }}
+        <button
+          type="button"
+          onPointerDown={(event) =>
+            onStageDragStart?.(event, overlay.stageId, "move")
+          }
+          onClick={() => onOpenStage?.(overlay.project, overlay.stageId)}
+          title={overlay.label}
+          className={cn(
+            "flex size-full items-center gap-1 overflow-hidden rounded-[4px] px-1 text-left transition-shadow hover:ring-1 focus-visible:outline-none focus-visible:ring-2",
+            draggable && "cursor-grab active:cursor-grabbing",
+          )}
+          style={{
+            backgroundColor: hexToRgba(color, 0.18),
+            // ring 색을 단계 색에 맞춘다 (임의 색 클래스 대신 CSS 변수)
+            ["--tw-ring-color" as string]: hexToRgba(color, 0.8),
+          }}
         >
-          {overlay.count}
-        </span>
-        <span className="truncate text-[10px] font-medium" style={{ color: text }}>
-          {overlay.label}
-        </span>
-        {overlay.deadline && (
           <span
-            className="ml-auto shrink-0 rounded-[3px] px-1.5 py-px text-[9px] font-medium text-white"
-            style={{ backgroundColor: text }}
+            aria-hidden
+            className="flex size-[11px] shrink-0 items-center justify-center rounded-full text-[7.5px] font-medium text-white"
+            style={{ backgroundColor: color }}
           >
-            마감
+            {overlay.count}
           </span>
+          <span
+            className="truncate text-[10px] font-medium"
+            style={{ color: text }}
+          >
+            {overlay.label}
+          </span>
+          {overlay.deadline && (
+            <span
+              className="ml-auto shrink-0 rounded-[3px] px-1.5 py-px text-[9px] font-medium text-white"
+              style={{ backgroundColor: text }}
+            >
+              마감
+            </span>
+          )}
+        </button>
+        {/* 기간 조절 손잡이 — 실제 시작·종료가 든 조각에만 단다 */}
+        {draggable && overlay.startsHere && (
+          <div
+            role="presentation"
+            aria-label={`${overlay.label} 시작일 조절`}
+            onPointerDown={(event) =>
+              onStageDragStart?.(event, overlay.stageId, "start")
+            }
+            className="absolute inset-y-0 left-0 cursor-ew-resize rounded-l-[4px]"
+            style={{ width: HANDLE_PX }}
+          />
         )}
-      </button>
+        {draggable && overlay.endsHere && (
+          <div
+            role="presentation"
+            aria-label={`${overlay.label} 종료일 조절`}
+            onPointerDown={(event) =>
+              onStageDragStart?.(event, overlay.stageId, "end")
+            }
+            className="absolute inset-y-0 right-0 cursor-ew-resize rounded-r-[4px]"
+            style={{ width: HANDLE_PX }}
+          />
+        )}
+      </div>
     );
   }
 
@@ -176,14 +233,111 @@ export function MyWorkCalendar({
   layouts,
   projects,
   onOpenStage,
+  onStageDrag,
 }: {
   grid: MonthGrid;
   layouts: WeekLayout[];
   projects: Record<string, CalendarProject>;
   onOpenStage?: (projectId: string, stageId: string) => void;
+  /** 드래그 중(move)에는 미리보기, 손을 뗄 때(commit) 저장한다 */
+  onStageDrag?: (
+    stageId: string,
+    mode: DragMode,
+    deltaDays: number,
+    phase: StageDragPhase,
+  ) => void;
 }) {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const weekRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const dragRef = useRef<{
+    stageId: string;
+    mode: DragMode;
+    pointerId: number;
+    startDay: number;
+    originX: number;
+    originY: number;
+    moved: boolean;
+  } | null>(null);
+
+  /** 포인터가 놓인 칸의 그리드 일자(주 × 7 + 열). 주 행 높이가 제각각이라 행 사각형으로 찾는다. */
+  function dayFromPointer(clientX: number, clientY: number) {
+    const rows = weekRefs.current;
+    let weekIndex = 0;
+    for (let index = 0; index < rows.length; index += 1) {
+      const rect = rows[index]?.getBoundingClientRect();
+      if (!rect) continue;
+      if (clientY < rect.bottom) {
+        weekIndex = index;
+        break;
+      }
+      weekIndex = index; // 마지막 주 아래로 벗어나면 그 주로 본다
+    }
+    const rect = rows[weekIndex]?.getBoundingClientRect();
+    if (!rect) return 0;
+    // 열은 자르지 않는다 — 행 좌우로 끌면 앞뒤 주로 자연스럽게 넘어가야 한다
+    const col = Math.floor(((clientX - rect.left) / rect.width) * 7);
+    const lastDay = rows.length * 7 - 1;
+    return Math.min(lastDay, Math.max(0, weekIndex * 7 + col));
+  }
+
+  function handleStageDragStart(
+    event: React.PointerEvent,
+    stageId: string,
+    mode: DragMode,
+  ) {
+    if (!onStageDrag || event.button !== 0) return;
+    event.stopPropagation();
+    // 캡처는 임계값을 넘어 '드래그'로 확정될 때 건다. 여기서 바로 잡으면
+    // click 이벤트가 캡처 대상(루트)으로 가버려 막대 클릭이 먹지 않는다.
+    dragRef.current = {
+      stageId,
+      mode,
+      pointerId: event.pointerId,
+      startDay: dayFromPointer(event.clientX, event.clientY),
+      originX: event.clientX,
+      originY: event.clientY,
+      moved: false,
+    };
+  }
+
+  function handlePointerMove(event: React.PointerEvent) {
+    const drag = dragRef.current;
+    if (!drag || !onStageDrag) return;
+    const far =
+      Math.abs(event.clientX - drag.originX) > DRAG_THRESHOLD ||
+      Math.abs(event.clientY - drag.originY) > DRAG_THRESHOLD;
+    if (!far && !drag.moved) return;
+    if (!drag.moved) {
+      // 막대 조각은 드래그 중 주 경계를 넘거나 사라질 수 있다. 그 순간 언마운트되면
+      // 조각에 건 캡처는 끊기므로, 안정적인 캘린더 루트로 캡처를 잡는다.
+      rootRef.current?.setPointerCapture(drag.pointerId);
+    }
+    drag.moved = true;
+    const delta = dayFromPointer(event.clientX, event.clientY) - drag.startDay;
+    onStageDrag(drag.stageId, drag.mode, delta, "move");
+  }
+
+  function handlePointerUp(event: React.PointerEvent) {
+    const drag = dragRef.current;
+    if (!drag || !onStageDrag) return;
+    dragRef.current = null;
+    if (!drag.moved) {
+      // 움직이지 않았으면 클릭 — 미리보기를 되돌리고 버튼 onClick에 맡긴다
+      onStageDrag(drag.stageId, drag.mode, 0, "cancel");
+      return;
+    }
+    const delta = dayFromPointer(event.clientX, event.clientY) - drag.startDay;
+    onStageDrag(drag.stageId, drag.mode, delta, "commit");
+  }
+
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col overflow-clip rounded-[10px] border bg-card">
+    <div
+      ref={rootRef}
+      className="flex min-h-0 w-full flex-1 flex-col overflow-clip rounded-[10px] border bg-card"
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerUp}
+    >
       <div className="flex w-full">
         {WEEKDAYS.map((day) => (
           <div
@@ -207,6 +361,9 @@ export function MyWorkCalendar({
         return (
           <div
             key={weekIndex}
+            ref={(node) => {
+              weekRefs.current[weekIndex] = node;
+            }}
             className="relative flex w-full flex-1"
             style={{ minHeight }}
           >
@@ -239,11 +396,13 @@ export function MyWorkCalendar({
                 project={projects[box.project]}
               />
             ))}
-            {overlays.map((overlay, overlayIndex) => (
+            {overlays.map((overlay) => (
               <OverlayItem
-                key={overlayIndex}
+                // 조각 단위로 안정된 키 — 인덱스 키는 드래그 중 재배치에서 엉킨다
+                key={`${overlay.kind === "stage" ? overlay.stageId : overlay.taskId}:${overlay.col}`}
                 overlay={overlay}
                 onOpenStage={onOpenStage}
+                onStageDragStart={onStageDrag ? handleStageDragStart : undefined}
               />
             ))}
           </div>
