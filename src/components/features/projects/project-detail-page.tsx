@@ -99,7 +99,11 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
             onAddStage={openStageDialog}
             onOpenStage={setDetailStageId}
           />
-          <ProjectBoard projectId={projectId} onOpenStage={setDetailStageId} />
+          <ProjectBoard
+            projectId={projectId}
+            onAddStage={openStageDialog}
+            onOpenStage={setDetailStageId}
+          />
         </div>
         <ProjectBacklog projectId={projectId} />
       </div>
