@@ -22,7 +22,7 @@ export function ProjectRoadmap({
   const { stages } = useProjectBoard(projectId);
 
   return (
-    <section className="w-full shrink-0 rounded-[12px] border bg-background shadow-[0px_1px_3px_0px_rgba(0,0,0,0.05)]">
+    <section className="w-full shrink-0 rounded-[8px] border bg-background shadow-[0px_1px_3px_0px_rgba(0,0,0,0.05)]">
       <header className="flex items-center justify-between py-2.5 pl-4 pr-3">
         <div className="flex items-center gap-2">
           <h2 className="text-[13.5px] font-semibold">단계 로드맵</h2>
@@ -33,21 +33,27 @@ export function ProjectRoadmap({
         <div className="flex items-center gap-2">
           <button
             type="button"
+            className="rounded-[6px] border px-2.5 py-1 text-[11.5px] font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+          >
+            프리셋 저장
+          </button>
+          <button
+            type="button"
             onClick={onAddStage}
-            className="rounded-full border px-2.5 py-1 text-[11.5px] font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+            className="rounded-[6px] border px-2.5 py-1 text-[11.5px] font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
           >
             ＋ 단계
           </button>
-          <div className="flex items-center gap-0.5 rounded-full bg-muted p-[3px]">
+          <div className="flex items-center gap-0.5 rounded-[8px] bg-muted p-[3px]">
             {RANGE_OPTIONS.map((option) => (
               <button
                 key={option}
                 type="button"
                 aria-pressed={option === ACTIVE_RANGE}
                 className={cn(
-                  "rounded-full px-[9px] py-[3px] text-[11px] font-medium transition-colors",
+                  "rounded-[6px] px-[9px] py-[3px] text-[11px] font-medium transition-colors",
                   option === ACTIVE_RANGE
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-background text-foreground shadow-[0px_1px_2px_0px_rgba(0,0,0,0.08)]"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >

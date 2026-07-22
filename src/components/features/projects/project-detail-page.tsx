@@ -49,7 +49,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
     <div className="flex h-full min-h-0 flex-col gap-3.5 p-6">
       <header className="flex shrink-0 flex-col gap-1.5">
         <div className="flex items-center gap-2">
-          <span className="rounded-[6px] bg-background px-2 py-0.5 text-[11px] font-medium">
+          <span className="rounded-[6px] bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground">
             {project.name}
           </span>
           <span aria-hidden className="text-xs text-muted-foreground">
@@ -77,9 +77,9 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
                   type="button"
                   aria-current={active ? "true" : undefined}
                   className={cn(
-                    "rounded-full px-3.5 py-[7px] text-[13px] font-medium transition-colors",
+                    "rounded-[6px] px-3.5 py-[7px] text-[13px] font-medium transition-colors",
                     active
-                      ? "bg-background text-foreground"
+                      ? "bg-accent text-accent-foreground"
                       : "text-muted-foreground hover:text-foreground",
                   )}
                 >
@@ -93,7 +93,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
       <div className="flex min-h-0 flex-1 items-stretch gap-3.5">
         <div className="flex min-w-0 flex-1 flex-col gap-3.5">
           <ProjectRoadmap projectId={projectId} onAddStage={openStageDialog} />
-          <ProjectBoard projectId={projectId} onAddStage={openStageDialog} />
+          <ProjectBoard projectId={projectId} />
         </div>
         <ProjectBacklog projectId={projectId} />
       </div>
