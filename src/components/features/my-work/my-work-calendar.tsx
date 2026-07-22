@@ -1,79 +1,105 @@
 import { cn } from "@/lib/utils";
 import { hexToRgba } from "@/components/features/projects/roadmap-utils";
 import {
-  CAL_OVERLAYS,
+  PROJECTS,
   TODAY_DATE,
   WEEKDAYS,
   WEEKS,
-  WEEK_LANES,
-  type CalOverlay,
 } from "@/components/features/my-work/my-work-data";
+import {
+  CAL_WEEK_LAYOUTS,
+  type PlacedOverlay,
+  type ProjectBox,
+} from "@/components/features/my-work/my-work-calendar-layout";
 
 const DATE_ROW_PX = 24; // 날짜 숫자 영역
-const LANE_PX = 20; // 스팬 레인 1단 높이
+const LANE_PX = 26; // 스팬 레인 1단 높이
+const STAGE_PX = 22; // 단계 막대 높이 — 겹쳐도 집어낼 수 있게 두껍게
+const TASK_PX = 20; // 할일 칩 높이
 
 function laneTop(lane: number) {
   return DATE_ROW_PX + lane * LANE_PX;
 }
 
-function OverlayItem({ overlay }: { overlay: CalOverlay }) {
-  const left = `${(overlay.col / 7) * 100}%`;
-  const width = `${(overlay.span / 7) * 100}%`;
+function colLeft(col: number) {
+  return `${(col / 7) * 100}%`;
+}
 
-  if (overlay.kind === "projectBg") {
-    return (
-      <div
-        aria-hidden
-        className="pointer-events-none absolute rounded-[2px] border"
-        style={{
-          left,
-          width,
-          top: laneTop(overlay.lane) - 3,
-          height: overlay.lanes * LANE_PX + 4,
-          backgroundColor: hexToRgba(overlay.color, 0.07),
-          borderColor: hexToRgba(overlay.color, 0.3),
-        }}
-      >
-        {overlay.label && (
-          <span
-            className="absolute right-1 top-0.5 text-[9px] font-medium"
-            style={{ color: hexToRgba(overlay.color, 0.75) }}
-          >
-            {overlay.label}
-          </span>
-        )}
-      </div>
-    );
-  }
+function colWidth(span: number) {
+  return `${(span / 7) * 100}%`;
+}
+
+/** 프로젝트 박스 — 그 프로젝트의 단계 줄과 할일 줄을 함께 감싼다. */
+function ProjectBoxItem({ box }: { box: ProjectBox }) {
+  const { color } = PROJECTS[box.project];
+
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute rounded-[2px] border"
+      style={{
+        left: colLeft(box.col),
+        width: colWidth(box.span),
+        top: laneTop(box.lane) - 3,
+        height: box.lanes * LANE_PX + 4,
+        backgroundColor: hexToRgba(color, 0.07),
+        borderColor: hexToRgba(color, 0.3),
+      }}
+    >
+      {box.label && (
+        <span
+          className="absolute right-1 top-0.5 text-[9px] font-medium"
+          style={{ color: hexToRgba(color, 0.75) }}
+        >
+          {box.label}
+        </span>
+      )}
+      {/* 박스 안 줄 구분선 — 단계 줄과 할일 줄을 한 프로젝트 안에서 나눠 보여준다 */}
+      {Array.from({ length: box.lanes - 1 }, (_, index) => (
+        <div
+          key={index}
+          className="absolute inset-x-0 h-px"
+          style={{
+            top: (index + 1) * LANE_PX + 1,
+            backgroundColor: hexToRgba(color, 0.22),
+          }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function OverlayItem({ overlay }: { overlay: PlacedOverlay }) {
+  const { color, text } = PROJECTS[overlay.project];
+  const left = colLeft(overlay.col);
+  const width = colWidth(overlay.span);
 
   if (overlay.kind === "stage") {
     return (
       <div
-        className="absolute flex h-[18px] items-center gap-1 overflow-hidden rounded-[4px] px-1"
+        className="absolute flex items-center gap-1 overflow-hidden rounded-[4px] px-1"
         style={{
           left: `calc(${left} + 4px)`,
           width: `calc(${width} - 8px)`,
           top: laneTop(overlay.lane),
-          backgroundColor: hexToRgba(overlay.color, 0.18),
+          height: STAGE_PX,
+          backgroundColor: hexToRgba(color, 0.18),
         }}
       >
         <span
           aria-hidden
           className="flex size-[11px] shrink-0 items-center justify-center rounded-full text-[7.5px] font-medium text-white"
-          style={{ backgroundColor: overlay.color }}
+          style={{ backgroundColor: color }}
         >
           {overlay.count}
         </span>
-        <span
-          className="truncate text-[10px] font-medium"
-          style={{ color: overlay.text }}
-        >
+        <span className="truncate text-[10px] font-medium" style={{ color: text }}>
           {overlay.label}
         </span>
         {overlay.deadline && (
           <span
             className="ml-auto shrink-0 rounded-[3px] px-1.5 py-px text-[9px] font-medium text-white"
-            style={{ backgroundColor: overlay.text }}
+            style={{ backgroundColor: text }}
           >
             마감
           </span>
@@ -84,12 +110,13 @@ function OverlayItem({ overlay }: { overlay: CalOverlay }) {
 
   return (
     <div
-      className="absolute flex h-4 items-center gap-1 overflow-hidden rounded-[4px] px-1"
+      className="absolute flex items-center gap-1 overflow-hidden rounded-[4px] px-1"
       style={{
         left: `calc(${left} + 4px)`,
         width: `calc(${width} - 8px)`,
         top: laneTop(overlay.lane),
-        backgroundColor: overlay.done ? hexToRgba(overlay.text, 0.1) : undefined,
+        height: TASK_PX,
+        backgroundColor: overlay.done ? hexToRgba(text, 0.1) : undefined,
       }}
     >
       <span
@@ -98,17 +125,13 @@ function OverlayItem({ overlay }: { overlay: CalOverlay }) {
           "flex size-[9px] shrink-0 items-center justify-center rounded-[2px] text-[7px] text-white",
           !overlay.done && "border-[1.2px]",
         )}
-        style={
-          overlay.done
-            ? { backgroundColor: overlay.text }
-            : { borderColor: overlay.text }
-        }
+        style={overlay.done ? { backgroundColor: text } : { borderColor: text }}
       >
         {overlay.done ? "✓" : ""}
       </span>
       <span
         className={cn("truncate text-[10px] font-medium", overlay.done && "line-through")}
-        style={{ color: overlay.done ? hexToRgba(overlay.text, 0.7) : overlay.text }}
+        style={{ color: overlay.done ? hexToRgba(text, 0.7) : text }}
       >
         {overlay.label}
       </span>
@@ -137,7 +160,7 @@ export function MyWorkCalendar() {
         ))}
       </div>
       {WEEKS.map((week, weekIndex) => {
-        const laneCount = WEEK_LANES[weekIndex];
+        const { boxes, overlays, laneCount } = CAL_WEEK_LAYOUTS[weekIndex];
         const minHeight = laneCount > 0 ? DATE_ROW_PX + laneCount * LANE_PX + 8 : undefined;
         return (
           <div
@@ -167,11 +190,12 @@ export function MyWorkCalendar() {
                 )}
               </div>
             ))}
-            {CAL_OVERLAYS.filter((overlay) => overlay.week === weekIndex).map(
-              (overlay, overlayIndex) => (
-                <OverlayItem key={overlayIndex} overlay={overlay} />
-              ),
-            )}
+            {boxes.map((box) => (
+              <ProjectBoxItem key={box.project} box={box} />
+            ))}
+            {overlays.map((overlay, overlayIndex) => (
+              <OverlayItem key={overlayIndex} overlay={overlay} />
+            ))}
           </div>
         );
       })}

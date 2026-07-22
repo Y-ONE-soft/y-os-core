@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import type { Project } from "@/components/features/projects/project-store";
@@ -13,16 +13,16 @@ import {
 } from "@/components/features/projects/roadmap-utils";
 import {
   RANGE_OPTIONS,
-  buildRoadmapWindow,
-  formatWindowPeriod,
+  buildTimeline,
+  formatPeriod,
   todayISO,
   type RoadmapRange,
-  type RoadmapWindow,
+  type RoadmapTimeline,
 } from "@/components/features/projects/roadmap-window";
 
-/** 눈금 1칸의 최소 너비 — 이보다 좁아지면 가로 스크롤이 생긴다 */
-const MIN_COLUMN_WIDTH = 150;
 const LABEL_WIDTH = 200;
+/** 스크롤 위치를 잡을 때 오늘을 왼쪽에서 이만큼 떨어뜨린다 */
+const TODAY_LEFT_INSET = 120;
 
 export type RoadmapSection = {
   key: string;
@@ -32,7 +32,7 @@ export type RoadmapSection = {
 };
 
 function Bar({
-  view,
+  timeline,
   color,
   startDate,
   endDate,
@@ -40,7 +40,7 @@ function Bar({
   onClick,
   title,
 }: {
-  view: RoadmapWindow;
+  timeline: RoadmapTimeline;
   color: string;
   startDate: string;
   endDate?: string;
@@ -49,16 +49,15 @@ function Bar({
   title?: string;
 }) {
   const { startDay, days } = barRange(
-    view.start,
-    view.days,
+    timeline.start,
+    timeline.days,
     startDate,
     endDate,
   );
   if (days <= 0) return null;
   const style = {
-    left: `${(startDay / view.days) * 100}%`,
-    width: `${(days / view.days) * 100}%`,
-    minWidth: 26, // 넓은 창(개월·분기)에서 짧은 단계가 사라지지 않도록
+    left: startDay * timeline.dayWidth,
+    width: Math.max(days * timeline.dayWidth, 26),
     backgroundColor: hexToRgba(color, 0.12),
     borderColor: hexToRgba(color, 0.8),
   };
@@ -103,13 +102,40 @@ export function WorkloadRoadmap({
   const boardState = useBoardState();
   const [collapsedKeys, setCollapsedKeys] = useState<Set<string>>(new Set());
   const [range, setRange] = useState<RoadmapRange>("주");
-  const [page, setPage] = useState(0);
   // 세션 로딩 이후 클라이언트에서만 첫 렌더되므로 지연 초기화가 안전하다
   const [today] = useState(todayISO);
 
-  const view = buildRoadmapWindow(range, today, page);
-  const percent = (offsetDays: number) => `${(offsetDays / view.days) * 100}%`;
-  const minWidth = LABEL_WIDTH + view.ticks.length * MIN_COLUMN_WIDTH;
+  const timeline = buildTimeline(range, today);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToToday = useCallback(
+    (behavior: ScrollBehavior = "smooth") => {
+      const element = scrollRef.current;
+      if (!element || timeline.todayOffset === null) return;
+      element.scrollTo({
+        left: Math.max(
+          0,
+          timeline.todayOffset * timeline.dayWidth - TODAY_LEFT_INSET,
+        ),
+        behavior,
+      });
+    },
+    [timeline.todayOffset, timeline.dayWidth],
+  );
+
+  // 마운트·범위 변경 시 오늘 위치로 맞춘다 (ref 콜백이라 effect 없이 처리)
+  const attachScroll = useCallback(
+    (element: HTMLDivElement | null) => {
+      scrollRef.current = element;
+      if (element && timeline.todayOffset !== null) {
+        element.scrollLeft = Math.max(
+          0,
+          timeline.todayOffset * timeline.dayWidth - TODAY_LEFT_INSET,
+        );
+      }
+    },
+    [timeline.todayOffset, timeline.dayWidth],
+  );
 
   const toggleSection = (key: string) =>
     setCollapsedKeys((prev) => {
@@ -119,110 +145,92 @@ export function WorkloadRoadmap({
       return next;
     });
 
-  const changeRange = (next: RoadmapRange) => {
-    setRange(next);
-    setPage(0);
-  };
-
   return (
-    <section className="w-full rounded-[12px] border bg-background shadow-[0px_1px_3px_0px_rgba(0,0,0,0.05)]">
+    <section className="w-full overflow-hidden rounded-[12px] border bg-background shadow-[0px_1px_3px_0px_rgba(0,0,0,0.05)]">
       <header className="flex items-center justify-between gap-4 py-2.5 pl-4 pr-3">
         <div className="flex min-w-0 items-center gap-2">
           <h2 className="shrink-0 text-[13.5px] font-semibold">로드맵</h2>
           <p className="truncate text-[11.5px] text-muted-foreground">
-            {formatWindowPeriod(view)}
+            {formatPeriod(timeline)}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <div className="flex items-center gap-0.5">
+        <div className="flex shrink-0 items-center gap-0.5 rounded-full bg-muted p-[3px]">
+          <button
+            type="button"
+            onClick={() => scrollToToday()}
+            className="rounded-full px-[9px] py-[3px] text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            오늘
+          </button>
+          {RANGE_OPTIONS.map((option) => (
             <button
+              key={option}
               type="button"
-              onClick={() => setPage((prev) => prev - 1)}
-              aria-label="이전 기간"
-              className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <ChevronLeft className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setPage((prev) => prev + 1)}
-              aria-label="다음 기간"
-              className="flex size-6 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <ChevronRight className="size-3.5" />
-            </button>
-          </div>
-          <div className="flex items-center gap-0.5 rounded-full bg-muted p-[3px]">
-            <button
-              type="button"
-              onClick={() => setPage(0)}
-              disabled={page === 0}
-              aria-label="오늘로 이동"
+              onClick={() => setRange(option)}
+              aria-pressed={option === range}
               className={cn(
                 "rounded-full px-[9px] py-[3px] text-[11px] font-medium transition-colors",
-                page === 0
-                  ? "text-muted-foreground/50"
+                option === range
+                  ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              오늘
+              {option}
             </button>
-            {RANGE_OPTIONS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => changeRange(option)}
-                aria-pressed={option === range}
-                className={cn(
-                  "rounded-full px-[9px] py-[3px] text-[11px] font-medium transition-colors",
-                  option === range
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
+          ))}
         </div>
       </header>
-      <div className="overflow-x-auto">
-        <div className="relative" style={{ minWidth }}>
+      <div
+        ref={attachScroll}
+        className="overflow-x-auto overscroll-x-contain border-t"
+      >
+        <div
+          className="relative"
+          style={{ width: LABEL_WIDTH + timeline.width }}
+        >
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-y-0 right-0"
-            style={{ left: LABEL_WIDTH }}
+            className="pointer-events-none absolute inset-y-0"
+            style={{ left: LABEL_WIDTH, width: timeline.width }}
           >
-            {view.ticks.map((tick) => (
+            {timeline.ticks.map((tick) => (
               <div
-                key={`${tick.year}-${tick.label}`}
-                className="absolute inset-y-0 border-l border-border"
-                style={{ left: percent(tick.offsetDays) }}
+                key={tick.key}
+                className={cn(
+                  "absolute inset-y-0 border-l",
+                  tick.yearStart ? "border-muted-foreground/40" : "border-border",
+                )}
+                style={{ left: tick.offsetDays * timeline.dayWidth }}
               />
             ))}
-            {view.todayOffset !== null && (
+            {timeline.todayOffset !== null && (
               <div
                 className="absolute inset-y-0 w-[2px] bg-primary"
-                style={{ left: percent(view.todayOffset) }}
+                style={{ left: timeline.todayOffset * timeline.dayWidth }}
               />
             )}
           </div>
-          <div className="flex h-[26px] items-stretch border-t text-[10.5px] font-medium text-muted-foreground">
+          <div className="sticky top-0 z-30 flex h-[26px] items-stretch bg-background text-[10.5px] font-medium text-muted-foreground">
             <div
-              className="sticky left-0 z-20 flex shrink-0 items-center bg-background pl-4"
+              className="sticky left-0 z-10 flex shrink-0 items-center border-r bg-background pl-4"
               style={{ width: LABEL_WIDTH }}
             >
               프로젝트 · 단계
             </div>
-            <div className="relative min-w-0 flex-1">
-              {view.ticks.map((tick, index) => {
+            <div
+              className="relative shrink-0"
+              style={{ width: timeline.width }}
+            >
+              {timeline.ticks.map((tick, index) => {
                 const showYear =
-                  index === 0 || view.ticks[index - 1].year !== tick.year;
+                  index === 0 ||
+                  timeline.ticks[index - 1].year !== tick.year ||
+                  tick.yearStart;
                 return (
                   <span
-                    key={`${tick.year}-${tick.label}`}
+                    key={tick.key}
                     className="absolute top-1/2 -translate-y-1/2 whitespace-nowrap pl-1.5"
-                    style={{ left: percent(tick.offsetDays) }}
+                    style={{ left: tick.offsetDays * timeline.dayWidth }}
                   >
                     {showYear && (
                       <span className="mr-1 text-foreground">{tick.year}</span>
@@ -243,7 +251,7 @@ export function WorkloadRoadmap({
                       type="button"
                       onClick={() => toggleSection(section.key)}
                       aria-expanded={!collapsed}
-                      className="sticky left-0 z-20 flex shrink-0 items-center gap-1.5 bg-muted pl-4 pr-2.5 text-left"
+                      className="sticky left-0 z-20 flex shrink-0 items-center gap-1.5 border-r bg-muted pl-4 pr-2.5 text-left"
                       style={{ width: LABEL_WIDTH }}
                     >
                       {collapsed ? (
@@ -284,7 +292,7 @@ export function WorkloadRoadmap({
                       <div key={project.id}>
                         <div className="flex h-[26px] items-stretch border-t">
                           <div
-                            className="sticky left-0 z-20 flex shrink-0 items-center gap-1.5 bg-background pl-4 pr-2.5"
+                            className="sticky left-0 z-20 flex shrink-0 items-center gap-1.5 border-r bg-background pl-4 pr-2.5"
                             style={{ width: LABEL_WIDTH }}
                           >
                             <span
@@ -296,10 +304,13 @@ export function WorkloadRoadmap({
                               {project.name}
                             </span>
                           </div>
-                          <div className="relative min-w-0 flex-1">
+                          <div
+                            className="relative shrink-0"
+                            style={{ width: timeline.width }}
+                          >
                             {projectStart && (
                               <Bar
-                                view={view}
+                                timeline={timeline}
                                 color={project.color}
                                 startDate={projectStart}
                                 endDate={projectEnd ?? undefined}
@@ -327,7 +338,7 @@ export function WorkloadRoadmap({
                               className="flex h-[26px] items-stretch border-t"
                             >
                               <div
-                                className="sticky left-0 z-20 flex shrink-0 items-center gap-1.5 bg-background pl-7 pr-2.5"
+                                className="sticky left-0 z-20 flex shrink-0 items-center gap-1.5 border-r bg-background pl-7 pr-2.5"
                                 style={{ width: LABEL_WIDTH }}
                               >
                                 <span
@@ -352,10 +363,13 @@ export function WorkloadRoadmap({
                                   {done}/{total}
                                 </span>
                               </div>
-                              <div className="relative min-w-0 flex-1">
+                              <div
+                                className="relative shrink-0"
+                                style={{ width: timeline.width }}
+                              >
                                 {showBar && (
                                   <Bar
-                                    view={view}
+                                    timeline={timeline}
                                     color={stage.color}
                                     startDate={stage.startDate!}
                                     endDate={stage.endDate}
