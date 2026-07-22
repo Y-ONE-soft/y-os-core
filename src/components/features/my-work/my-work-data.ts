@@ -15,17 +15,17 @@ export const WEEKS: (number | null)[][] = [
   [26, 27, 28, 29, 30, 31, null],
 ];
 
-/** 주차별 레인 수 — 스팬이 몰린 주는 행이 높다 (디자인 W4 = 104px) */
-export const WEEK_LANES = [0, 0, 2, 4, 2];
-
+/**
+ * 레인(행)은 데이터에 박지 않는다 — `my-work-calendar-layout.ts`가 열 범위로 배치를 계산한다.
+ * 같은 `project`의 단계 막대는 기간이 겹쳐도 한 레인에 겹쳐 그려진다.
+ */
 export type CalOverlay =
   | {
       kind: "projectBg";
       week: number;
       col: number;
       span: number;
-      lane: number;
-      lanes: number;
+      project: string;
       color: string;
       label?: string;
     }
@@ -34,7 +34,7 @@ export type CalOverlay =
       week: number;
       col: number;
       span: number;
-      lane: number;
+      project: string;
       color: string;
       text: string;
       label: string;
@@ -46,7 +46,6 @@ export type CalOverlay =
       week: number;
       col: number;
       span: number;
-      lane: number;
       text: string;
       label: string;
       done?: boolean;
@@ -59,23 +58,28 @@ const PURPLE_TEXT = "#6d28d9";
 const GREEN = "#10b981";
 const GREEN_TEXT = "#047857";
 
+// 프로젝트 식별자 — 색이 아니라 이 키로 단계 막대를 묶는다.
+const CMS = "CMS";
+const YOS = "YOS";
+const YOC = "YOC";
+
 export const CAL_OVERLAYS: CalOverlay[] = [
   // W3 (7/12~18) — CMS 통합테스트·운영 단계
-  { kind: "projectBg", week: 2, col: 4, span: 3, lane: 0, lanes: 2, color: BLUE, label: "CMS" },
-  { kind: "stage", week: 2, col: 4, span: 1, lane: 0, color: BLUE, text: BLUE_TEXT, label: "통합테스트", count: 3 },
-  { kind: "stage", week: 2, col: 5, span: 2, lane: 0, color: BLUE, text: BLUE_TEXT, label: "운영·유지보수", count: 4 },
-  // W4 (7/19~25) — CMS 개발구현(마감), YOS 착수·프로젝트 정의(마감)
-  { kind: "projectBg", week: 3, col: 0, span: 6, lane: 0, lanes: 2, color: BLUE },
-  { kind: "stage", week: 3, col: 0, span: 6, lane: 0, color: BLUE, text: BLUE_TEXT, label: "개발구현", count: 2, deadline: true },
-  { kind: "stage", week: 3, col: 1, span: 3, lane: 1, color: BLUE, text: BLUE_TEXT, label: "착수", count: 1 },
-  { kind: "projectBg", week: 3, col: 1, span: 3, lane: 2, lanes: 2, color: PURPLE },
-  { kind: "stage", week: 3, col: 1, span: 3, lane: 2, color: PURPLE, text: PURPLE_TEXT, label: "프로젝트 정의", count: 1, deadline: true },
+  { kind: "projectBg", week: 2, col: 4, span: 3, project: CMS, color: BLUE, label: "CMS" },
+  { kind: "stage", week: 2, col: 4, span: 1, project: CMS, color: BLUE, text: BLUE_TEXT, label: "통합테스트", count: 3 },
+  { kind: "stage", week: 2, col: 5, span: 2, project: CMS, color: BLUE, text: BLUE_TEXT, label: "운영·유지보수", count: 4 },
+  // W4 (7/19~25) — CMS 개발구현(마감)·착수, YOS 프로젝트 정의(마감)
+  { kind: "projectBg", week: 3, col: 0, span: 6, project: CMS, color: BLUE },
+  { kind: "stage", week: 3, col: 0, span: 6, project: CMS, color: BLUE, text: BLUE_TEXT, label: "개발구현", count: 2, deadline: true },
+  { kind: "stage", week: 3, col: 1, span: 3, project: CMS, color: BLUE, text: BLUE_TEXT, label: "착수", count: 1 },
+  { kind: "projectBg", week: 3, col: 1, span: 3, project: YOS, color: PURPLE },
+  { kind: "stage", week: 3, col: 1, span: 3, project: YOS, color: PURPLE, text: PURPLE_TEXT, label: "프로젝트 정의", count: 1, deadline: true },
   // W5 (7/26~8/1) — YOS 작업 칩, YOC 요구사항 분석(마감)·회의1
-  { kind: "task", week: 4, col: 1, span: 1, lane: 0, text: PURPLE_TEXT, label: "PRD" },
-  { kind: "task", week: 4, col: 2, span: 1, lane: 0, text: PURPLE_TEXT, label: "설계서 검토", done: true },
-  { kind: "projectBg", week: 4, col: 4, span: 2, lane: 0, lanes: 2, color: GREEN },
-  { kind: "stage", week: 4, col: 4, span: 2, lane: 0, color: GREEN, text: GREEN_TEXT, label: "요구사항 분석", count: 1, deadline: true },
-  { kind: "task", week: 4, col: 4, span: 1, lane: 1, text: GREEN_TEXT, label: "회의1" },
+  { kind: "task", week: 4, col: 1, span: 1, text: PURPLE_TEXT, label: "PRD" },
+  { kind: "task", week: 4, col: 2, span: 1, text: PURPLE_TEXT, label: "설계서 검토", done: true },
+  { kind: "projectBg", week: 4, col: 4, span: 2, project: YOC, color: GREEN },
+  { kind: "stage", week: 4, col: 4, span: 2, project: YOC, color: GREEN, text: GREEN_TEXT, label: "요구사항 분석", count: 1, deadline: true },
+  { kind: "task", week: 4, col: 4, span: 1, text: GREEN_TEXT, label: "회의1" },
 ];
 
 export type WorkRequest = {

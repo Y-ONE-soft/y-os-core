@@ -1,13 +1,14 @@
 import { cn } from "@/lib/utils";
 import { hexToRgba } from "@/components/features/projects/roadmap-utils";
 import {
-  CAL_OVERLAYS,
   TODAY_DATE,
   WEEKDAYS,
   WEEKS,
-  WEEK_LANES,
-  type CalOverlay,
 } from "@/components/features/my-work/my-work-data";
+import {
+  CAL_WEEK_LAYOUTS,
+  type PlacedOverlay,
+} from "@/components/features/my-work/my-work-calendar-layout";
 
 const DATE_ROW_PX = 24; // 날짜 숫자 영역
 const LANE_PX = 20; // 스팬 레인 1단 높이
@@ -16,7 +17,7 @@ function laneTop(lane: number) {
   return DATE_ROW_PX + lane * LANE_PX;
 }
 
-function OverlayItem({ overlay }: { overlay: CalOverlay }) {
+function OverlayItem({ overlay }: { overlay: PlacedOverlay }) {
   const left = `${(overlay.col / 7) * 100}%`;
   const width = `${(overlay.span / 7) * 100}%`;
 
@@ -29,7 +30,7 @@ function OverlayItem({ overlay }: { overlay: CalOverlay }) {
           left,
           width,
           top: laneTop(overlay.lane) - 3,
-          height: overlay.lanes * LANE_PX + 4,
+          height: LANE_PX + 4,
           backgroundColor: hexToRgba(overlay.color, 0.07),
           borderColor: hexToRgba(overlay.color, 0.3),
         }}
@@ -137,7 +138,7 @@ export function MyWorkCalendar() {
         ))}
       </div>
       {WEEKS.map((week, weekIndex) => {
-        const laneCount = WEEK_LANES[weekIndex];
+        const { overlays, laneCount } = CAL_WEEK_LAYOUTS[weekIndex];
         const minHeight = laneCount > 0 ? DATE_ROW_PX + laneCount * LANE_PX + 8 : undefined;
         return (
           <div
@@ -167,11 +168,9 @@ export function MyWorkCalendar() {
                 )}
               </div>
             ))}
-            {CAL_OVERLAYS.filter((overlay) => overlay.week === weekIndex).map(
-              (overlay, overlayIndex) => (
-                <OverlayItem key={overlayIndex} overlay={overlay} />
-              ),
-            )}
+            {overlays.map((overlay, overlayIndex) => (
+              <OverlayItem key={overlayIndex} overlay={overlay} />
+            ))}
           </div>
         );
       })}
