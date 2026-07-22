@@ -16,6 +16,18 @@ import {
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { useSession } from "@/components/features/auth/session-context";
 import {
   ContextMenu,
@@ -389,14 +401,37 @@ export function ProjectsNav() {
       </nav>
       {!collapsed && (
         <footer className="w-full">
-          <button
-            type="button"
-            onClick={resetData}
-            className="flex h-8 w-full items-center gap-2 rounded-[8px] px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-          >
-            <RotateCcw className="size-3.5 shrink-0" />
-            데이터 초기화
-          </button>
+          {/* 초기화는 되돌릴 수 없다 — 시드 정리 이후 프로젝트·단계·작업이
+              복원되지 않으므로 확인 단계를 둔다 (docs/46) */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                type="button"
+                className="flex h-8 w-full items-center gap-2 rounded-[8px] px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
+              >
+                <RotateCcw className="size-3.5 shrink-0" />
+                데이터 초기화
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>데이터를 초기화할까요?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  모든 프로젝트·단계·작업이 삭제되고 그룹만 남습니다. 삭제된
+                  데이터는 복구할 수 없습니다.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>취소</AlertDialogCancel>
+                <AlertDialogAction
+                  className={cn(buttonVariants({ variant: "destructive" }))}
+                  onClick={resetData}
+                >
+                  초기화
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </footer>
       )}
     </>
