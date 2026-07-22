@@ -262,6 +262,9 @@ function OverlayItem({
         role="checkbox"
         aria-checked={Boolean(overlay.done)}
         aria-label={`${overlay.label} 완료`}
+        // 읽기 전용(작업 현황)에서는 완료 토글을 주지 않는다 — 눌러도 아무 일이
+        // 없는 컨트롤은 고장으로 읽히므로 아예 비활성으로 표시한다
+        disabled={!onToggleTask}
         // 체크박스에서 시작한 포인터는 드래그로 넘기지 않는다 — 칩을 옮기려다
         // 완료가 눌리거나, 체크하려다 일정이 움직이는 일을 막는다
         onPointerDown={(event) => event.stopPropagation()}
@@ -272,6 +275,7 @@ function OverlayItem({
         className={cn(
           "flex size-[11px] shrink-0 items-center justify-center rounded-[2px] text-[7px] text-white transition-shadow focus-visible:outline-none focus-visible:ring-2",
           !overlay.done && "border-[1.2px]",
+          !onToggleTask && "cursor-default",
         )}
         style={{
           ...(overlay.done
