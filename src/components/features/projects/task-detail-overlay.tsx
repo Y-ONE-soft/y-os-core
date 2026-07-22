@@ -215,6 +215,13 @@ export function TaskDetailOverlay({
             <section className="flex shrink-0 flex-col gap-2.5">
               <h3 className="text-sm font-semibold">내용</h3>
               <Textarea
+                key={task.id}
+                defaultValue={task.description ?? ""}
+                onBlur={(event) =>
+                  boardActions.updateTask(projectId, stage.id, task.id, {
+                    description: event.target.value,
+                  })
+                }
                 placeholder="작업 내용, 요구사항, 진행 메모 등을 자세히 작성하세요…"
                 className="min-h-[160px] rounded-[8px] px-3 py-3"
               />

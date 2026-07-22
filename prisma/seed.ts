@@ -34,6 +34,9 @@ const USERS = [
   },
 ] as const;
 
+// prisma.config.ts 로드 이후 실행되므로 alias(@/) 없이 상대 경로 사용
+import { workspaceSeedRows } from "../src/server/workspace/seed-data";
+
 async function main() {
   const passwordHash = await bcrypt.hash(SEED_PASSWORD, 10);
 
@@ -45,6 +48,21 @@ async function main() {
     });
     console.log(`seeded: ${user.username} (${user.role})`);
   }
+
+  // 워크스페이스(그룹·프로젝트·보드) — 이미 데이터가 있으면 건드리지 않는다
+  const existingGroups = await db.projectGroup.count();
+  if (existingGroups > 0) {
+    console.log("workspace: 기존 데이터 유지 (시드 생략)");
+    return;
+  }
+  const seed = workspaceSeedRows();
+  await db.projectGroup.createMany({ data: seed.groups });
+  await db.project.createMany({ data: seed.projects });
+  await db.stage.createMany({ data: seed.stages });
+  await db.task.createMany({ data: seed.tasks });
+  console.log(
+    `workspace seeded: 그룹 ${seed.groups.length} · 프로젝트 ${seed.projects.length} · 단계 ${seed.stages.length} · 작업 ${seed.tasks.length}`,
+  );
 }
 
 main()

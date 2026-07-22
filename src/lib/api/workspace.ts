@@ -1,0 +1,54 @@
+import { api } from "@/lib/api/client";
+import type { Workspace } from "@/types/workspace";
+
+export const fetchWorkspace = () => api.get<Workspace>("/api/admin/workspace");
+
+export const resetWorkspaceApi = () =>
+  api.post<{ ok: boolean }>("/api/admin/workspace/reset");
+
+export const createGroupApi = (input: { id: string; name: string }) =>
+  api.post<{ ok: boolean }>("/api/admin/groups", input);
+
+export const deleteGroupApi = (groupId: string) =>
+  api.del<{ ok: boolean }>(`/api/admin/groups/${groupId}`);
+
+export const createProjectApi = (input: {
+  id: string;
+  groupId: string;
+  name: string;
+  color: string;
+}) => api.post<{ ok: boolean }>("/api/admin/projects", input);
+
+export const deleteProjectApi = (projectId: string) =>
+  api.del<{ ok: boolean }>(`/api/admin/projects/${projectId}`);
+
+export const createStageApi = (input: {
+  id: string;
+  projectId: string;
+  name: string;
+  color: string;
+  startDate?: string;
+  endDate?: string;
+  showDeadline: boolean;
+}) => api.post<{ ok: boolean }>("/api/admin/stages", input);
+
+export const patchStageApi = (
+  stageId: string,
+  patch: Record<string, unknown>,
+) => api.patch<{ ok: boolean }>(`/api/admin/stages/${stageId}`, patch);
+
+export const createStageCommentApi = (
+  stageId: string,
+  input: { id: string; text: string },
+) =>
+  api.post<{ ok: boolean }>(`/api/admin/stages/${stageId}/comments`, input);
+
+export const createTaskApi = (input: {
+  id: string;
+  projectId: string;
+  stageId: string | null;
+  name: string;
+}) => api.post<{ ok: boolean }>("/api/admin/tasks", input);
+
+export const patchTaskApi = (taskId: string, patch: Record<string, unknown>) =>
+  api.patch<{ ok: boolean }>(`/api/admin/tasks/${taskId}`, patch);

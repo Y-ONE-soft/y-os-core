@@ -3,60 +3,37 @@
 import { useSyncExternalStore } from "react";
 
 import { PROJECT_COLORS } from "@/components/features/projects/project-store";
+import * as cache from "@/components/features/projects/workspace-cache";
 import {
-  BOARD_SEED,
-  type BoardStage,
-  type ProjectBoardData,
-} from "@/components/features/projects/project-detail-data";
+  createStageApi,
+  createStageCommentApi,
+  createTaskApi,
+  patchStageApi,
+  patchTaskApi,
+} from "@/lib/api/workspace";
+import type {
+  BoardStage,
+  BoardTask,
+  ProjectBoardData,
+} from "@/types/workspace";
 
-// 프로젝트별 보드(단계/작업/백로그) 상태 — localStorage 영속.
-// project-store와 동일한 useSyncExternalStore 패턴 (DB/API 전환 전 임시 계층).
-const STORAGE_KEY = "yos.board.v2";
+// 프로젝트별 보드(단계/작업/백로그) — DB가 원본이며 workspace-cache를 통해
+// 낙관적 업데이트 후 API 경계로 저장한다 (기존 localStorage 스토어와 동일 인터페이스).
 
 const EMPTY_BOARD: ProjectBoardData = { stages: [], backlog: [] };
 
 type BoardState = Record<string, ProjectBoardData>;
 
-let boardState: BoardState | null = null;
-const listeners = new Set<() => void>();
-
-function load(): BoardState {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as BoardState;
-  } catch {
-    // 저장 데이터가 깨진 경우 시드로 대체
-  }
-  return BOARD_SEED;
-}
-
-function getSnapshot(): BoardState {
-  if (boardState === null) boardState = load();
-  return boardState;
-}
-
-function getServerSnapshot(): BoardState {
-  return BOARD_SEED;
-}
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-function update(updater: (prev: BoardState) => BoardState) {
-  boardState = updater(getSnapshot());
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(boardState));
-  listeners.forEach((listener) => listener());
-}
-
 function updateBoard(
   projectId: string,
   updater: (board: ProjectBoardData) => ProjectBoardData,
 ) {
-  update((prev) => ({
+  cache.apply((prev) => ({
     ...prev,
-    [projectId]: updater(prev[projectId] ?? EMPTY_BOARD),
+    boards: {
+      ...prev.boards,
+      [projectId]: updater(prev.boards[projectId] ?? EMPTY_BOARD),
+    },
   }));
 }
 
@@ -69,23 +46,40 @@ export type NewStageInput = {
 
 export const boardActions = {
   addStage(projectId: string, input: NewStageInput) {
+    const id = `st-${crypto.randomUUID()}`;
+    const count =
+      cache.getSnapshot().boards[projectId]?.stages.length ?? 0;
+    const color = PROJECT_COLORS[count % PROJECT_COLORS.length];
+    const now = new Date().toISOString();
     updateBoard(projectId, (board) => ({
       ...board,
       stages: [
         ...board.stages,
         {
-          id: `st-${crypto.randomUUID()}`,
+          id,
           name: input.name,
-          color: PROJECT_COLORS[board.stages.length % PROJECT_COLORS.length],
+          color,
           startDate: input.startDate || undefined,
           endDate: input.endDate || undefined,
           showDeadline: input.showDeadline,
           tasks: [],
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
+          comments: [],
+          createdAt: now,
+          updatedAt: now,
         },
       ],
     }));
+    cache.persist(
+      createStageApi({
+        id,
+        projectId,
+        name: input.name,
+        color,
+        startDate: input.startDate || undefined,
+        endDate: input.endDate || undefined,
+        showDeadline: input.showDeadline,
+      }),
+    );
   },
   updateStage(
     projectId: string,
@@ -111,8 +105,10 @@ export const boardActions = {
           : stage,
       ),
     }));
+    cache.persist(patchStageApi(stageId, patch));
   },
   addComment(projectId: string, stageId: string, author: string, text: string) {
+    const id = `cm-${crypto.randomUUID()}`;
     updateBoard(projectId, (board) => ({
       ...board,
       stages: board.stages.map((stage) =>
@@ -121,43 +117,35 @@ export const boardActions = {
               ...stage,
               comments: [
                 ...(stage.comments ?? []),
-                {
-                  id: `cm-${crypto.randomUUID()}`,
-                  author,
-                  text,
-                  at: new Date().toISOString(),
-                },
+                { id, author, text, at: new Date().toISOString() },
               ],
               updatedAt: new Date().toISOString(),
             }
           : stage,
       ),
     }));
+    // 작성자는 서버가 세션 사용자로 고정한다
+    cache.persist(createStageCommentApi(stageId, { id, text }));
   },
   addTask(projectId: string, stageId: string, name: string) {
+    const id = `tk-${crypto.randomUUID()}`;
     updateBoard(projectId, (board) => ({
       ...board,
       stages: board.stages.map((stage) =>
         stage.id === stageId
-          ? {
-              ...stage,
-              tasks: [
-                ...stage.tasks,
-                { id: `tk-${crypto.randomUUID()}`, name, done: false },
-              ],
-            }
+          ? { ...stage, tasks: [...stage.tasks, { id, name, done: false }] }
           : stage,
       ),
     }));
+    cache.persist(createTaskApi({ id, projectId, stageId, name }));
   },
   addBacklogTask(projectId: string, name: string) {
+    const id = `tk-${crypto.randomUUID()}`;
     updateBoard(projectId, (board) => ({
       ...board,
-      backlog: [
-        ...board.backlog,
-        { id: `bk-${crypto.randomUUID()}`, name, done: false },
-      ],
+      backlog: [...board.backlog, { id, name, done: false }],
     }));
+    cache.persist(createTaskApi({ id, projectId, stageId: null, name }));
   },
   moveTask(
     projectId: string,
@@ -185,41 +173,80 @@ export const boardActions = {
         ),
       };
     });
+    cache.persist(patchTaskApi(taskId, { stageId: toStageId }));
   },
   toggleTask(projectId: string, stageId: string | null, taskId: string) {
+    const board = cache.getSnapshot().boards[projectId];
+    const current =
+      stageId === null
+        ? board?.backlog.find((task) => task.id === taskId)
+        : board?.stages
+            .find((stage) => stage.id === stageId)
+            ?.tasks.find((task) => task.id === taskId);
+    if (!current) return;
+    const done = !current.done;
+
+    const toggle = (task: BoardTask) =>
+      task.id === taskId ? { ...task, done } : task;
+    updateBoard(projectId, (prev) =>
+      stageId === null
+        ? { ...prev, backlog: prev.backlog.map(toggle) }
+        : {
+            ...prev,
+            stages: prev.stages.map((stage) =>
+              stage.id === stageId
+                ? { ...stage, tasks: stage.tasks.map(toggle) }
+                : stage,
+            ),
+          },
+    );
+    cache.persist(patchTaskApi(taskId, { done }));
+  },
+  /** 작업 이름·내용 수정 (작업 상세 오버레이) */
+  updateTask(
+    projectId: string,
+    stageId: string | null,
+    taskId: string,
+    patch: Partial<Pick<BoardTask, "name" | "description">>,
+  ) {
+    const apply = (task: BoardTask) =>
+      task.id === taskId ? { ...task, ...patch } : task;
     updateBoard(projectId, (board) =>
       stageId === null
-        ? {
-            ...board,
-            backlog: board.backlog.map((task) =>
-              task.id === taskId ? { ...task, done: !task.done } : task,
-            ),
-          }
+        ? { ...board, backlog: board.backlog.map(apply) }
         : {
             ...board,
             stages: board.stages.map((stage) =>
               stage.id === stageId
-                ? {
-                    ...stage,
-                    tasks: stage.tasks.map((task) =>
-                      task.id === taskId
-                        ? { ...task, done: !task.done }
-                        : task,
-                    ),
-                  }
+                ? { ...stage, tasks: stage.tasks.map(apply) }
                 : stage,
             ),
           },
+    );
+    cache.persist(
+      patchTaskApi(taskId, {
+        ...patch,
+        description: patch.description ?? undefined,
+      }),
     );
   },
 };
 
 export function useProjectBoard(projectId: string): ProjectBoardData {
-  const state = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-  return state[projectId] ?? EMPTY_BOARD;
+  const workspace = useSyncExternalStore(
+    cache.subscribe,
+    cache.getSnapshot,
+    cache.getServerSnapshot,
+  );
+  return workspace.boards[projectId] ?? EMPTY_BOARD;
 }
 
 /** 전체 프로젝트의 보드 상태 — 작업 현황처럼 여러 프로젝트를 집계하는 화면용 */
 export function useBoardState(): BoardState {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const workspace = useSyncExternalStore(
+    cache.subscribe,
+    cache.getSnapshot,
+    cache.getServerSnapshot,
+  );
+  return workspace.boards;
 }

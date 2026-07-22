@@ -3,21 +3,23 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useState,
   useSyncExternalStore,
 } from "react";
 
-export type Project = {
-  id: string;
-  name: string;
-  color: string;
-};
+import {
+  createGroupApi,
+  createProjectApi,
+  deleteGroupApi,
+  deleteProjectApi,
+  resetWorkspaceApi,
+} from "@/lib/api/workspace";
+import * as cache from "@/components/features/projects/workspace-cache";
+import type { ProjectGroup } from "@/types/workspace";
 
-export type ProjectGroup = {
-  id: string;
-  name: string;
-  projects: Project[];
-};
+// DB 전환 후에도 기존 소비자 호환을 위해 타입을 재노출한다
+export type { Project, ProjectGroup } from "@/types/workspace";
 
 export const PROJECT_COLORS = [
   "#3b82f6",
@@ -29,69 +31,6 @@ export const PROJECT_COLORS = [
   "#ef4444",
   "#84cc16",
 ];
-
-const SEED_GROUPS: ProjectGroup[] = [
-  { id: "g-lab", name: "Lab", projects: [] },
-  {
-    id: "g-soft",
-    name: "Soft",
-    projects: [
-      { id: "p-cms", name: "화학강사 김한울 CMS 프로젝트", color: "#3b82f6" },
-      { id: "p-yos", name: "YOS", color: "#8b5cf6" },
-      { id: "p-contents", name: "Y.OS CONTENTS", color: "#10b981" },
-    ],
-  },
-  {
-    id: "g-printing",
-    name: "Printing",
-    projects: [{ id: "p-wise", name: "와이즈", color: "#f59e0b" }],
-  },
-];
-
-const STORAGE_KEY = "yos.projects.v1";
-
-// localStorage 기반 외부 스토어 — DB/API 도입 전까지의 임시 영속 계층.
-// useSyncExternalStore로 구독해 SSR(시드)과 클라이언트(저장본)를 안전하게 분리한다.
-let groupsState: ProjectGroup[] | null = null;
-const listeners = new Set<() => void>();
-
-function loadGroups(): ProjectGroup[] {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as ProjectGroup[];
-  } catch {
-    // 저장 데이터가 깨진 경우 시드로 대체
-  }
-  return SEED_GROUPS;
-}
-
-function getSnapshot(): ProjectGroup[] {
-  if (groupsState === null) groupsState = loadGroups();
-  return groupsState;
-}
-
-function getServerSnapshot(): ProjectGroup[] {
-  return SEED_GROUPS;
-}
-
-function subscribe(listener: () => void) {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
-function updateGroups(
-  updater: (prev: ProjectGroup[]) => ProjectGroup[] | null,
-) {
-  const next = updater(getSnapshot());
-  if (next === null) {
-    groupsState = SEED_GROUPS;
-    window.localStorage.removeItem(STORAGE_KEY);
-  } else {
-    groupsState = next;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  }
-  listeners.forEach((listener) => listener());
-}
 
 type ProjectStoreValue = {
   groups: ProjectGroup[];
@@ -111,60 +50,84 @@ export function ProjectStoreProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const groups = useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-    getServerSnapshot,
+  const workspace = useSyncExternalStore(
+    cache.subscribe,
+    cache.getSnapshot,
+    cache.getServerSnapshot,
   );
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
     null,
   );
 
+  // 세션 확립(proxy 통과) 후 최초 1회 DB에서 부트스트랩
+  useEffect(() => {
+    void cache.ensureLoaded();
+  }, []);
+
   const value: ProjectStoreValue = {
-    groups,
+    groups: workspace.groups,
     selectedProjectId,
     selectProject: setSelectedProjectId,
-    addGroup: (name) =>
-      updateGroups((prev) => [
+    addGroup: (name) => {
+      const id = `g-${crypto.randomUUID()}`;
+      cache.apply((prev) => ({
         ...prev,
-        { id: `g-${crypto.randomUUID()}`, name, projects: [] },
-      ]),
-    addProject: (groupId, name) =>
-      updateGroups((prev) => {
-        const totalProjects = prev.reduce(
-          (sum, g) => sum + g.projects.length,
-          0,
-        );
-        return prev.map((g) =>
-          g.id === groupId
-            ? {
-                ...g,
-                projects: [
-                  ...g.projects,
-                  {
-                    id: `p-${crypto.randomUUID()}`,
-                    name,
-                    color:
-                      PROJECT_COLORS[totalProjects % PROJECT_COLORS.length],
-                  },
-                ],
-              }
-            : g,
-        );
-      }),
-    deleteGroup: (groupId) =>
-      updateGroups((prev) => prev.filter((g) => g.id !== groupId)),
-    deleteProject: (groupId, projectId) =>
-      updateGroups((prev) =>
-        prev.map((g) =>
-          g.id === groupId
-            ? { ...g, projects: g.projects.filter((p) => p.id !== projectId) }
-            : g,
+        groups: [...prev.groups, { id, name, projects: [] }],
+      }));
+      cache.persist(createGroupApi({ id, name }));
+    },
+    addProject: (groupId, name) => {
+      const id = `p-${crypto.randomUUID()}`;
+      const totalProjects = workspace.groups.reduce(
+        (sum, group) => sum + group.projects.length,
+        0,
+      );
+      const color = PROJECT_COLORS[totalProjects % PROJECT_COLORS.length];
+      cache.apply((prev) => ({
+        groups: prev.groups.map((group) =>
+          group.id === groupId
+            ? { ...group, projects: [...group.projects, { id, name, color }] }
+            : group,
         ),
-      ),
+        boards: { ...prev.boards, [id]: { stages: [], backlog: [] } },
+      }));
+      cache.persist(createProjectApi({ id, groupId, name, color }));
+    },
+    deleteGroup: (groupId) => {
+      cache.apply((prev) => {
+        const target = prev.groups.find((group) => group.id === groupId);
+        const boards = { ...prev.boards };
+        target?.projects.forEach((project) => delete boards[project.id]);
+        return {
+          groups: prev.groups.filter((group) => group.id !== groupId),
+          boards,
+        };
+      });
+      cache.persist(deleteGroupApi(groupId));
+    },
+    deleteProject: (groupId, projectId) => {
+      cache.apply((prev) => {
+        const boards = { ...prev.boards };
+        delete boards[projectId];
+        return {
+          groups: prev.groups.map((group) =>
+            group.id === groupId
+              ? {
+                  ...group,
+                  projects: group.projects.filter(
+                    (project) => project.id !== projectId,
+                  ),
+                }
+              : group,
+          ),
+          boards,
+        };
+      });
+      cache.persist(deleteProjectApi(projectId));
+    },
     resetData: () => {
-      updateGroups(() => null);
       setSelectedProjectId(null);
+      cache.persist(resetWorkspaceApi().then(() => cache.refresh()));
     },
   };
 
