@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { ApiError } from "@/lib/api/client";
-import { updateMe } from "@/lib/api/auth";
+import { changePasswordApi, updateMe } from "@/lib/api/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +48,139 @@ function Field({
       </Label>
       {children}
     </div>
+  );
+}
+
+/**
+ * 비밀번호 변경 — 프로필 폼과 저장 버튼을 나눈다.
+ * 이름만 고치려는데 현재 비밀번호까지 요구하면 안 된다.
+ */
+function PasswordSection() {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState<
+    { kind: "ok" | "error"; text: string } | null
+  >(null);
+
+  const filled = current && next && confirm;
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!filled) return;
+    // 확인 일치는 서버가 알 수 없는 값이라 화면에서 막는다
+    if (next !== confirm) {
+      setStatus({ kind: "error", text: "새 비밀번호가 서로 다릅니다." });
+      return;
+    }
+
+    setSaving(true);
+    setStatus(null);
+    try {
+      await changePasswordApi({ currentPassword: current, nextPassword: next });
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+      setStatus({
+        kind: "ok",
+        text: "비밀번호를 변경했습니다. 다른 기기는 로그아웃됩니다.",
+      });
+    } catch (error) {
+      setStatus({
+        kind: "error",
+        text:
+          error instanceof ApiError
+            ? error.message
+            : "변경에 실패했습니다. 잠시 후 다시 시도하세요.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form
+      onSubmit={submit}
+      aria-labelledby="me-password"
+      className={cn("flex w-full flex-col", PANEL)}
+    >
+      <div className="flex flex-col gap-4 p-5">
+        <div className="flex flex-col gap-1">
+          <h2 id="me-password" className="text-sm font-semibold">
+            비밀번호
+          </h2>
+          <p className="text-[12px] text-muted-foreground">
+            변경하면 이 기기를 제외한 다른 기기에서 로그아웃됩니다.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Field id="pw-current" label="현재 비밀번호">
+            <Input
+              id="pw-current"
+              type="password"
+              autoComplete="current-password"
+              value={current}
+              onChange={(event) => {
+                setCurrent(event.target.value);
+                setStatus(null);
+              }}
+              className="h-9 rounded-[8px]"
+            />
+          </Field>
+          <Field id="pw-next" label="새 비밀번호">
+            <Input
+              id="pw-next"
+              type="password"
+              autoComplete="new-password"
+              value={next}
+              onChange={(event) => {
+                setNext(event.target.value);
+                setStatus(null);
+              }}
+              className="h-9 rounded-[8px]"
+            />
+          </Field>
+          <Field id="pw-confirm" label="새 비밀번호 확인">
+            <Input
+              id="pw-confirm"
+              type="password"
+              autoComplete="new-password"
+              value={confirm}
+              // 확인란만 즉시 불일치를 표시한다 — 새 비밀번호 쪽에 띄우면
+              // 입력하는 도중 내내 빨갛다
+              aria-invalid={
+                (confirm.length > 0 && confirm !== next) || undefined
+              }
+              onChange={(event) => {
+                setConfirm(event.target.value);
+                setStatus(null);
+              }}
+              className="h-9 rounded-[8px]"
+            />
+          </Field>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-end gap-3 rounded-b-[8px] border-t bg-muted/40 px-5 py-3">
+        {status && (
+          <p
+            role="status"
+            className={cn(
+              "min-w-0 flex-1 truncate text-[12px]",
+              status.kind === "ok"
+                ? "text-muted-foreground"
+                : "text-destructive",
+            )}
+          >
+            {status.text}
+          </p>
+        )}
+        <Button type="submit" size="sm" disabled={!filled || saving}>
+          {saving ? "변경 중…" : "비밀번호 변경"}
+        </Button>
+      </div>
+    </form>
   );
 }
 
@@ -155,12 +288,13 @@ function MyInfoForm({
       <header className="flex shrink-0 flex-col gap-1.5">
         <h1 className="text-[22px] font-semibold">내 정보</h1>
         <p className="text-[13px] text-muted-foreground">
-          이름·직책·이메일·연락처를 수정할 수 있습니다
+          프로필과 비밀번호를 수정할 수 있습니다
         </p>
       </header>
 
       {/* 좌: 계정 요약(고정폭) · 우: 편집 폼. 한 장짜리 카드는 넓은 화면에서
-          왼쪽에 몰려 페이지가 비어 보인다 — 백로그가 있는 화면들과 같은 구성. */}
+          왼쪽에 몰려 페이지가 비어 보인다 — 백로그가 있는 화면들과 같은 구성.
+          비밀번호는 아래 행에 따로 둔다 (저장 버튼이 분리돼야 하므로 폼도 별개). */}
       <div className="flex flex-wrap items-stretch gap-4">
         <section
           aria-labelledby="me-account"
@@ -284,6 +418,8 @@ function MyInfoForm({
           </div>
         </form>
       </div>
+
+      <PasswordSection />
     </div>
   );
 }
