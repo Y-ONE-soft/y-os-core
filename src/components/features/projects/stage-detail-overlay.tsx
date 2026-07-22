@@ -20,6 +20,10 @@ import {
 } from "@/components/features/projects/board-store";
 import { CollaboratorRequestDialog } from "@/components/features/projects/collaborator-request-dialog";
 import { OverlayBreadcrumb } from "@/components/features/projects/overlay-breadcrumb";
+import {
+  requestActions,
+  usePendingRequestsFor,
+} from "@/hooks/use-requests";
 
 // 레이아웃·타이포·컬러는 할일 상세 오버레이(task-detail-overlay)와 통일한다.
 // 단계에만 있는 항목(기간·데드라인 표시)과 할일에만 있는 항목(유형·난이도)만 다르다.
@@ -51,6 +55,7 @@ export function StageDetailOverlay({
   const { user } = useSession();
   const { stages } = useProjectBoard(projectId);
   const stage = stages.find((candidate) => candidate.id === stageId) ?? null;
+  const pendingRequests = usePendingRequestsFor({ stageId });
   const [collabOpen, setCollabOpen] = useState(false);
   const [comment, setComment] = useState("");
 
@@ -281,6 +286,12 @@ export function StageDetailOverlay({
               👥 공동 작업자 지정 요청
               {collaboratorCount > 0 && ` · ${collaboratorCount}`}
             </Button>
+            {pendingRequests.length > 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                응답 대기 중&nbsp;·&nbsp;
+                {pendingRequests.map((item) => item.to.name).join(", ")}
+              </p>
+            )}
             <div className="flex-1" />
             <Button
               variant="destructive"
@@ -305,9 +316,19 @@ export function StageDetailOverlay({
           <CollaboratorRequestDialog
             open={collabOpen}
             onOpenChange={setCollabOpen}
-            initialSelected={stage.requestedCollaborators ?? []}
-            onSubmit={(memberIds) => {
-              patch({ requestedCollaborators: memberIds });
+            // 이미 공동 작업자이거나 응답을 기다리는 사람은 다시 고를 수 없다
+            alreadyRequested={[
+              ...(stage.requestedCollaborators ?? []),
+              ...pendingRequests.map((item) => item.to.id),
+            ]}
+            onSubmit={(memberIds, message) => {
+              void requestActions.send({
+                kind: "ASSIGN",
+                toUserIds: memberIds,
+                message: message || null,
+                taskId: null,
+                stageId: stage.id,
+              });
               setCollabOpen(false);
             }}
           />

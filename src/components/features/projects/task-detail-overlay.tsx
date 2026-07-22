@@ -38,6 +38,7 @@ import { clampStageToTasks } from "@/components/features/projects/roadmap-utils"
 import type { BoardStage, BoardTask } from "@/types/workspace";
 import { avatarColor } from "@/lib/avatar-color";
 import { useUsers } from "@/hooks/use-users";
+import { requestActions } from "@/hooks/use-requests";
 import { OverlayBreadcrumb } from "@/components/features/projects/overlay-breadcrumb";
 
 // Select에서 null(백로그·미배정)을 가리키는 센티널 — Radix Select는 빈 문자열 값을 허용하지 않는다
@@ -90,6 +91,7 @@ export function TaskDetailOverlay({
   const [commentDraft, setCommentDraft] = useState("");
   const [request, setRequest] = useState<RequestKind>(null);
   const [requestMembers, setRequestMembers] = useState<Set<string>>(new Set());
+  const [requestMessage, setRequestMessage] = useState("");
 
   const projects = groups.flatMap((group) => group.projects);
   // 할일이 놓인 위치(프로젝트·단계)를 스토어에서 직접 찾는다. 단계에 편성된 할일,
@@ -609,6 +611,7 @@ export function TaskDetailOverlay({
               className="w-full rounded-[8px] bg-background"
               onClick={() => {
                 setRequestMembers(new Set());
+                setRequestMessage("");
                 setRequest("collab");
               }}
             >
@@ -619,6 +622,7 @@ export function TaskDetailOverlay({
               className="w-full rounded-[8px] bg-background"
               onClick={() => {
                 setRequestMembers(new Set());
+                setRequestMessage("");
                 setRequest("help");
               }}
             >
@@ -712,6 +716,8 @@ export function TaskDetailOverlay({
                 메시지
               </p>
               <Textarea
+                value={requestMessage}
+                onChange={(event) => setRequestMessage(event.target.value)}
                 placeholder={
                   request === "collab"
                     ? "요청 사유 입력 (선택)"
@@ -728,7 +734,18 @@ export function TaskDetailOverlay({
                   취소
                 </Button>
                 <Button
-                  onClick={() => setRequest(null)}
+                  disabled={requestMembers.size === 0}
+                  onClick={() => {
+                    void requestActions.send({
+                      // 공동 작업자 지정은 할일 요청(ASSIGN), 나머지는 도움 요청(HELP)
+                      kind: request === "collab" ? "ASSIGN" : "HELP",
+                      toUserIds: [...requestMembers],
+                      message: requestMessage.trim() || null,
+                      taskId: task.id,
+                      stageId: null,
+                    });
+                    setRequest(null);
+                  }}
                   className="rounded-[8px]"
                 >
                   요청 보내기
