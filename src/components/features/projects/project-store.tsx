@@ -13,6 +13,7 @@ import {
   createProjectApi,
   deleteGroupApi,
   deleteProjectApi,
+  patchProjectApi,
   resetWorkspaceApi,
 } from "@/lib/api/workspace";
 import * as cache from "@/components/features/projects/workspace-cache";
@@ -38,7 +39,10 @@ type ProjectStoreValue = {
   selectedProjectId: string | null;
   selectProject: (id: string | null) => void;
   addGroup: (name: string) => void;
-  addProject: (groupId: string, name: string) => void;
+  /** `color` 미지정 시 팔레트에서 순번대로 자동 배정한다 */
+  addProject: (groupId: string, name: string, color?: string) => void;
+  /** 프로젝트 색 변경 — 그 프로젝트의 단계·할일 색도 파생이라 함께 바뀐다 */
+  setProjectColor: (projectId: string, color: string) => void;
   deleteGroup: (groupId: string) => void;
   deleteProject: (groupId: string, projectId: string) => void;
   resetData: () => void;
@@ -78,13 +82,14 @@ export function ProjectStoreProvider({
       }));
       cache.persist(createGroupApi({ id, name }));
     },
-    addProject: (groupId, name) => {
+    addProject: (groupId, name, pickedColor) => {
       const id = `p-${crypto.randomUUID()}`;
       const totalProjects = workspace.groups.reduce(
         (sum, group) => sum + group.projects.length,
         0,
       );
-      const color = PROJECT_COLORS[totalProjects % PROJECT_COLORS.length];
+      const color =
+        pickedColor ?? PROJECT_COLORS[totalProjects % PROJECT_COLORS.length];
       cache.apply((prev) => ({
         ...prev,
         groups: prev.groups.map((group) =>
@@ -115,6 +120,18 @@ export function ProjectStoreProvider({
         };
       });
       cache.persist(deleteGroupApi(groupId));
+    },
+    setProjectColor: (projectId, color) => {
+      cache.apply((prev) => ({
+        ...prev,
+        groups: prev.groups.map((group) => ({
+          ...group,
+          projects: group.projects.map((project) =>
+            project.id === projectId ? { ...project, color } : project,
+          ),
+        })),
+      }));
+      cache.persist(patchProjectApi(projectId, { color }));
     },
     deleteProject: (groupId, projectId) => {
       cache.apply((prev) => {

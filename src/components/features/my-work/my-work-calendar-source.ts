@@ -3,6 +3,7 @@
 
 import type { BoardTask, Project, ProjectBoardData } from "@/types/workspace";
 import { OPEN_ENDED_DAYS } from "@/components/features/projects/roadmap-utils";
+import { taskTone } from "@/components/features/projects/project-palette";
 import {
   DAYS_PER_WEEK,
   gridDay,
@@ -128,9 +129,10 @@ export function buildCalendarSource(
         stageCount += 1;
         placed = true;
       }
-      // 할일 칩은 단계 색을 따른다 — 어느 단계 소속인지 한눈에 보이게
+      // 할일 칩은 소속 단계 색을 한 톤 옅게 — 같은 계열이되 단계 막대와 구분된다
+      const taskColor = taskTone(stage.color);
       for (const task of stage.tasks) {
-        const chip = taskChip(grid, project.id, stage.color, task);
+        const chip = taskChip(grid, project.id, taskColor, task);
         if (chip) {
           overlays.push(chip);
           placed = true;
@@ -139,7 +141,8 @@ export function buildCalendarSource(
     }
     // 백로그 작업도 날짜 칸에 떨어뜨리면 예정일을 가질 수 있다 (덮는 단계가 없을 때)
     for (const task of board?.backlog ?? []) {
-      const chip = taskChip(grid, project.id, project.color, task);
+      // 단계 없는 백로그 작업은 프로젝트 색을 같은 규칙으로 옅게 쓴다
+      const chip = taskChip(grid, project.id, taskTone(project.color), task);
       if (chip) {
         overlays.push(chip);
         placed = true;

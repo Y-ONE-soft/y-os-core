@@ -1,8 +1,8 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
-import { PROJECT_COLORS } from "@/components/features/projects/project-store";
+import { stageTone } from "@/components/features/projects/project-palette";
 import {
   scheduleFor,
   todayISO,
@@ -64,9 +64,14 @@ export const boardActions = {
     extra?: NewStageExtra,
   ): string {
     const id = `st-${crypto.randomUUID()}`;
-    const count =
-      cache.getSnapshot().boards[projectId]?.stages.length ?? 0;
-    const color = PROJECT_COLORS[count % PROJECT_COLORS.length];
+    const snapshot = cache.getSnapshot();
+    const count = snapshot.boards[projectId]?.stages.length ?? 0;
+    // 화면에서는 어차피 프로젝트 색에서 파생하지만(withDerivedColors),
+    // API가 color를 요구하므로 같은 규칙으로 계산해 저장한다.
+    const projectColor = snapshot.groups
+      .flatMap((group) => group.projects)
+      .find((project) => project.id === projectId)?.color;
+    const color = projectColor ? stageTone(projectColor, count) : "#71717a";
     const now = new Date().toISOString();
     const description = extra?.description?.trim() || undefined;
     const requestedCollaborators = extra?.requestedCollaborators?.length
@@ -389,13 +394,44 @@ export const boardActions = {
   },
 };
 
+/** 프로젝트 id → 프로젝트 색 */
+function projectColorMap(workspace: {
+  groups: { projects: { id: string; color: string }[] }[];
+}): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const group of workspace.groups)
+    for (const project of group.projects) map[project.id] = project.color;
+  return map;
+}
+
+/**
+ * 단계 색을 프로젝트 색에서 파생해 덮어쓴다 — DB에 저장된 색은 쓰지 않는다.
+ * 저장값을 쓰면 프로젝트 색을 바꿨을 때 옛 색이 남아 다시 어긋난다.
+ */
+function withDerivedColors(
+  board: ProjectBoardData,
+  projectColor: string | undefined,
+): ProjectBoardData {
+  if (!projectColor) return board;
+  return {
+    ...board,
+    stages: board.stages.map((stage, index) => ({
+      ...stage,
+      color: stageTone(projectColor, index),
+    })),
+  };
+}
+
 export function useProjectBoard(projectId: string): ProjectBoardData {
   const workspace = useSyncExternalStore(
     cache.subscribe,
     cache.getSnapshot,
     cache.getServerSnapshot,
   );
-  return workspace.boards[projectId] ?? EMPTY_BOARD;
+  return useMemo(() => {
+    const board = workspace.boards[projectId] ?? EMPTY_BOARD;
+    return withDerivedColors(board, projectColorMap(workspace)[projectId]);
+  }, [workspace, projectId]);
 }
 
 /** 전체 프로젝트의 보드 상태 — 작업 현황처럼 여러 프로젝트를 집계하는 화면용 */
@@ -405,7 +441,13 @@ export function useBoardState(): BoardState {
     cache.getSnapshot,
     cache.getServerSnapshot,
   );
-  return workspace.boards;
+  return useMemo(() => {
+    const colors = projectColorMap(workspace);
+    const next: BoardState = {};
+    for (const [projectId, board] of Object.entries(workspace.boards))
+      next[projectId] = withDerivedColors(board, colors[projectId]);
+    return next;
+  }, [workspace]);
 }
 
 /** 미배정 작업(projectId = null) — 내 작업 백로그의 기본 자리 */
