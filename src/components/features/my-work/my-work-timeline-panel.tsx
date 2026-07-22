@@ -14,7 +14,10 @@ import { taskTone } from "@/components/features/projects/project-palette";
 import {
   barRange,
   clampStageToTasks,
+  dayOffset,
   formatShort,
+  shiftISO,
+  type StageDates,
 } from "@/components/features/projects/roadmap-utils";
 import { RoadmapBar } from "@/components/features/projects/roadmap-bar";
 import {
@@ -108,6 +111,60 @@ export function MyWorkTimelinePanel() {
         boards[project.id]?.stages.some((stage) => stage.id === detailStageId),
       )
     : undefined;
+
+  /**
+   * 단계 막대 드래그.
+   * 통째 이동(양 끝이 같은 일수만큼 밀림)이면 그 단계의 할일 예정일도 함께 옮겨
+   * 블록이 통째로 움직이게 한다. 양 끝 손잡이로 기간만 바꾼 경우는 단계만 바꾼다.
+   */
+  function moveStage(
+    projectId: string,
+    stage: BoardStage,
+    patch: StageDates,
+  ) {
+    boardActions.updateStage(projectId, stage.id, patch);
+    if (!stage.startDate) return;
+    const startDelta = dayOffset(patch.startDate, stage.startDate);
+    if (startDelta === 0) return;
+    const endDelta =
+      stage.endDate && patch.endDate
+        ? dayOffset(patch.endDate, stage.endDate)
+        : startDelta;
+    if (endDelta !== startDelta) return; // 기간 조절이라 할일은 건드리지 않는다
+    for (const task of stage.tasks) {
+      if (!task.scheduledDate) continue;
+      boardActions.updateTask(projectId, stage.id, task.id, {
+        scheduledDate: shiftISO(task.scheduledDate, startDelta),
+      });
+    }
+  }
+
+  /** 프로젝트 막대 드래그 — 소속 단계와 할일 전부를 같은 일수만큼 옮긴다 */
+  function moveProject(projectId: string, delta: number) {
+    if (delta === 0) return;
+    const board = boards[projectId];
+    if (!board) return;
+    for (const stage of board.stages) {
+      if (stage.startDate) {
+        boardActions.updateStage(projectId, stage.id, {
+          startDate: shiftISO(stage.startDate, delta),
+          endDate: stage.endDate ? shiftISO(stage.endDate, delta) : undefined,
+        });
+      }
+      for (const task of stage.tasks) {
+        if (!task.scheduledDate) continue;
+        boardActions.updateTask(projectId, stage.id, task.id, {
+          scheduledDate: shiftISO(task.scheduledDate, delta),
+        });
+      }
+    }
+    for (const task of board.backlog) {
+      if (!task.scheduledDate) continue;
+      boardActions.updateTask(projectId, null, task.id, {
+        scheduledDate: shiftISO(task.scheduledDate, delta),
+      });
+    }
+  }
 
   /** 예정일 변경 — 캘린더 드래그와 같은 규칙으로 단계가 늘어나 덮는다 */
   function moveTask(
@@ -283,11 +340,21 @@ export function MyWorkTimelinePanel() {
                     style={{ width: timeline.width }}
                   >
                     {marks.length > 0 && (
+                      // 기간이 단계·할일에서 나온 파생값이라 양 끝 조절은 막고
+                      // 통째 이동만 허용한다 (소속 단계·할일이 같이 움직인다)
                       <RoadmapBar
                         timeline={timeline}
                         color={project.color}
                         startDate={marks[0]}
                         endDate={marks[marks.length - 1]}
+                        resizable={false}
+                        onCommit={(patch) =>
+                          moveProject(
+                            project.id,
+                            dayOffset(patch.startDate, marks[0]),
+                          )
+                        }
+                        title={`${project.name} — 끌면 단계·할일이 함께 이동`}
                         label={`전체 ${percent}%`}
                       />
                     )}
@@ -333,7 +400,10 @@ export function MyWorkTimelinePanel() {
                               startDate={stage.startDate}
                               endDate={stage.endDate}
                               onClick={() => setDetailStageId(stage.id)}
-                              title={`${stage.name} — 클릭하면 단계 상세`}
+                              onCommit={(patch) =>
+                                moveStage(project.id, stage, patch)
+                              }
+                              title={`${stage.name} — 클릭하면 단계 상세, 끌면 할일까지 함께 이동`}
                               label={stage.name}
                             />
                           )}
