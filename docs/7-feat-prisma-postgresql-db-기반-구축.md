@@ -102,3 +102,16 @@ src/generated/prisma/       # 생성물 (gitignore, 커밋 제외 — prisma gen
 - 프리뷰/프로덕션 배포에서의 `/api/health` 동작은 push·머지 후 확인해 추록 예정 (Neon env는 전 환경에 주입돼 있어 정상 동작 예상)
 - Neon 무료 티어 한도(스토리지/컴퓨트) 초과 시 업그레이드 검토 필요
 - `prisma migrate` 워크플로우(마이그레이션 파일 커밋 규칙)는 첫 모델 추가 태스크에서 확정
+
+## 8. 사후 검증 결과 (추록)
+
+### 프리뷰 배포 1차 실패 → postinstall 수정
+
+- 브랜치 push가 트리거한 프리뷰 배포(PR #2)가 **빌드 실패**: `Module not found: Can't resolve '@/generated/prisma/client'`
+- 원인: Prisma 생성물(`src/generated/prisma`)은 gitignore 대상인데 **Vercel 빌드에 `prisma generate` 단계가 없었음**. 로컬은 수동 generate로 통과해 발견이 늦음
+- 수정: `package.json`에 `"postinstall": "prisma generate"` 추가 — Vercel(npm install 직후)과 새 클론 모두 자동 생성. 로컬에서 생성물 삭제 → `npm install` 흐름 재현으로 재생성·빌드 통과 확인
+- 교훈: **gitignore된 생성물에 의존하는 코드는 CI/배포의 생성 단계까지 이 커밋에서 함께 구성해야 한다**
+
+### 한글 브랜치명 프리뷰 처리 (병렬 규칙 후속 과제 응답)
+
+- 한글 브랜치 `DB-기반-구축` push 시 Vercel이 정상적으로 프리뷰 배포를 생성함 — 배포 고유 URL은 랜덤 해시(`y-os-core-<hash>-project-hosting-center.vercel.app`)라 한글 무관, PR 체크로 연동됨. 한글 브랜치 전략에 배포 파이프라인 제약 없음 확인
