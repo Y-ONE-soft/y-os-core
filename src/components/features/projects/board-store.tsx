@@ -5,6 +5,7 @@ import { useSyncExternalStore } from "react";
 import { PROJECT_COLORS } from "@/components/features/projects/project-store";
 import {
   BOARD_SEED,
+  type BoardStage,
   type ProjectBoardData,
 } from "@/components/features/projects/project-detail-data";
 
@@ -80,8 +81,57 @@ export const boardActions = {
           endDate: input.endDate || undefined,
           showDeadline: input.showDeadline,
           tasks: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       ],
+    }));
+  },
+  updateStage(
+    projectId: string,
+    stageId: string,
+    patch: Partial<
+      Pick<
+        BoardStage,
+        | "name"
+        | "description"
+        | "done"
+        | "startDate"
+        | "endDate"
+        | "showDeadline"
+        | "requestedCollaborators"
+      >
+    >,
+  ) {
+    updateBoard(projectId, (board) => ({
+      ...board,
+      stages: board.stages.map((stage) =>
+        stage.id === stageId
+          ? { ...stage, ...patch, updatedAt: new Date().toISOString() }
+          : stage,
+      ),
+    }));
+  },
+  addComment(projectId: string, stageId: string, author: string, text: string) {
+    updateBoard(projectId, (board) => ({
+      ...board,
+      stages: board.stages.map((stage) =>
+        stage.id === stageId
+          ? {
+              ...stage,
+              comments: [
+                ...(stage.comments ?? []),
+                {
+                  id: `cm-${crypto.randomUUID()}`,
+                  author,
+                  text,
+                  at: new Date().toISOString(),
+                },
+              ],
+              updatedAt: new Date().toISOString(),
+            }
+          : stage,
+      ),
     }));
   },
   addTask(projectId: string, stageId: string, name: string) {

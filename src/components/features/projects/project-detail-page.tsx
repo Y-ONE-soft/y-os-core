@@ -11,6 +11,7 @@ import { ProjectRoadmap } from "@/components/features/projects/project-roadmap";
 import { ProjectBoard } from "@/components/features/projects/project-board";
 import { ProjectBacklog } from "@/components/features/projects/project-backlog";
 import { StageAddDialog } from "@/components/features/projects/stage-add-dialog";
+import { StageDetailOverlay } from "@/components/features/projects/stage-detail-overlay";
 
 const TABS = ["보드", "작업", "리포트", "산출물", "메모", "문의"] as const;
 const ACTIVE_TAB = "보드";
@@ -19,6 +20,7 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
   const { groups } = useProjectStore();
   const { stages } = useProjectBoard(projectId);
   const [stageDialogOpen, setStageDialogOpen] = useState(false);
+  const [detailStageId, setDetailStageId] = useState<string | null>(null);
   const project = groups
     .flatMap((group) => group.projects)
     .find((candidate) => candidate.id === projectId);
@@ -92,8 +94,16 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
       </nav>
       <div className="flex min-h-0 flex-1 items-stretch gap-3.5">
         <div className="flex min-w-0 flex-1 flex-col gap-3.5">
-          <ProjectRoadmap projectId={projectId} onAddStage={openStageDialog} />
-          <ProjectBoard projectId={projectId} onAddStage={openStageDialog} />
+          <ProjectRoadmap
+            projectId={projectId}
+            onAddStage={openStageDialog}
+            onOpenStage={setDetailStageId}
+          />
+          <ProjectBoard
+            projectId={projectId}
+            onAddStage={openStageDialog}
+            onOpenStage={setDetailStageId}
+          />
         </div>
         <ProjectBacklog projectId={projectId} />
       </div>
@@ -101,6 +111,15 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
         projectId={projectId}
         open={stageDialogOpen}
         onOpenChange={setStageDialogOpen}
+      />
+      <StageDetailOverlay
+        projectId={projectId}
+        projectName={project.name}
+        projectColor={project.color}
+        stageId={detailStageId}
+        onOpenChange={(open) => {
+          if (!open) setDetailStageId(null);
+        }}
       />
     </div>
   );
