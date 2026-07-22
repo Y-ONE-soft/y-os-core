@@ -558,22 +558,6 @@ export function TaskDetailOverlay({
             </div>
             <div className="flex flex-col gap-2">
               <p className="text-xs font-medium text-muted-foreground">
-                작업날짜
-              </p>
-              <Input
-                type="date"
-                aria-label="작업날짜"
-                className="h-9 rounded-[8px] bg-background"
-                value={task.scheduledDate ?? ""}
-                onChange={(event) =>
-                  boardActions.updateTask(projectId, stageId, task.id, {
-                    scheduledDate: event.target.value || undefined,
-                  })
-                }
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <p className="text-xs font-medium text-muted-foreground">
                 완료날짜
               </p>
               {/* 읽기 전용 — 위 체크박스를 켜면 서버가 오늘 날짜를 기록하고,
