@@ -93,6 +93,14 @@ dev 서버 렌더 HTML로 배치를 확인했다 (`master01` 로그인 후 `/pro
 - 단계가 3개 이상 겹치면 중간 막대의 노출 폭이 좁아질 수 있다(docs/32와 동일). 자리표시 데이터에는 해당 사례 없음.
 - 캘린더가 세로로 길어지면서 스크롤 영역 처리(월 뷰 전체 높이 대 컨테이너)는 실데이터 연결 후 재평가 대상.
 
+## 사후 검증 결과 (추록)
+
+푸시 이후에만 확정되는 검증 결과.
+
+- **PR**: [#33](https://github.com/Y-ONE-soft/y-os-core/pull/33)
+- **프리뷰 배포**: `● Ready` (33s) — https://y-os-core-9ju08ubmd-project-hosting-center.vercel.app
+- **PR 체크**: `Vercel` pass, `Vercel Preview Comments` pass
+
 ## 병렬 작업 메모
 
 착수 시점 main = `cce57f3`. 작업 중 main이 `ebc05e7`까지 크게 진행됐다(docs 33~38 — 스탭 프로젝트 생성·소속 그룹 FK 전환 등). main이 만진 파일은 `projects/`·`server/`·`types/` 쪽이고 `my-work/` 캘린더 파일과 겹치지 않음을 확인한 뒤 머지 직전 리베이스했다.
