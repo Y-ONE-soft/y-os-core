@@ -109,10 +109,12 @@ function ProjectBoxItem({
 function OverlayItem({
   overlay,
   onOpenStage,
+  onOpenTask,
   onDragStart,
 }: {
   overlay: PlacedOverlay;
   onOpenStage?: (projectId: string, stageId: string) => void;
+  onOpenTask?: (taskId: string) => void;
   onDragStart?: (event: React.PointerEvent, target: DragTarget) => void;
 }) {
   const color = overlay.color;
@@ -210,14 +212,18 @@ function OverlayItem({
     );
   }
 
+  // 단계 칩과 동일하게 클릭 시 상세를 연다. 드래그와의 구분은 캘린더 루트의
+  // moved 플래그가 처리한다 — 움직이지 않았을 때만 onClick이 살아난다.
   return (
-    <div
+    <button
+      type="button"
       title={overlay.label}
       onPointerDown={(event) =>
         onDragStart?.(event, { kind: "task", taskId: overlay.taskId })
       }
+      onClick={() => onOpenTask?.(overlay.taskId)}
       className={cn(
-        "absolute flex items-center gap-1 overflow-hidden rounded-[4px] px-1",
+        "absolute flex items-center gap-1 overflow-hidden rounded-[4px] px-1 text-left transition-shadow hover:ring-1 focus-visible:ring-2 focus-visible:outline-none",
         onDragStart && "cursor-grab active:cursor-grabbing",
       )}
       style={{
@@ -244,7 +250,7 @@ function OverlayItem({
       >
         {overlay.label}
       </span>
-    </div>
+    </button>
   );
 }
 
@@ -253,12 +259,14 @@ export function MyWorkCalendar({
   layouts,
   projects,
   onOpenStage,
+  onOpenTask,
   onDrag,
 }: {
   grid: MonthGrid;
   layouts: WeekLayout[];
   projects: Record<string, CalendarProject>;
   onOpenStage?: (projectId: string, stageId: string) => void;
+  onOpenTask?: (taskId: string) => void;
   /** 드래그 중(move)에는 미리보기, 손을 뗄 때(commit) 저장한다 */
   onDrag?: (
     target: DragTarget,
@@ -415,6 +423,7 @@ export function MyWorkCalendar({
                 key={`${overlay.kind === "stage" ? overlay.stageId : overlay.taskId}:${overlay.col}`}
                 overlay={overlay}
                 onOpenStage={onOpenStage}
+                onOpenTask={onOpenTask}
                 onDragStart={onDrag ? handleDragStart : undefined}
               />
             ))}

@@ -73,7 +73,14 @@ export function MyWorkBacklog() {
       {items.map(({ project, task }) => (
         <ContextMenu key={task.id}>
           <ContextMenuTrigger asChild>
-            <div className="flex shrink-0 items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2">
+            {/* 완료 항목은 행 전체를 흐려 목록에서 뒤로 물러나게 한다 —
+                보드 카드와 같은 규칙 (project-board.tsx) */}
+            <div
+              className={cn(
+                "flex shrink-0 items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2",
+                task.done && "opacity-60",
+              )}
+            >
               <Checkbox
                 aria-label={`${task.name} 완료`}
                 checked={task.done}
