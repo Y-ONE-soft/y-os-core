@@ -117,16 +117,3 @@ export const REQUESTS: WorkRequest[] = [
     actions: ["요청 취소"],
   },
 ];
-
-export const MY_TASKS_SEED = [
-  "프로젝트 개요서",
-  "서비스 설계서",
-  "문서작성",
-  "PRD",
-  "요구사항 정의서",
-  "화면설계·프로토타입",
-  "CMS 모듈 핵심기능 개발",
-  "CMS 모듈 실사용 데이터 반영",
-  "CORE 모듈 핵심 기능 개발",
-  "회의1",
-];
