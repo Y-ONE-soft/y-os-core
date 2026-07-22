@@ -58,16 +58,27 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
       {backlog.map((item) => (
         <ContextMenu key={item.id}>
           <ContextMenuTrigger asChild>
-            {/* 항목 어디를 눌러도 상세가 열린다 — 체크박스·단계 지정은 예외 */}
+            {/* 항목 자체가 하나의 '할일' 컴포넌트 — 호버하면 선택된 것처럼 보이고
+                어디를 눌러도 상세가 열린다(체크박스·단계 지정은 예외) */}
             <div
               draggable
+              role="button"
+              tabIndex={0}
               onDragStart={(event) => setTaskDragData(event, item.id)}
               onClick={() => setDetailTaskId(item.id)}
+              onKeyDown={(event) => {
+                // div라 기본 동작이 없으니 버튼 규약을 직접 지킨다
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setDetailTaskId(item.id);
+                }
+              }}
               title="단계 컬럼으로 끌어다 놓으면 편입됩니다"
               className={cn(
-                "flex shrink-0 cursor-grab items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2 transition-colors hover:bg-accent/60 active:cursor-grabbing",
+                "flex shrink-0 cursor-grab items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2 transition-shadow outline-none active:cursor-grabbing",
+                "hover:ring-2 hover:ring-primary/50 focus-visible:ring-2 focus-visible:ring-ring",
                 // 완료 항목은 행 전체를 흐린다 — 보드 카드·내 할일 백로그와 같은 규칙
-                item.done && "opacity-60 hover:opacity-80",
+                item.done && "opacity-60",
               )}
             >
               <span
@@ -83,19 +94,14 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
                   className="rounded-[4px] border-primary bg-background"
                 />
               </span>
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setDetailTaskId(item.id);
-                }}
+              <span
                 className={cn(
-                  "min-w-0 flex-1 truncate text-left text-[13px] font-medium leading-[18px] underline-offset-2 hover:underline",
+                  "min-w-0 flex-1 truncate text-left text-[13px] font-medium leading-[18px]",
                   item.done && "text-muted-foreground line-through",
                 )}
               >
                 {item.name}
-              </button>
+              </span>
               <DropdownMenu>
                 <DropdownMenuTrigger
                   aria-label={`${item.name} 단계 지정`}
