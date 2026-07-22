@@ -25,6 +25,31 @@ export const patchProjectApi = (projectId: string, patch: { color: string }) =>
 export const deleteProjectApi = (projectId: string) =>
   api.del<{ ok: boolean }>(`/api/admin/projects/${projectId}`);
 
+/**
+ * 프리셋 적용 생성 — 프로젝트+단계+할일을 서버가 한 트랜잭션으로 만든다.
+ * groupId는 마스터만 보낸다(스탭은 서버가 세션 그룹으로 강제).
+ */
+export const createProjectFromPresetApi = (input: {
+  id: string;
+  groupId?: string;
+  name: string;
+  color: string;
+  presetId: string;
+  /** 프리셋 오프셋의 기준일 (YYYY-MM-DD) */
+  baseDate: string;
+}) => api.post<{ ok: boolean }>("/api/admin/projects/from-preset", input);
+
+/** 직접 만들기 — 기간을 stageCount개로 균등 분할한 단계와 함께 만든다 */
+export const createProjectWithEvenStagesApi = (input: {
+  id: string;
+  groupId?: string;
+  name: string;
+  color: string;
+  startDate: string;
+  endDate: string;
+  stageCount: number;
+}) => api.post<{ ok: boolean }>("/api/admin/projects/even-stages", input);
+
 export const createStageApi = (input: {
   id: string;
   projectId: string;
