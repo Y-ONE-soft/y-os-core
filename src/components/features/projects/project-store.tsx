@@ -38,7 +38,8 @@ type ProjectStoreValue = {
   selectedProjectId: string | null;
   selectProject: (id: string | null) => void;
   addGroup: (name: string) => void;
-  addProject: (groupId: string, name: string) => void;
+  /** `color` 미지정 시 팔레트에서 순번대로 자동 배정한다 */
+  addProject: (groupId: string, name: string, color?: string) => void;
   deleteGroup: (groupId: string) => void;
   deleteProject: (groupId: string, projectId: string) => void;
   resetData: () => void;
@@ -78,13 +79,14 @@ export function ProjectStoreProvider({
       }));
       cache.persist(createGroupApi({ id, name }));
     },
-    addProject: (groupId, name) => {
+    addProject: (groupId, name, pickedColor) => {
       const id = `p-${crypto.randomUUID()}`;
       const totalProjects = workspace.groups.reduce(
         (sum, group) => sum + group.projects.length,
         0,
       );
-      const color = PROJECT_COLORS[totalProjects % PROJECT_COLORS.length];
+      const color =
+        pickedColor ?? PROJECT_COLORS[totalProjects % PROJECT_COLORS.length];
       cache.apply((prev) => ({
         ...prev,
         groups: prev.groups.map((group) =>
