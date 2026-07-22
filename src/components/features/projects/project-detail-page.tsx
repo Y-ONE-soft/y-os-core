@@ -70,11 +70,12 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
             />
             <h1 className="text-xl font-semibold">{project.name}</h1>
           </div>
-          {/* 페이지 단위 액션 — Figma 36px는 Button 사이즈 스케일의 lg(h-9)에 대응 */}
+          {/* 이 화면은 ＋단계(11.5px)·탭(13px)·레인지 스위처(11px)로 촘촘하다.
+              Figma 36px를 그대로 옮기면 페이지에서 혼자 커지므로 sm으로 맞춘다. */}
           <Button
             type="button"
             variant="outline"
-            size="lg"
+            size="sm"
             onClick={() => setPresetDialogOpen(true)}
           >
             프리셋 저장

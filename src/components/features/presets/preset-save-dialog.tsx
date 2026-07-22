@@ -9,7 +9,6 @@ import {
   DialogClose,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -112,8 +111,8 @@ export function PresetSaveDialog({
         </DialogHeader>
 
         <div className="flex flex-col gap-3">
-          {/* 포함 구성 — 공동 작업자 요청 다이얼로그의 요약 행과 같은 형식 */}
-          <div className="flex h-9 items-center gap-2 rounded-[8px] border px-3 text-sm">
+          {/* 포함 구성 — Figma의 채움 박스(161:751). 이 화면의 muted 칩과 같은 계열 */}
+          <div className="flex items-center gap-2 rounded-[8px] bg-muted px-3 py-2.5 text-[13px]">
             <span className="text-muted-foreground">포함 구성</span>
             <span className="font-medium">
               단계 {stageCount}개 · 할 일 {taskCount}개
@@ -189,14 +188,22 @@ export function PresetSaveDialog({
           {error && <p className="text-[13px] text-destructive">{error}</p>}
         </div>
 
-        <DialogFooter>
+        {/* DialogFooter는 muted 밴드를 깔아 이 화면의 단계 오버레이·Figma와 어긋난다.
+            평범한 우측 정렬 행으로 두고 버튼 형식만 단계 오버레이와 맞춘다. */}
+        <div className="flex items-center justify-end gap-2">
           <DialogClose asChild>
-            <Button variant="ghost">취소</Button>
+            <Button variant="outline" className="rounded-[8px] bg-background">
+              취소
+            </Button>
           </DialogClose>
-          <Button onClick={save} disabled={!canSave}>
+          <Button
+            onClick={save}
+            disabled={!canSave}
+            className="rounded-[8px]"
+          >
             {saving ? "저장 중…" : "저장"}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
