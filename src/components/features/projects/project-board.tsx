@@ -24,7 +24,7 @@ export function ProjectBoard({
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
 
   return (
-    <div className="flex min-h-0 flex-1 items-start gap-2.5 overflow-x-auto">
+    <div className="flex min-h-0 flex-1 gap-2.5 overflow-x-auto">
       {stages.map((stage) => {
         const countLabel =
           stage.showDeadline && stage.startDate
@@ -33,9 +33,9 @@ export function ProjectBoard({
         return (
           <section
             key={stage.id}
-            className="flex w-[260px] shrink-0 flex-col gap-1.5 rounded-[8px] bg-border p-2"
+            className="flex min-h-0 w-[260px] shrink-0 flex-col gap-1.5 rounded-[8px] bg-border p-2"
           >
-            <header className="flex items-center gap-[7px] py-0.5 pl-1 pr-0.5">
+            <header className="flex shrink-0 items-center gap-[7px] py-0.5 pl-1 pr-0.5">
               <span
                 aria-hidden
                 className="size-2 shrink-0 rounded-full"
@@ -61,61 +61,68 @@ export function ProjectBoard({
                 <Ellipsis className="size-3.5" />
               </button>
             </header>
-            {stage.tasks.map((task) => (
-              <div
-                key={task.id}
-                className="flex w-full items-center gap-2 rounded-[8px] bg-background px-2.5 py-2 shadow-xs"
-              >
-                <Checkbox
-                  aria-label={`${task.name} 완료`}
-                  checked={task.done}
-                  onCheckedChange={() =>
-                    boardActions.toggleTask(projectId, stage.id, task.id)
-                  }
-                  className="rounded-[4px] border-primary"
-                />
+            {/* 카드 영역만 스크롤 — 컬럼 자체는 보드 높이를 꽉 채운다 (Figma 260×448) */}
+            <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto">
+              {stage.tasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="flex w-full shrink-0 items-center gap-2 rounded-[8px] bg-background px-2.5 py-2 shadow-xs"
+                >
+                  <Checkbox
+                    aria-label={`${task.name} 완료`}
+                    checked={task.done}
+                    onCheckedChange={() =>
+                      boardActions.toggleTask(projectId, stage.id, task.id)
+                    }
+                    className="rounded-[4px] border-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setDetailTaskId(task.id)}
+                    className={cn(
+                      "min-w-0 flex-1 truncate text-left text-[13px] font-medium leading-[18px] underline-offset-2 hover:underline",
+                      task.done && "text-muted-foreground line-through",
+                    )}
+                  >
+                    {task.name}
+                  </button>
+                </div>
+              ))}
+              {addingStageId === stage.id ? (
+                <div className="flex w-full shrink-0 items-center gap-2 rounded-[8px] border-[1.5px] border-primary bg-background px-2.5 py-2 shadow-xs">
+                  <input
+                    autoFocus
+                    placeholder="작업명 입력 후 Enter"
+                    aria-label={`${stage.name} 작업 추가`}
+                    className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        const name = event.currentTarget.value.trim();
+                        if (name)
+                          boardActions.addTask(projectId, stage.id, name);
+                        setAddingStageId(null);
+                      }
+                      if (event.key === "Escape") setAddingStageId(null);
+                    }}
+                    onBlur={() => setAddingStageId(null)}
+                  />
+                  <span
+                    aria-hidden
+                    className="text-[11px] text-muted-foreground"
+                  >
+                    ↵
+                  </span>
+                </div>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => setDetailTaskId(task.id)}
-                  className={cn(
-                    "min-w-0 flex-1 truncate text-left text-[13px] font-medium leading-[18px] underline-offset-2 hover:underline",
-                    task.done && "text-muted-foreground line-through",
-                  )}
+                  onClick={() => setAddingStageId(stage.id)}
+                  className="flex w-full shrink-0 items-center rounded-[8px] py-[5px] pl-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
                 >
-                  {task.name}
+                  ＋ 작업
                 </button>
-              </div>
-            ))}
-            {addingStageId === stage.id ? (
-              <div className="flex w-full items-center gap-2 rounded-[8px] border-[1.5px] border-primary bg-background px-2.5 py-2 shadow-xs">
-                <input
-                  autoFocus
-                  placeholder="작업명 입력 후 Enter"
-                  aria-label={`${stage.name} 작업 추가`}
-                  className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      const name = event.currentTarget.value.trim();
-                      if (name) boardActions.addTask(projectId, stage.id, name);
-                      setAddingStageId(null);
-                    }
-                    if (event.key === "Escape") setAddingStageId(null);
-                  }}
-                  onBlur={() => setAddingStageId(null)}
-                />
-                <span aria-hidden className="text-[11px] text-muted-foreground">
-                  ↵
-                </span>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setAddingStageId(stage.id)}
-                className="flex w-full items-center rounded-[8px] py-[5px] pl-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
-              >
-                ＋ 작업
-              </button>
-            )}
+              )}
+            </div>
           </section>
         );
       })}
