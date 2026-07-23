@@ -389,7 +389,9 @@ function ProjectCreateForm({ onDone }: { onDone: () => void }) {
                 id="stage-count"
                 type="number"
                 min={1}
-                value={stageCount}
+                // 0은 빈 칸으로 보여준다 — 안 그러면 앞의 0이 남아 "01"처럼 찍힌다.
+                // (필드를 비우면 내부적으로 0이라 spans가 비고 제출도 막힌다)
+                value={stageCount || ""}
                 onChange={(event) =>
                   handleStageCountChange(Number(event.target.value) || 0)
                 }
