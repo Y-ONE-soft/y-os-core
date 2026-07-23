@@ -198,7 +198,7 @@ function OverlayItem({
                 className="flex size-[11px] shrink-0 items-center justify-center rounded-full text-[7.5px] font-medium text-white"
                 style={{ backgroundColor: color }}
               >
-                {overlay.count}
+                {overlay.stageNo}
               </span>
               <span
                 className="truncate text-[10px] font-medium"

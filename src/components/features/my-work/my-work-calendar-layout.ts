@@ -32,7 +32,8 @@ export type CalOverlay =
   | (OverlayBase & {
       kind: "stage";
       stageId: string;
-      count: number;
+      /** 배지에 표시하는 단계 순번 (1-based, 그 프로젝트 보드 기준) */
+      stageNo: number;
       deadline?: boolean;
       /** 이 조각에 단계의 실제 시작일이 들어 있다 — 시작 손잡이를 여기에만 단다 */
       startsHere?: boolean;

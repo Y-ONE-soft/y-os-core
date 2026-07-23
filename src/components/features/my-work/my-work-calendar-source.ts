@@ -38,6 +38,8 @@ function stageSegments(
   grid: MonthGrid,
   project: Project,
   stage: ProjectBoardData["stages"][number],
+  /** 그 프로젝트 보드에서의 단계 순서 (0-based) — 배지에 1-based로 표시 */
+  stageIndex: number,
 ): CalOverlay[] {
   if (!stage.startDate) return [];
 
@@ -66,7 +68,8 @@ function stageSegments(
       stageId: stage.id,
       color: stage.color,
       label: stage.name,
-      count: stage.tasks.length,
+      // 배지는 단계 순번 — 로드맵(project-roadmap·workload-roadmap)과 같은 기준
+      stageNo: stageIndex + 1,
       // 마감 배지는 실제 종료일이 든 조각에만 붙인다.
       deadline: stage.showDeadline && segmentEnd === end && rawEnd === end,
       startsHere: day === start && rawStart === start,
@@ -125,8 +128,8 @@ export function buildCalendarSource(
     const board = boards[project.id];
     const stages = board?.stages ?? [];
     let placed = false;
-    for (const stage of stages) {
-      const segments = stageSegments(grid, project, stage);
+    stages.forEach((stage, stageIndex) => {
+      const segments = stageSegments(grid, project, stage, stageIndex);
       if (segments.length > 0) {
         overlays.push(...segments);
         stageCount += 1;
@@ -141,7 +144,7 @@ export function buildCalendarSource(
           placed = true;
         }
       }
-    }
+    });
     // 백로그 할일도 날짜 칸에 떨어뜨리면 예정일을 가질 수 있다 (덮는 단계가 없을 때)
     for (const task of board?.backlog ?? []) {
       // 단계 없는 백로그 할일은 프로젝트 색을 같은 규칙으로 옅게 쓴다
