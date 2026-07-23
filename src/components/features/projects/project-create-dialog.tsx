@@ -73,6 +73,10 @@ function ProjectCreateForm({ onDone }: { onDone: () => void }) {
   const { user } = useSession();
   const { groups } = useProjectStore();
   const isMaster = user?.role === "MASTER";
+  // 스탭 비활성 그룹칸 표시용 — 스토어 로드 전에는 null이라 자리표시를 쓴다
+  const myGroupName = user?.groupId
+    ? (groups.find((group) => group.id === user.groupId)?.name ?? null)
+    : null;
 
   const [mode, setMode] = useState<Mode>("preset");
   // 두 모드가 함께 쓰는 값
@@ -251,6 +255,56 @@ function ProjectCreateForm({ onDone }: { onDone: () => void }) {
           </div>
         )}
 
+        {/* 그룹을 이름 위에 둔다 — 어느 그룹에 만들지부터 정한 뒤 이름을 적는 흐름. */}
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="project-group">그룹</Label>
+          {isMaster ? (
+            <>
+              {/* 마스터는 전체 그룹을 다루므로 어디에 만들지 고른다. 기본값은 내 소속 그룹
+                  (내 정보에서 지정) — 빈 "그룹 선택" 없이 항상 한 그룹이 잡혀 있다. */}
+              <select
+                id="project-group"
+                value={groupId}
+                onChange={(event) => setGroupId(event.target.value)}
+                className="h-9 rounded-[8px] border bg-transparent px-2.5 text-[13px]"
+              >
+                {/* 내 소속 그룹이 아직 스토어에 없을 때만 자리 표시 */}
+                {!groups.some((group) => group.id === groupId) && (
+                  <option value={groupId}>그룹 선택</option>
+                )}
+                {groups.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[11px] leading-[15px] text-muted-foreground">
+                마스터 권한이라 내 정보에서 지정한 대표 그룹으로 기본
+                설정됩니다. 필요하면 아래 목록에서 바꿔주세요.
+              </p>
+            </>
+          ) : (
+            <>
+              {/* 스탭은 담당 소속이 정해져 있어 바꿀 수 없다 — 비활성으로 보여준다.
+                  서버도 세션 그룹으로 강제하므로 이 값은 표시 전용이다. */}
+              <select
+                id="project-group"
+                value={user?.groupId ?? ""}
+                disabled
+                aria-readonly
+                className="h-9 cursor-not-allowed rounded-[8px] border bg-muted px-2.5 text-[13px] text-muted-foreground"
+              >
+                <option value={user?.groupId ?? ""}>
+                  {myGroupName ?? "내 소속 그룹"}
+                </option>
+              </select>
+              <p className="text-[11px] leading-[15px] text-muted-foreground">
+                담당 소속으로 지정됩니다. 소속은 관리자가 관리합니다.
+              </p>
+            </>
+          )}
+        </div>
+
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="project-name">프로젝트 이름</Label>
           <Input
@@ -264,30 +318,6 @@ function ProjectCreateForm({ onDone }: { onDone: () => void }) {
             }
           />
         </div>
-
-        {isMaster && (
-          <div className="flex flex-col gap-1.5">
-            {/* 마스터는 전체 그룹을 다루므로 어디에 만들지 고른다. 기본값은 내 소속 그룹
-                (내 정보에서 지정) — 빈 "그룹 선택" 없이 항상 한 그룹이 잡혀 있다. */}
-            <Label htmlFor="project-group">그룹</Label>
-            <select
-              id="project-group"
-              value={groupId}
-              onChange={(event) => setGroupId(event.target.value)}
-              className="h-9 rounded-[8px] border bg-transparent px-2.5 text-[13px]"
-            >
-              {/* 내 소속 그룹이 아직 스토어에 없을 때만 자리 표시 */}
-              {!groups.some((group) => group.id === groupId) && (
-                <option value={groupId}>그룹 선택</option>
-              )}
-              {groups.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
 
         {mode === "preset" ? (
           <div className="flex flex-col gap-1.5">
