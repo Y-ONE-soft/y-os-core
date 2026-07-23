@@ -63,11 +63,7 @@ export function MyWorkTimelinePanel() {
   // 필터 바 선택이 있으면 그 범위로 좁힌다 (캘린더와 같은 규칙).
   const myProjects = useMemo(
     () =>
-      applyMyWorkFilter(
-        groups.flatMap((group) => group.projects),
-        filter,
-        user?.id,
-      ),
+      applyMyWorkFilter(groups, filter, user?.id),
     [groups, user?.id, filter],
   );
 

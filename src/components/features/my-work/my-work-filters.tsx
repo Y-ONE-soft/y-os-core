@@ -91,9 +91,16 @@ export function MyWorkFilters() {
   const { groups } = useProjectStore();
   const filter = useMyWorkFilter();
 
+  const isMaster = user?.role === "MASTER";
+  const groupIds = filter.groupIds ?? [];
   const assigneeIds = filter.assigneeIds ?? [];
   const projectIds = filter.projectIds ?? [];
-  const allProjects = groups.flatMap((group) => group.projects);
+  // 그룹 필터가 걸려 있으면 프로젝트 목록도 그 그룹으로 좁힌다 (일관성)
+  const visibleGroups =
+    groupIds.length === 0
+      ? groups
+      : groups.filter((group) => groupIds.includes(group.id));
+  const allProjects = visibleGroups.flatMap((group) => group.projects);
 
   // 담당자 미선택 = 기본값(나) — 요약에도 그대로 드러낸다
   const assigneeSummary =
@@ -104,6 +111,14 @@ export function MyWorkFilters() {
         : `담당자 ${assigneeIds.length}`;
   const projectSummary =
     projectIds.length === 0 ? "프로젝트 전체" : `프로젝트 ${projectIds.length}`;
+  const groupSummary =
+    groupIds.length === 0
+      ? "그룹 전체"
+      : groupIds.length === 1
+        ? `그룹 ${groups.find((g) => g.id === groupIds[0])?.name ?? 1}`
+        : `그룹 ${groupIds.length}`;
+  const hasSelection =
+    groupIds.length > 0 || assigneeIds.length > 0 || projectIds.length > 0;
 
   return (
     <div className="flex shrink-0 items-center gap-2">
@@ -120,6 +135,17 @@ export function MyWorkFilters() {
         selected={assigneeIds}
         onToggle={(id) => myWorkFilterActions.toggleAssignee(id, assigneeIds)}
       />
+      {/* 그룹 필터는 마스터만 — 스탭은 자기 그룹 프로젝트만 보므로 의미가 없다.
+          위치는 요청대로 프로젝트 필터 바로 앞(그룹 > 프로젝트 위계). */}
+      {isMaster && (
+        <CheckboxFilter
+          label="그룹"
+          summary={groupSummary}
+          items={groups.map((group) => ({ id: group.id, name: group.name }))}
+          selected={groupIds}
+          onToggle={(id) => myWorkFilterActions.toggleGroup(id, groupIds)}
+        />
+      )}
       <CheckboxFilter
         label="프로젝트"
         summary={projectSummary}
@@ -131,7 +157,7 @@ export function MyWorkFilters() {
         selected={projectIds}
         onToggle={(id) => myWorkFilterActions.toggleProject(id, projectIds)}
       />
-      {(assigneeIds.length > 0 || projectIds.length > 0) && (
+      {hasSelection && (
         <button
           type="button"
           onClick={() => myWorkFilterActions.reset()}
