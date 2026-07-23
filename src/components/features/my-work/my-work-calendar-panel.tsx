@@ -10,6 +10,7 @@ import {
   useUnassignedTasks,
 } from "@/components/features/projects/board-store";
 import {
+  clampMoveDelta,
   clampStageToTasks,
   dragStageDates,
   shiftISO,
@@ -108,6 +109,22 @@ export function MyWorkCalendarPanel() {
         (candidate) => candidate.id === stageId,
       );
       if (!stage?.startDate) continue;
+      const cover = taskDateRange(stage.tasks);
+      // 이동은 막대를 변형하지 않는다 — 늘려 덮는 clampStageToTasks 대신 이동량 자체를
+      // 할일 덮개 경계까지로 제한해, 막대가 통째로 미끄러지다 경계에서 멈추게 한다.
+      // (start/end 조절은 해당 끝만 물러나면 되므로 기존 clamp를 그대로 쓴다.)
+      if (mode === "move") {
+        const delta = clampMoveDelta(
+          stage.startDate,
+          stage.endDate,
+          deltaDays,
+          cover,
+        );
+        return {
+          projectId: project.id,
+          dates: dragStageDates("move", stage.startDate, stage.endDate, delta),
+        };
+      }
       const dragged = dragStageDates(
         mode,
         stage.startDate,
@@ -116,7 +133,7 @@ export function MyWorkCalendarPanel() {
       );
       return {
         projectId: project.id,
-        dates: clampStageToTasks(dragged, taskDateRange(stage.tasks)),
+        dates: clampStageToTasks(dragged, cover),
       };
     }
     return null;

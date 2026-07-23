@@ -378,8 +378,14 @@ export function MyWorkCalendar({
     moved: boolean;
   } | null>(null);
 
-  /** 포인터가 놓인 칸의 그리드 일자(주 × 7 + 열). 주 행 높이가 제각각이라 행 사각형으로 찾는다. */
-  function dayFromPointer(clientX: number, clientY: number) {
+  /**
+   * 포인터가 놓인 위치의 그리드 일자를 **연속값**으로 돌려준다 (주 × 7 + 열비율).
+   * 주 행 높이가 제각각이라 세로는 행 사각형으로 주를 찾고, 가로는 칸 비율을 반올림 없이 쓴다.
+   * 델타는 (지금 − 누른 위치)를 한 번만 반올림해 구하므로, 막대의 어느 지점을 잡든 앞뒤로
+   * 한 칸 넘어가는 데 필요한 이동량이 같다(대칭). 예전엔 floor로 절대 칸을 써서 잡은 위치에
+   * 따라 문턱이 달라졌고, 한쪽(특히 뒤로)으로 손쉽게 튀었다.
+   */
+  function pointerDay(clientX: number, clientY: number) {
     const rows = weekRefs.current;
     let weekIndex = 0;
     for (let index = 0; index < rows.length; index += 1) {
@@ -393,10 +399,10 @@ export function MyWorkCalendar({
     }
     const rect = rows[weekIndex]?.getBoundingClientRect();
     if (!rect) return 0;
-    // 열은 자르지 않는다 — 행 좌우로 끌면 앞뒤 주로 자연스럽게 넘어가야 한다
-    const col = Math.floor(((clientX - rect.left) / rect.width) * 7);
+    // 열은 자르지 않는다 — 행 좌우로 끌면 앞뒤 주로 자연스럽게 넘어간다
+    const colFraction = ((clientX - rect.left) / rect.width) * 7;
     const lastDay = rows.length * 7 - 1;
-    return Math.min(lastDay, Math.max(0, weekIndex * 7 + col));
+    return Math.min(lastDay, Math.max(0, weekIndex * 7 + colFraction));
   }
 
   function handleDragStart(event: React.PointerEvent, target: DragTarget) {
@@ -407,7 +413,7 @@ export function MyWorkCalendar({
     dragRef.current = {
       target,
       pointerId: event.pointerId,
-      startDay: dayFromPointer(event.clientX, event.clientY),
+      startDay: pointerDay(event.clientX, event.clientY),
       originX: event.clientX,
       originY: event.clientY,
       moved: false,
@@ -427,7 +433,8 @@ export function MyWorkCalendar({
       rootRef.current?.setPointerCapture(drag.pointerId);
     }
     drag.moved = true;
-    const delta = dayFromPointer(event.clientX, event.clientY) - drag.startDay;
+    // 이동량(지금 − 누른 위치)을 한 번만 반올림 → 대칭. 반 칸을 넘겨야 하루가 바뀐다.
+    const delta = Math.round(pointerDay(event.clientX, event.clientY) - drag.startDay);
     onDrag(drag.target, delta, "move");
   }
 
@@ -440,8 +447,9 @@ export function MyWorkCalendar({
       onDrag(drag.target, 0, "cancel");
       return;
     }
-    const delta = dayFromPointer(event.clientX, event.clientY) - drag.startDay;
-    onDrag(drag.target, delta, "commit");
+    const delta = Math.round(pointerDay(event.clientX, event.clientY) - drag.startDay);
+    // 끌었다가 같은 날로 돌아오면(델타 0) 저장 없이 되돌린다.
+    onDrag(drag.target, delta, delta === 0 ? "cancel" : "commit");
   }
 
   return (
