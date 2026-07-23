@@ -20,6 +20,7 @@ import { formatShort } from "@/components/features/projects/roadmap-utils";
 import {
   getTaskDragData,
   isTaskDrag,
+  setTaskDragData,
 } from "@/components/features/projects/task-drag";
 import {
   getStageDragData,
@@ -41,6 +42,8 @@ export function ProjectBoard({
 }) {
   const { stages } = useProjectBoard(projectId);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+  // 끌고 있는 할일 카드 — 원본을 흐려 어디서 끌려나왔는지 보이게 한다
+  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   // 드롭 대상으로 잡힌 컬럼 — 어디에 놓이는지 보이게 하이라이트한다
   const [dropStageId, setDropStageId] = useState<string | null>(null);
   // 단계 순서 변경 드래그 — 끌고 있는 컬럼과 끼워 넣을 자리
@@ -185,6 +188,13 @@ export function ProjectBoard({
                       data-column-child
                       role="button"
                       tabIndex={0}
+                      draggable
+                      // 백로그 카드와 같은 규약 — 단계 컬럼(또는 백로그)에 놓으면 편입된다
+                      onDragStart={(event) => {
+                        setTaskDragData(event, task.id);
+                        setDraggingTaskId(task.id);
+                      }}
+                      onDragEnd={() => setDraggingTaskId(null)}
                       onClick={(event) => {
                         // 막지 않으면 컬럼까지 올라가 단계 상세가 같이 열린다
                         event.stopPropagation();
@@ -199,11 +209,13 @@ export function ProjectBoard({
                         }
                       }}
                       className={cn(
-                        "group flex w-full shrink-0 cursor-pointer items-center gap-2 rounded-[8px] px-2.5 py-2 transition-shadow outline-none",
+                        "group flex w-full shrink-0 cursor-grab items-center gap-2 rounded-[8px] px-2.5 py-2 transition-shadow outline-none active:cursor-grabbing",
                         "hover:ring-2 hover:ring-primary/50 focus-visible:ring-2 focus-visible:ring-ring",
                         task.done
                           ? "bg-muted opacity-60"
                           : "bg-background shadow-xs",
+                        // 끌고 있는 원본 카드는 흐린다 (단계 순서 변경 드래그와 같은 규칙)
+                        draggingTaskId === task.id && "opacity-40",
                       )}
                     >
                       <span
