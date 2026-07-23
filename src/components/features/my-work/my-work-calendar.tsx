@@ -444,7 +444,9 @@ export function MyWorkCalendar({
   return (
     <div
       ref={rootRef}
-      className="flex min-h-0 w-full flex-1 flex-col overflow-clip rounded-[10px] border bg-card"
+      // 세로는 스크롤(주가 많아도 잘리지 않게), 가로는 잘라서 둥근 모서리 유지.
+      // 요일 헤더는 아래에서 sticky로 고정한다.
+      className="flex min-h-0 w-full flex-1 flex-col overflow-x-clip overflow-y-auto rounded-[10px] border bg-card"
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
@@ -462,7 +464,8 @@ export function MyWorkCalendar({
         }
       }}
     >
-      <div className="flex w-full">
+      {/* 세로 스크롤 시에도 요일 헤더는 위에 고정 — bg-card로 아래 내용을 가린다 */}
+      <div className="sticky top-0 z-20 flex w-full shrink-0 bg-card">
         {WEEKDAYS.map((day) => (
           <div
             key={day}
