@@ -233,11 +233,13 @@ export const boardActions = {
     cache.persistAndSync(createTaskApi({ id, projectId, stageId: null, name }));
   },
   /** 프로젝트 없이 할일을 만든다 — 내 할일 백로그의 기본 생성 경로 */
-  addUnassignedTask(name: string) {
+  // assigneeId = 만든 사람. 서버도 같은 기본값을 넣지만(createdById), 낙관적
+  // 항목에 미리 박아야 "내 작업" 담당자 필터에서 방금 만든 할일이 깜빡이지 않는다.
+  addUnassignedTask(name: string, assigneeId?: string) {
     const id = `tk-${crypto.randomUUID()}`;
     cache.apply((prev) => ({
       ...prev,
-      unassigned: [...prev.unassigned, { id, name, done: false }],
+      unassigned: [...prev.unassigned, { id, name, done: false, assigneeId }],
     }));
     cache.persistAndSync(
       createTaskApi({ id, projectId: null, stageId: null, name }),

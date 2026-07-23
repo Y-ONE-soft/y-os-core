@@ -10,6 +10,7 @@ import {
   applyMyWorkFilter,
   useMyWorkFilter,
 } from "@/components/features/my-work/my-work-filter-store";
+import { isMyTask } from "@/components/features/my-work/my-work-scope";
 import {
   boardActions,
   useBoardState,
@@ -295,7 +296,10 @@ export function MyWorkTimelinePanel() {
           {myProjects.map((project) => {
             const board = boards[project.id];
             const stages = board?.stages ?? [];
-            const backlog = board?.backlog ?? [];
+            // 백로그는 내 작업이므로 담당자가 나인 것만 (단계 할일은 무관)
+            const backlog = (board?.backlog ?? []).filter((task) =>
+              isMyTask(task, user?.id),
+            );
             const entries: TimelineTask[] = [
               ...stages.flatMap((stage) =>
                 stage.tasks.map((task) => ({ task, stage })),
