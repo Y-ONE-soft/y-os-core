@@ -44,13 +44,14 @@ export function todayISO() {
 }
 
 /**
- * 단계에 편입·생성될 때 잡히는 예정일 — **단계 시작일 그대로**.
- * 시작일이 이미 지난 과거여도 그 날짜를 쓴다. 이 날짜가 곧 마감일이 되고, 미완료면
- * 하루가 지날 때마다 예정일이 오늘로 이월되며 마감 대비 "며칠 미뤄짐"으로 드러난다.
- * 단계에 시작일이 없으면(진행형·미정) 잡을 근거가 없어 오늘로 둔다.
+ * 단계에 편입·생성될 때 잡히는 예정일 — 단계 시작일과 오늘 중 **더 늦은 날짜**.
+ * 이 값이 곧 마감일(예정일의 원래 날짜)도 되므로, 지금 넣은 할일은 예정일=마감일이라
+ * 미뤄짐이 없다. 시작일이 이미 과거면 오늘로 잡아 "방금 넣었는데 미뤄짐"으로 뜨지
+ * 않게 한다. 이후 하지 않고 하루가 지나야 예정일만 밀리며 미뤄짐이 드러난다.
  */
 export function scheduleFor(stageStartDate: string | undefined) {
-  return stageStartDate ?? todayISO();
+  const today = todayISO();
+  return stageStartDate && stageStartDate > today ? stageStartDate : today;
 }
 
 export function hexToRgba(hex: string, alpha: number) {
