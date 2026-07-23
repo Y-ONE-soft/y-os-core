@@ -53,11 +53,7 @@ export function MyWorkCalendarPanel() {
   // 필터 바에서 담당자·프로젝트를 고르면 그 범위로 좁힌다 (뷰에만 적용).
   const myProjects = useMemo(
     () =>
-      applyMyWorkFilter(
-        groups.flatMap((group) => group.projects),
-        filter,
-        user?.id,
-      ),
+      applyMyWorkFilter(groups, filter, user?.id),
     [groups, user?.id, filter],
   );
 
