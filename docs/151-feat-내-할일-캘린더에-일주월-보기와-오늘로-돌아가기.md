@@ -1,4 +1,4 @@
-# 145. feat: 내 할일 캘린더에 일·주·월 보기와 오늘로 돌아가기
+# 151. feat: 내 할일 캘린더에 일·주·월 보기와 오늘로 돌아가기
 
 ## 작업 요약
 
@@ -83,6 +83,12 @@ npm run build             # 성공 — Compiled successfully
 - **일 보기의 드래그 범위는 좁다.** 보이는 날이 하루뿐이라 그 안에서만 이동한다. 여러 날 이동은 주·월 보기에서 한다.
 - "오늘" 버튼을 "오늘로 돌아가기"로 바꿨다(요청). 세그먼트의 "일"은 별개(그날 하루 보기)다.
 
+## 사후 검증 결과 (추록)
+
+- **PR**: [#138](https://github.com/Y-ONE-soft/y-os-core/pull/138)
+- **프리뷰 배포**: `● Ready` — https://y-os-core-5oz5uftnh-project-hosting-center.vercel.app
+- **PR 체크**: `Vercel` pass, `Vercel Preview Comments` pass
+
 ## 병렬 작업 메모
 
-착수 시점 main = `eb100b4`. 같은 작업을 진행 중이던 다른 워크트리(`캘린더-일주월-보기`, 미커밋)를 사용자 지시로 폐기하고 새로 구현했다. `my-work-calendar-*`·`task-status-calendar.tsx`를 만지는 다른 세션이 없음을 확인했다. 문서 번호는 144까지 사용되어 145로 잡았다.
+착수 시점 main = `eb100b4`. 같은 작업을 진행 중이던 다른 워크트리(`캘린더-일주월-보기`, 미커밋)를 사용자 지시로 폐기하고 새로 구현했다. `my-work-calendar-*`·`task-status-calendar.tsx`를 만지는 다른 세션이 없음을 확인했다. 착수 시 144까지였으나 리베이스 시 145~150이 선점돼 151로 조정했다.
