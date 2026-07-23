@@ -78,6 +78,13 @@ npm run dev -- -p 3073
 - **기간·단계 수를 다시 바꾸면 편집한 날짜가 재생성돼 초기화된다.** 기간·단계 수는 "생성기"이고 날짜 편집은 그 뒤의 조정이라, 생성기를 다시 돌리면 조정이 사라지는 게 자연스럽다고 봤다. 편집을 보존해야 하면 별도 과제다.
 - 단계 이름은 여전히 `1단계`·`2단계`…로 자동 부여된다. 이름 편집은 이번 범위 밖(생성 후 단계 상세에서 바꾼다).
 
+## 사후 검증 결과 (추록)
+
+- **PR**: [#128](https://github.com/Y-ONE-soft/y-os-core/pull/128)
+- **프리뷰 배포**: `● Ready` — https://y-os-core-glvdzcikb-project-hosting-center.vercel.app
+- **PR 체크**: `Vercel` pass, `Vercel Preview Comments` pass
+- 사용자가 프리뷰 확인 후 반영 승인
+
 ## 병렬 작업 메모
 
 착수 시점 main = `2b197a7`. `project-create-dialog.tsx`·`stage-plan.ts`·`compose.ts`·`even-stages` 라우트를 만지는 세션이 없음을 확인하고 진행했다. 스키마 변경 없음. 문서 번호는 138까지 사용되어 139로 잡았다.
