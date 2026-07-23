@@ -8,10 +8,10 @@ import {
   resolveProjectGroupId,
   unauthorized,
 } from "@/app/api/admin/guard";
-import { createProjectWithEvenStages } from "@/server/workspace/compose";
-import { evenSplitError } from "@/lib/stage-plan";
+import { createProjectWithStages } from "@/server/workspace/compose";
+import { stageSpansError, type StageSpan } from "@/lib/stage-plan";
 
-/** 기간을 균등 분할한 단계로 프로젝트를 만든다 (직접 만들기) */
+/** 단계 날짜 구간 배열로 프로젝트를 만든다 (직접 만들기). 구간은 겹쳐도 된다. */
 export async function POST(request: Request) {
   const user = await currentUser();
   if (!user) return unauthorized();
@@ -21,9 +21,7 @@ export async function POST(request: Request) {
     groupId?: unknown;
     name?: unknown;
     color?: unknown;
-    startDate?: unknown;
-    endDate?: unknown;
-    stageCount?: unknown;
+    spans?: unknown;
   } | null;
 
   if (
@@ -31,29 +29,40 @@ export async function POST(request: Request) {
     !isName(body.id) ||
     !isName(body.name) ||
     !isName(body.color) ||
-    !isISODate(body.startDate) ||
-    !isISODate(body.endDate) ||
-    typeof body.stageCount !== "number"
+    !Array.isArray(body.spans)
   ) {
     return badRequest();
   }
 
-  // 화면과 같은 기준으로 검증해 안내 문구가 어긋나지 않게 한다
-  const invalid = evenSplitError(body.startDate, body.endDate, body.stageCount);
+  // 각 구간이 { startDate, endDate } 형태인지 먼저 걸러 낸 뒤 공통 검증에 넘긴다.
+  const spans: StageSpan[] = [];
+  for (const raw of body.spans) {
+    if (
+      typeof raw !== "object" ||
+      raw === null ||
+      !isISODate((raw as { startDate?: unknown }).startDate) ||
+      !isISODate((raw as { endDate?: unknown }).endDate)
+    ) {
+      return badRequest();
+    }
+    const span = raw as StageSpan;
+    spans.push({ startDate: span.startDate, endDate: span.endDate });
+  }
+
+  // 화면과 같은 기준으로 검증한다 (개수 상한·각 구간 start ≤ end). 겹침은 허용.
+  const invalid = stageSpansError(spans);
   if (invalid) return badRequest(invalid);
 
   const groupId = resolveProjectGroupId(user, body.groupId);
   if (typeof groupId !== "string") return groupId;
 
-  await createProjectWithEvenStages({
+  await createProjectWithStages({
     projectId: body.id,
     groupId,
     name: body.name.trim(),
     color: body.color,
     ownerId: user.id,
-    startDate: body.startDate,
-    endDate: body.endDate,
-    stageCount: body.stageCount,
+    spans,
   });
 
   return NextResponse.json({ ok: true });

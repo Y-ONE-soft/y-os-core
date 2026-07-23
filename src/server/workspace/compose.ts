@@ -4,7 +4,11 @@
 
 import { db } from "@/server/db";
 import { getPreset } from "@/server/presets/service";
-import { presetStageSpan, splitRangeEvenly } from "@/lib/stage-plan";
+import {
+  presetStageSpan,
+  stageSpansError,
+  type StageSpan,
+} from "@/lib/stage-plan";
 
 /**
  * 정렬 가능한 id를 만든다 — **할일 전용**이다.
@@ -172,19 +176,17 @@ export async function applyPresetToProject(input: {
 }
 
 /**
- * 기간을 균등 분할한 단계로 프로젝트를 만든다 (직접 만들기).
- * 할일은 만들지 않는다 — 뼈대만 잡고 내용은 사용자가 채운다.
+ * 단계 날짜 구간 배열로 프로젝트를 만든다 (직접 만들기).
+ * 구간은 겹쳐도 되며, 균등 분할은 클라이언트가 초기값으로만 쓰고 여기서는 받은
+ * 대로 만든다. 할일은 만들지 않는다 — 뼈대만 잡고 내용은 사용자가 채운다.
  */
-export async function createProjectWithEvenStages(
-  input: BaseInput & { startDate: string; endDate: string; stageCount: number },
+export async function createProjectWithStages(
+  input: BaseInput & { spans: StageSpan[] },
 ): Promise<void> {
-  // 입력 검증은 라우트가 evenSplitError로 먼저 하지만, 서비스 단독 호출도 안전하도록
-  // splitRangeEvenly가 같은 기준으로 다시 던진다.
-  const spans = splitRangeEvenly(
-    input.startDate,
-    input.endDate,
-    input.stageCount,
-  );
+  // 서비스 단독 호출도 안전하도록 라우트와 같은 기준으로 다시 검증한다.
+  const invalid = stageSpansError(input.spans);
+  if (invalid) throw new Error(invalid);
+  const spans = input.spans;
 
   await db.$transaction(async (tx) => {
     await tx.project.create({
