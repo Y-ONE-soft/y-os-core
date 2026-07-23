@@ -17,7 +17,7 @@ const VIEW_TABS: { key: MyWorkView; label: string; href: string }[] = [
 
 export function MyWorkPage({ view }: { view: MyWorkView }) {
   return (
-    <div className="flex h-full min-h-0 flex-col gap-4 px-6 pb-6 pt-5">
+    <div className="flex min-h-full flex-col gap-4 px-6 pb-6 pt-5">
       <header className="flex shrink-0 items-start justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <h1 className="text-[22px] font-semibold">내 할일</h1>
@@ -51,12 +51,15 @@ export function MyWorkPage({ view }: { view: MyWorkView }) {
         </ul>
       </nav>
       <MyWorkFilters />
-      <div className="flex min-h-0 flex-1 items-stretch gap-4">
+      <div className="flex flex-1 items-start gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-3">
           {view === "timeline" ? <MyWorkTimelinePanel /> : <MyWorkCalendarPanel />}
           <MyWorkRequests />
         </div>
-        <MyWorkBacklog />
+        {/* 백로그는 스크롤과 무관하게 화면 안에 머무르도록 상단 고정 */}
+        <div className="sticky top-0 shrink-0">
+          <MyWorkBacklog />
+        </div>
       </div>
     </div>
   );
