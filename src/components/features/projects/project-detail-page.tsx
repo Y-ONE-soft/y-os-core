@@ -61,17 +61,6 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
       {/* 액션 배치는 내 할일 헤더(ProjectCreateButton)와 같은 자리 — 제목 블록 좌측, 버튼 우측 */}
       <header className="flex shrink-0 items-start justify-between gap-4">
         <div className="flex flex-col gap-1.5">
-          <div className="flex items-center gap-2">
-            <span className="rounded-[6px] bg-accent px-2 py-0.5 text-[11px] font-medium text-accent-foreground">
-              {project.name}
-            </span>
-            <span aria-hidden className="text-xs text-muted-foreground">
-              ›
-            </span>
-            <span className="text-xs text-muted-foreground">
-              고객 Y.ONE 내부
-            </span>
-          </div>
           <div className="flex items-center gap-2.5">
             <span
               aria-hidden
