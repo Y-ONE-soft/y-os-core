@@ -1,4 +1,5 @@
 import { db } from "@/server/db";
+import { addDaysISO } from "@/lib/stage-plan";
 import { workspaceSeedRows } from "@/server/workspace/seed-data";
 import type {
   BoardStage,
@@ -196,7 +197,13 @@ export function deleteGroup(id: string) {
   return db.projectGroup.deleteMany({ where: { id } });
 }
 
-export function createProject(input: {
+/** 빈 생성 시 함께 만드는 기본 단계 — 날짜가 없으면 로드맵·캘린더에 아무것도 안 보인다 */
+const DEFAULT_STAGE_NAME = "프로젝트 생성";
+const DEFAULT_STAGE_COLOR = "#3b82f6";
+/** 오늘~모레(3일간) — endDate는 시작일 + 2일 */
+const DEFAULT_STAGE_SPAN_DAYS = 2;
+
+export async function createProject(input: {
   id: string;
   groupId: string;
   name: string;
@@ -204,7 +211,25 @@ export function createProject(input: {
   /** 작업자 — 생성한 사용자. 배정 도메인 도입 전까지 "만든 사람 = 작업자" */
   ownerId: string | null;
 }) {
-  return db.project.create({ data: input });
+  // 빈 프로젝트는 단계가 없어 로드맵·캘린더에 아무것도 안 보인다.
+  // 오늘부터 3일짜리 기본 단계 1개를 함께 만들어 바로 화면에 나타나게 한다.
+  // 날짜는 서버 기준 — 클라이언트 시계를 신뢰하지 않는다(completedDate와 동일 규약).
+  const start = todayISO();
+  return db.$transaction(async (tx) => {
+    const project = await tx.project.create({ data: input });
+    await tx.stage.create({
+      data: {
+        id: `st-${crypto.randomUUID()}`,
+        projectId: input.id,
+        name: DEFAULT_STAGE_NAME,
+        color: DEFAULT_STAGE_COLOR,
+        startDate: start,
+        endDate: addDaysISO(start, DEFAULT_STAGE_SPAN_DAYS),
+        order: 1,
+      },
+    });
+    return project;
+  });
 }
 
 /**

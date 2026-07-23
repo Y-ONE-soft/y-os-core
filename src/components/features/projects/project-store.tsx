@@ -18,6 +18,8 @@ import {
 } from "@/lib/api/workspace";
 import * as cache from "@/components/features/projects/workspace-cache";
 import { useSession } from "@/components/features/auth/session-context";
+import { todayISO } from "@/components/features/projects/roadmap-utils";
+import { addDaysISO } from "@/lib/stage-plan";
 import type { ProjectGroup } from "@/types/workspace";
 
 // DB 전환 후에도 기존 소비자 호환을 위해 타입을 재노출한다
@@ -104,7 +106,26 @@ export function ProjectStoreProvider({
               }
             : group,
         ),
-        boards: { ...prev.boards, [id]: { stages: [], backlog: [] } },
+        // 서버가 함께 만드는 기본 단계("프로젝트 생성", 오늘~모레)를 낙관값에도
+        // 넣어 로드맵·캘린더에 바로 보이게 한다. 진짜 id·색은 다음 부트스트랩에서
+        // 서버 값으로 교체된다(색은 board-store가 프로젝트 색에서 파생).
+        boards: {
+          ...prev.boards,
+          [id]: {
+            stages: [
+              {
+                id: `st-${crypto.randomUUID()}`,
+                name: "프로젝트 생성",
+                color,
+                startDate: todayISO(),
+                endDate: addDaysISO(todayISO(), 2),
+                showDeadline: false,
+                tasks: [],
+              },
+            ],
+            backlog: [],
+          },
+        },
       }));
       cache.persist(createProjectApi({ id, groupId, name, color }));
     },
