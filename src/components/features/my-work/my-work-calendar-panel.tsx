@@ -93,8 +93,8 @@ export function MyWorkCalendarPanel() {
   }, [boards, preview]);
 
   const source = useMemo(
-    () => buildCalendarSource(grid, myProjects, previewBoards, unassigned),
-    [grid, myProjects, previewBoards, unassigned],
+    () => buildCalendarSource(grid, myProjects, previewBoards, unassigned, user?.id),
+    [grid, myProjects, previewBoards, unassigned, user?.id],
   );
 
   /** 드래그 결과 날짜 — 자기 할일을 항상 덮도록 늘려서 돌려준다 */

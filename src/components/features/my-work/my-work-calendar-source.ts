@@ -14,6 +14,7 @@ import {
   type MonthGrid,
 } from "@/components/features/my-work/my-work-month";
 import type { CalOverlay } from "@/components/features/my-work/my-work-calendar-layout";
+import { isMyTask } from "@/components/features/my-work/my-work-scope";
 
 export type CalendarProject = {
   id: string;
@@ -124,6 +125,8 @@ export function buildCalendarSource(
   boards: Record<string, ProjectBoardData>,
   /** 프로젝트 없는 할일 — 예정일이 있으면 "미배정" 묶음으로 그린다 */
   unassigned: BoardTask[] = [],
+  /** 백로그·미배정 할일은 담당자가 이 사용자인 것만 그린다 (단계 막대·단계 할일은 무관) */
+  viewerId?: string,
 ): CalendarSource {
   const overlays: CalOverlay[] = [];
   const meta: Record<string, CalendarProject> = {};
@@ -150,8 +153,10 @@ export function buildCalendarSource(
         }
       }
     });
-    // 백로그 할일도 날짜 칸에 떨어뜨리면 예정일을 가질 수 있다 (덮는 단계가 없을 때)
+    // 백로그 할일도 날짜 칸에 떨어뜨리면 예정일을 가질 수 있다 (덮는 단계가 없을 때).
+    // 단, 내 작업이므로 담당자가 나인 것만.
     for (const task of board?.backlog ?? []) {
+      if (!isMyTask(task, viewerId)) continue;
       // 단계 없는 백로그 할일은 프로젝트 색을 같은 규칙으로 옅게 쓴다
       const chip = taskChip(grid, project.id, backlogTone(project.color), task);
       if (chip) {
@@ -168,9 +173,11 @@ export function buildCalendarSource(
     }
   }
 
-  // 미배정 할일은 소속 프로젝트가 없어 어느 박스에도 못 들어간다 — 전용 묶음으로 모은다
+  // 미배정 할일은 소속 프로젝트가 없어 어느 박스에도 못 들어간다 — 전용 묶음으로 모은다.
+  // 백로그와 같은 규칙으로 담당자가 나인 것만.
   let hasUnassigned = false;
   for (const task of unassigned) {
+    if (!isMyTask(task, viewerId)) continue;
     const chip = taskChip(grid, UNASSIGNED_BOX, UNASSIGNED_COLOR, task);
     if (chip) {
       overlays.push(chip);

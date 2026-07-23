@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { RowActions } from "@/components/ui/row-actions";
+import { useSession } from "@/components/features/auth/session-context";
 import { useProjectStore } from "@/components/features/projects/project-store";
 import {
   boardActions,
@@ -28,12 +29,15 @@ import {
 } from "@/components/features/projects/board-store";
 import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
 import { setTaskDragData } from "@/components/features/projects/task-drag";
+import { isMyTask } from "@/components/features/my-work/my-work-scope";
 
 // 내 할일 페이지는 프로젝트 스코프가 없으므로 미배정 할일과 전 프로젝트 백로그를
 // 함께 보여준다. 데이터 원본은 프로젝트 상세의 백로그와 동일한 보드 스토어(DB).
+// 단, "내 작업"이므로 담당자가 나인 것만 — 남이 만든 백로그·미배정은 뺀다.
 // 여기서 만든 할일은 원칙적으로 "프로젝트 없음"(미배정)이며, 소속은 행의
 // 드롭다운 라벨이나 할일 티켓에서 정한다.
 export function MyWorkBacklog() {
+  const { user } = useSession();
   const { groups } = useProjectStore();
   const boards = useBoardState();
   const unassigned = useUnassignedTasks();
@@ -45,7 +49,7 @@ export function MyWorkBacklog() {
     ...projects.flatMap((project) =>
       (boards[project.id]?.backlog ?? []).map((task) => ({ project, task })),
     ),
-  ];
+  ].filter(({ task }) => isMyTask(task, user?.id));
 
   return (
     <aside className="flex w-[300px] shrink-0 flex-col gap-2 self-stretch overflow-y-auto rounded-[8px] border bg-background p-3.5 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.05)]">
@@ -64,8 +68,9 @@ export function MyWorkBacklog() {
             if (event.key === "Enter") {
               const name = event.currentTarget.value.trim();
               if (name) {
-                // 프로젝트 없음이 기본 — 소속은 나중에 라벨·티켓에서 정한다
-                boardActions.addUnassignedTask(name);
+                // 프로젝트 없음이 기본 — 소속은 나중에 라벨·티켓에서 정한다.
+                // 담당자는 나 — 안 넣으면 방금 만든 할일이 내 작업 필터에서 깜빡인다.
+                boardActions.addUnassignedTask(name, user?.id);
                 event.currentTarget.value = "";
               }
             }
