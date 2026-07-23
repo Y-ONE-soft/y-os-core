@@ -30,8 +30,12 @@ export type BoardTask = {
   done: boolean;
   /** 할일 상세 오버레이 '내용' */
   description?: string;
-  /** YYYY-MM-DD — 캘린더에 놓일 예정일(화면 표기 "할일날짜"). 없으면 일정 미정 */
+  /** YYYY-MM-DD — 캘린더에 놓일 예정일(화면 표기 "할일날짜"). 없으면 일정 미정.
+   *  미완료면 하루가 지날 때마다 서버가 오늘로 이월한다. */
   scheduledDate?: string;
+  /** YYYY-MM-DD — 마감일(처음 잡은 목표일). scheduledDate와 함께 세팅되고 이월돼도 고정.
+   *  scheduledDate와의 차이가 "며칠 미뤄졌는가"다. */
+  deadline?: string;
   /** YYYY-MM-DD — 완료 체크 시 서버가 기록. 체크를 풀면 사라진다 */
   completedDate?: string;
   /** 담당자 User.id — 없으면 미배정. 작업 현황 담당자 보드가 이 값으로 묶는다 */
