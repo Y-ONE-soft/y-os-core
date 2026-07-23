@@ -46,6 +46,7 @@ function toTask(
     done: task.done,
     description: task.description ?? undefined,
     scheduledDate: task.scheduledDate ?? undefined,
+    deadline: task.deadline ?? undefined,
     completedDate: task.completedDate ?? undefined,
     assigneeId: task.assigneeId ?? undefined,
     assignee: task.assignee ? toMember(task.assignee) : undefined,
@@ -115,7 +116,22 @@ async function acceptedCollaborators(): Promise<CollaboratorMap> {
 }
 
 /** 전체 워크스페이스 트리 — 스토어 부트스트랩 1회 호출용 */
+/**
+ * 미완료 할일의 지난 예정일을 오늘로 이월한다 — 크론 대신 조회 시점에 한 번 보정한다.
+ * 마감일(deadline)은 건드리지 않으므로 그만큼 "미뤄진 일수"가 벌어진다.
+ * YYYY-MM-DD 문자열은 사전순 = 날짜순이라 문자열 비교로 지난 것을 고를 수 있다.
+ */
+async function rollOverOverdueTasks(): Promise<void> {
+  const today = todayISO();
+  await db.task.updateMany({
+    where: { done: false, scheduledDate: { not: null, lt: today } },
+    data: { scheduledDate: today },
+  });
+}
+
 export async function getWorkspace(): Promise<Workspace> {
+  // 워크스페이스 스냅샷을 읽기 전에 이월을 먼저 반영해, 조회 결과가 곧 오늘 기준이 되게 한다.
+  await rollOverOverdueTasks();
   const [groups, projects, stages, backlogTasks, collaborators] =
     await Promise.all([
       db.projectGroup.findMany({ orderBy: ORDER }),
@@ -421,6 +437,8 @@ export type TaskPatch = Partial<{
   assigneeId: string | null;
   /** 서버가 done 전환에 맞춰 채운다 — 클라이언트가 직접 보내는 값은 무시된다 */
   completedDate: string | null;
+  /** 서버가 scheduledDate에서 파생한다 — 클라이언트가 직접 보내는 값은 무시된다 */
+  deadline: string | null;
 }>;
 
 export function deleteTask(id: string) {
@@ -445,8 +463,25 @@ function withCompletedDate(patch: TaskPatch): TaskPatch {
   return { ...patch, completedDate: patch.done ? todayISO() : null };
 }
 
+/**
+ * 마감일은 서버가 scheduledDate에서 파생한다 — 클라이언트가 보낸 deadline은 신뢰하지 않는다.
+ * 예정일을 명시적으로 지정/변경하면(이 API 경로) 그게 새 마감일이 된다(재계획). 자동 이월
+ * (rollOverOverdueTasks)은 이 경로를 타지 않으므로 마감일이 보존돼 "미뤄진 일수"가 벌어진다.
+ */
+function withDeadline(patch: TaskPatch): TaskPatch {
+  if (patch.scheduledDate === undefined) {
+    // 예정일 변경이 없으면 마감일도 그대로 둔다 (클라가 실어 보낸 deadline은 버린다)
+    if (!("deadline" in patch)) return patch;
+    const next = { ...patch };
+    delete next.deadline;
+    return next;
+  }
+  return { ...patch, deadline: patch.scheduledDate };
+}
+
 export async function updateTask(id: string, patch: TaskPatch) {
   patch = withCompletedDate(patch);
+  patch = withDeadline(patch);
   if (patch.projectId === undefined) {
     return db.task.updateMany({ where: { id }, data: patch });
   }

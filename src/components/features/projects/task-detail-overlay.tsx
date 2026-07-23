@@ -34,7 +34,10 @@ import {
   useBoardState,
   useUnassignedTasks,
 } from "@/components/features/projects/board-store";
-import { clampStageToTasks } from "@/components/features/projects/roadmap-utils";
+import {
+  clampStageToTasks,
+  dayOffset,
+} from "@/components/features/projects/roadmap-utils";
 import type { BoardStage, BoardTask } from "@/types/workspace";
 import { avatarColor } from "@/lib/avatar-color";
 import { AssigneeList } from "@/components/features/projects/assignee-list";
@@ -131,6 +134,12 @@ export function TaskDetailOverlay({
   const project = projects.find((candidate) => candidate.id === projectId);
   const stages = projectId === null ? [] : (boards[projectId]?.stages ?? []);
   const stageId = stage?.id ?? null;
+  // 예정일이 마감일보다 뒤면 그 일수가 "미뤄진 날수". 자동 이월로 예정일이 오늘까지
+  // 밀렸어도 마감일은 고정이라 이 차이가 벌어진다. 음수(마감 전)는 0으로 눌러 감춘다.
+  const daysLate =
+    task.deadline && task.scheduledDate
+      ? Math.max(0, dayOffset(task.scheduledDate, task.deadline))
+      : 0;
   // 미배정 할일은 단계 개념이 없으므로 "미배정"으로 표기한다
   const stageLabel = project ? (stage?.name ?? "백로그") : "미배정";
   const projectLabel = project?.name ?? "프로젝트 없음";
@@ -629,6 +638,19 @@ export function TaskDetailOverlay({
               {stageId === null && (
                 <p className="text-[11px] text-muted-foreground">
                   단계에 편성하면 예정일이 잡힙니다
+                </p>
+              )}
+              {/* 마감일 = 처음 잡은 목표일. 미완료인 채 하루가 지나면 위 예정일은
+                  오늘로 밀리지만 마감일은 고정이라, 그 차이를 "N일 미뤄짐"으로 보여준다.
+                  완료하면 더는 안 밀리므로 배지를 감추고 마감일만 남긴다. */}
+              {task.deadline && (
+                <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span>마감 {task.deadline}</span>
+                  {!task.done && daysLate > 0 && (
+                    <span className="rounded-full bg-destructive/10 px-2 py-0.5 font-medium text-destructive">
+                      {daysLate}일 미뤄짐
+                    </span>
+                  )}
                 </p>
               )}
             </div>
