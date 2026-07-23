@@ -133,8 +133,10 @@ export function TaskStatusAssignees({
           projectId: project.id,
           projectColor: project.color,
           stageId,
-          overdue:
-            !task.done && !!task.scheduledDate && task.scheduledDate < today,
+          // 지연 = 마감일이 지난 미완료. 예정일(scheduledDate)은 미완료면 매일
+          // 오늘로 자동 이월되므로 "예정일 < 오늘"은 항상 거짓이 된다 — 고정값인
+          // 마감일(deadline)로 판정해야 이월과 무관하게 지연이 잡힌다.
+          overdue: !task.done && !!task.deadline && task.deadline < today,
         });
       for (const stage of board.stages) {
         for (const task of stage.tasks) push(task, stage.id);
@@ -288,7 +290,7 @@ export function TaskStatusAssignees({
                 <span
                   title={
                     card.overdue
-                      ? `예정일 ${card.task.scheduledDate} — 지났습니다`
+                      ? `마감 ${card.task.deadline} — 지났습니다`
                       : undefined
                   }
                   className={cn(
