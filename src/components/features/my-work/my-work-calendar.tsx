@@ -9,7 +9,10 @@ import {
   shiftISO,
   type DragMode,
 } from "@/components/features/projects/roadmap-utils";
-import type { MonthGrid } from "@/components/features/my-work/my-work-month";
+import {
+  gridWeekdayHeaders,
+  type CalendarGrid,
+} from "@/components/features/my-work/my-work-month";
 import {
   getTaskDragData,
   isTaskDrag,
@@ -23,8 +26,6 @@ import {
   type ProjectBox,
   type WeekLayout,
 } from "@/components/features/my-work/my-work-calendar-layout";
-
-const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
 
 const DATE_ROW_PX = 24; // 날짜 숫자 영역
 const LANE_PX = 28; // 스팬 레인 1단 높이
@@ -62,12 +63,12 @@ function laneTop(lane: number) {
   return DATE_ROW_PX + lane * LANE_PX;
 }
 
-function colLeft(col: number) {
-  return `${(col / 7) * 100}%`;
+function colLeft(col: number, columns: number) {
+  return `${(col / columns) * 100}%`;
 }
 
-function colWidth(span: number) {
-  return `${(span / 7) * 100}%`;
+function colWidth(span: number, columns: number) {
+  return `${(span / columns) * 100}%`;
 }
 
 /** 막대 위 글자용 — 배경 틴트가 옅어 원색 그대로는 대비가 모자란다. */
@@ -82,9 +83,11 @@ function shade(hex: string, factor: number) {
 function ProjectBoxItem({
   box,
   project,
+  columns,
 }: {
   box: ProjectBox;
   project: CalendarProject | undefined;
+  columns: number;
 }) {
   const color = project?.color ?? "#71717a";
   // 미배정("__unassigned__") 묶음은 실제 프로젝트가 아니라 상세 링크를 걸지 않는다.
@@ -104,8 +107,8 @@ function ProjectBoxItem({
         box.continuesRight ? "border-r-0" : "rounded-r-[2px]",
       )}
       style={{
-        left: colLeft(box.col),
-        width: colWidth(box.span),
+        left: colLeft(box.col, columns),
+        width: colWidth(box.span, columns),
         // 레인 블록에서 아래쪽 간격만큼을 덜어내 다음 박스와 붙지 않게 한다.
         top: laneTop(box.lane) - BOX_PAD_PX,
         height: box.lanes * LANE_PX - BOX_GAP_PX,
@@ -192,6 +195,7 @@ function AddTaskInput({
 
 function OverlayItem({
   overlay,
+  columns,
   hoveredStageId,
   onHoverStage,
   onOpenStage,
@@ -200,6 +204,7 @@ function OverlayItem({
   onDragStart,
 }: {
   overlay: PlacedOverlay;
+  columns: number;
   /** 주 경계로 잘린 조각들을 한 단계로 묶어 강조하기 위한 공유 호버 상태 */
   hoveredStageId?: string | null;
   onHoverStage?: (stageId: string | null) => void;
@@ -211,8 +216,8 @@ function OverlayItem({
 }) {
   const color = overlay.color;
   const text = shade(color, 0.6);
-  const left = colLeft(overlay.col);
-  const width = colWidth(overlay.span);
+  const left = colLeft(overlay.col, columns);
+  const width = colWidth(overlay.span, columns);
 
   if (overlay.kind === "stage") {
     const draggable = Boolean(onDragStart);
@@ -408,7 +413,7 @@ export function MyWorkCalendar({
   onDropTask,
   onAddTask,
 }: {
-  grid: MonthGrid;
+  grid: CalendarGrid;
   layouts: WeekLayout[];
   projects: Record<string, CalendarProject>;
   onOpenStage?: (projectId: string, stageId: string) => void;
@@ -449,9 +454,11 @@ export function MyWorkCalendar({
     moved: boolean;
   } | null>(null);
 
+  const columns = grid.columns;
+
   /**
-   * 포인터가 놓인 위치의 그리드 일자를 **연속값**으로 돌려준다 (주 × 7 + 열비율).
-   * 주 행 높이가 제각각이라 세로는 행 사각형으로 주를 찾고, 가로는 칸 비율을 반올림 없이 쓴다.
+   * 포인터가 놓인 위치의 그리드 일자를 **연속값**으로 돌려준다 (행 × columns + 열비율).
+   * 행 높이가 제각각이라 세로는 행 사각형으로 행을 찾고, 가로는 칸 비율을 반올림 없이 쓴다.
    * 델타는 (지금 − 누른 위치)를 한 번만 반올림해 구하므로, 막대의 어느 지점을 잡든 앞뒤로
    * 한 칸 넘어가는 데 필요한 이동량이 같다(대칭). 예전엔 floor로 절대 칸을 써서 잡은 위치에
    * 따라 문턱이 달라졌고, 한쪽(특히 뒤로)으로 손쉽게 튀었다.
@@ -466,14 +473,14 @@ export function MyWorkCalendar({
         weekIndex = index;
         break;
       }
-      weekIndex = index; // 마지막 주 아래로 벗어나면 그 주로 본다
+      weekIndex = index; // 마지막 행 아래로 벗어나면 그 행으로 본다
     }
     const rect = rows[weekIndex]?.getBoundingClientRect();
     if (!rect) return 0;
-    // 열은 자르지 않는다 — 행 좌우로 끌면 앞뒤 주로 자연스럽게 넘어간다
-    const colFraction = ((clientX - rect.left) / rect.width) * 7;
-    const lastDay = rows.length * 7 - 1;
-    return Math.min(lastDay, Math.max(0, weekIndex * 7 + colFraction));
+    // 열은 자르지 않는다 — 행 좌우로 끌면 앞뒤 행으로 자연스럽게 넘어간다
+    const colFraction = ((clientX - rect.left) / rect.width) * columns;
+    const lastDay = rows.length * columns - 1;
+    return Math.min(lastDay, Math.max(0, weekIndex * columns + colFraction));
   }
 
   function handleDragStart(event: React.PointerEvent, target: DragTarget) {
@@ -535,11 +542,14 @@ export function MyWorkCalendar({
     const rect = weekRefs.current[week]?.getBoundingClientRect();
     if (!rect) return;
     const col = Math.min(
-      6,
-      Math.max(0, Math.floor(((event.clientX - rect.left) / rect.width) * 7)),
+      columns - 1,
+      Math.max(
+        0,
+        Math.floor(((event.clientX - rect.left) / rect.width) * columns),
+      ),
     );
     // 달 밖(회색) 칸에는 추가하지 않는다 — 날짜 숫자가 없어 혼란스럽다
-    if (grid.weeks[week]?.[col] == null) return;
+    if (grid.rows[week]?.[col] == null) return;
     const y = event.clientY - rect.top;
     // 날짜 숫자 영역(맨 위)은 어떤 박스도 덮지 않는다 → lane<0 = 소속 없음(미배정)
     const lane = y < DATE_ROW_PX ? -1 : Math.floor((y - DATE_ROW_PX) / LANE_PX);
@@ -556,7 +566,7 @@ export function MyWorkCalendar({
       week,
       col,
       lane: Math.max(0, lane),
-      date: shiftISO(grid.gridStart, week * 7 + col),
+      date: shiftISO(grid.gridStart, week * columns + col),
       projectId,
     });
   }
@@ -580,25 +590,27 @@ export function MyWorkCalendar({
         }
       }}
     >
-      {/* 세로 스크롤 시에도 요일 헤더는 위에 고정 — bg-card로 아래 내용을 가린다 */}
+      {/* 세로 스크롤 시에도 요일 헤더는 위에 고정 — bg-card로 아래 내용을 가린다.
+          일 보기(1열)면 그날 요일 하나만 나온다. */}
       <div className="sticky top-0 z-20 flex w-full shrink-0 bg-card">
-        {WEEKDAYS.map((day) => (
+        {gridWeekdayHeaders(grid).map((header, index) => (
           <div
-            key={day}
+            key={index}
             className={cn(
               "flex flex-1 justify-center border-b py-1.5 text-[11px] font-medium",
-              day === "일"
+              index < grid.columns - 1 && "border-r",
+              header.weekday === 0
                 ? "text-[rgba(219,38,38,0.75)]"
-                : day === "토"
+                : header.weekday === 6
                   ? "text-[rgba(38,99,235,0.75)]"
                   : "text-muted-foreground",
             )}
           >
-            {day}
+            {header.label}
           </div>
         ))}
       </div>
-      {grid.weeks.map((week, weekIndex) => {
+      {grid.rows.map((week, weekIndex) => {
         const { boxes, overlays, laneCount } = layouts[weekIndex];
         // 주 행은 flex-1이라, 화면이 낮으면 캘린더 공간을 균등 분할해 각 칸이
         // 납작해진다(빈 달은 59px까지 찌그러져 날짜·할일이 안 보였다). 내용 유무와
@@ -622,8 +634,9 @@ export function MyWorkCalendar({
             {week.map((date, dayIndex) => {
               const cellDate = shiftISO(
                 grid.gridStart,
-                weekIndex * 7 + dayIndex,
+                weekIndex * columns + dayIndex,
               );
+              const isToday = cellDate === grid.todayISO;
               return (
               <div
                 key={dayIndex}
@@ -648,11 +661,11 @@ export function MyWorkCalendar({
                 }}
                 className={cn(
                   "flex-1 border-b px-2 pb-1 pt-1.5",
-                  dayIndex < 6 && "border-r",
-                  // 달 안 칸은 눌러서 할일을 추가할 수 있다는 힌트
+                  dayIndex < columns - 1 && "border-r",
+                  // 날짜 칸은 눌러서 할일을 추가할 수 있다는 힌트
                   onAddTask && date !== null && "cursor-pointer",
                   date === null && "bg-muted",
-                  date !== null && date === grid.todayDate && "bg-accent",
+                  date !== null && isToday && "bg-accent",
                   dropDate === cellDate && "bg-primary/10 ring-1 ring-inset ring-primary",
                 )}
               >
@@ -660,7 +673,7 @@ export function MyWorkCalendar({
                   <span
                     className={cn(
                       "text-[11px] text-muted-foreground",
-                      date === grid.todayDate && "font-medium text-foreground",
+                      isToday && "font-medium text-foreground",
                     )}
                   >
                     {date}
@@ -674,7 +687,12 @@ export function MyWorkCalendar({
               const project = projects[box.project];
               if (!project) return null;
               return (
-                <ProjectBoxItem key={box.project} box={box} project={project} />
+                <ProjectBoxItem
+                  key={box.project}
+                  box={box}
+                  project={project}
+                  columns={columns}
+                />
               );
             })}
             {overlays.map((overlay) => (
@@ -682,6 +700,7 @@ export function MyWorkCalendar({
                 // 조각 단위로 안정된 키 — 인덱스 키는 드래그 중 재배치에서 엉킨다
                 key={`${overlay.kind === "stage" ? overlay.stageId : overlay.taskId}:${overlay.col}`}
                 overlay={overlay}
+                columns={columns}
                 hoveredStageId={hoveredStageId}
                 onHoverStage={setHoveredStageId}
                 onOpenStage={onOpenStage}
@@ -703,10 +722,10 @@ export function MyWorkCalendar({
                     : null
                 }
                 style={{
-                  left: colLeft(adding.col),
+                  left: colLeft(adding.col, columns),
                   top: laneTop(adding.lane),
                   // 오른쪽으로 넘치지 않게 최대 3칸까지만 넓힌다
-                  width: colWidth(Math.min(3, 7 - adding.col)),
+                  width: colWidth(Math.min(3, columns - adding.col), columns),
                 }}
                 onSubmit={(name) => {
                   onAddTask(adding.projectId, adding.date, name);
