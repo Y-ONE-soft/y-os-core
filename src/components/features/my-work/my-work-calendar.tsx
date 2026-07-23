@@ -669,13 +669,14 @@ export function MyWorkCalendar({
               </div>
               );
             })}
-            {boxes.map((box) => (
-              <ProjectBoxItem
-                key={box.project}
-                box={box}
-                project={projects[box.project]}
-              />
-            ))}
+            {boxes.map((box) => {
+              // meta에 없는 묶음(미배정)은 박스(배경)를 그리지 않는다 — 칩만 뜬다.
+              const project = projects[box.project];
+              if (!project) return null;
+              return (
+                <ProjectBoxItem key={box.project} box={box} project={project} />
+              );
+            })}
             {overlays.map((overlay) => (
               <OverlayItem
                 // 조각 단위로 안정된 키 — 인덱스 키는 드래그 중 재배치에서 엉킨다
