@@ -112,14 +112,32 @@ export function StageDetailOverlay({
                 onCheckedChange={(checked) => patch({ done: checked === true })}
                 className="size-[22px] rounded-[6px] border-primary [&_svg]:size-4"
               />
-              <DialogTitle
+              {/* Radix Dialog는 접근성상 DialogTitle이 필요하다 — 화면용 제목은 편집
+                  가능한 입력으로 두고, 실제 타이틀은 sr-only로 유지한다. */}
+              <DialogTitle className="sr-only">{stage.name}</DialogTitle>
+              <Input
+                // stage가 바뀌면 입력 초기값을 새로 잡는다 (비제어 — 내용 필드와 동일 방식)
+                key={stage.id}
+                defaultValue={stage.name}
+                aria-label="단계명"
+                onBlur={(event) => {
+                  const value = event.target.value.trim();
+                  // 빈 이름은 저장하지 않고 원래 이름으로 되돌린다
+                  if (!value) {
+                    event.target.value = stage.name;
+                    return;
+                  }
+                  if (value !== stage.name) patch({ name: value });
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                }}
+                // py-0 + leading-tight로 기존 h2 높이를 그대로 맞춘다 (단계 추가 오버레이와 동일)
                 className={cn(
-                  "text-[30px] leading-tight font-semibold",
+                  "h-auto border-0 px-0 py-0 text-[30px] leading-tight font-semibold shadow-none focus-visible:ring-0 md:text-[30px]",
                   stage.done && "text-muted-foreground line-through",
                 )}
-              >
-                {stage.name}
-              </DialogTitle>
+              />
             </div>
             <section className="flex shrink-0 flex-col gap-2.5">
               <h3 className="text-sm font-semibold">내용</h3>
