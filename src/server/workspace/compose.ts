@@ -141,7 +141,7 @@ export async function applyPresetToProject(input: {
           color: stage.color,
           startDate: span.startDate,
           endDate: span.endDate,
-          // 빈 프로젝트에만 적용하므로 1..N을 그대로 매긴다 (@@unique([projectId, order]))
+          // 위에서 기존 단계를 모두 지웠으므로 1..N을 그대로 매긴다 (@@unique([projectId, order]))
           order: stageIndex + 1,
         },
       });
