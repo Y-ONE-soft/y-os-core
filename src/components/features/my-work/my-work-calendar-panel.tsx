@@ -10,7 +10,6 @@ import {
   useUnassignedTasks,
 } from "@/components/features/projects/board-store";
 import {
-  clampMoveDelta,
   clampStageToTasks,
   dragStageDates,
   shiftISO,
@@ -18,6 +17,7 @@ import {
   type DragMode,
   type StageDates,
 } from "@/components/features/projects/roadmap-utils";
+import type { BoardStage } from "@/types/workspace";
 import { StageDetailOverlay } from "@/components/features/projects/stage-detail-overlay";
 import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
 import {
@@ -61,7 +61,8 @@ export function MyWorkCalendarPanel() {
   // 드래그 중인 임시 상태 — 손을 뗄 때만 저장하고, 그 전까지는 화면만 미리 옮긴다.
   // 여러 주에 걸친 단계도 조각이 한꺼번에 따라오도록 소스 단계에서 갈아끼운다.
   const [preview, setPreview] = useState<{
-    stage?: { stageId: string } & StageDates;
+    // taskDeltaDays: 단계 이동 미리보기에서 그 단계의 할일도 같은 일수만큼 함께 옮긴다
+    stage?: { stageId: string; taskDeltaDays?: number } & StageDates;
     task?: { taskId: string; scheduledDate: string };
   } | null>(null);
 
@@ -72,20 +73,31 @@ export function MyWorkCalendarPanel() {
       next[projectId] = {
         ...board,
         stages: board.stages.map((stage) => {
-          const dates =
+          const previewStage =
             preview.stage && stage.id === preview.stage.stageId
-              ? {
-                  startDate: preview.stage.startDate,
-                  endDate: preview.stage.endDate,
-                }
+              ? preview.stage
               : null;
-          const tasks = preview.task
-            ? stage.tasks.map((task) =>
-                task.id === preview.task!.taskId
-                  ? { ...task, scheduledDate: preview.task!.scheduledDate }
-                  : task,
-              )
-            : stage.tasks;
+          const dates = previewStage
+            ? { startDate: previewStage.startDate, endDate: previewStage.endDate }
+            : null;
+          let tasks = stage.tasks;
+          // 단계 이동 미리보기: 그 단계의 할일도 같은 델타로 함께 옮겨 보여준다
+          if (previewStage?.taskDeltaDays) {
+            const shift = previewStage.taskDeltaDays;
+            tasks = tasks.map((task) =>
+              task.scheduledDate
+                ? { ...task, scheduledDate: shiftISO(task.scheduledDate, shift) }
+                : task,
+            );
+          }
+          // 단일 할일 이동 미리보기
+          if (preview.task) {
+            tasks = tasks.map((task) =>
+              task.id === preview.task!.taskId
+                ? { ...task, scheduledDate: preview.task!.scheduledDate }
+                : task,
+            );
+          }
           return dates ? { ...stage, ...dates, tasks } : { ...stage, tasks };
         }),
       };
@@ -98,43 +110,33 @@ export function MyWorkCalendarPanel() {
     [grid, myProjects, previewBoards, unassigned, user?.id],
   );
 
-  /** 드래그 결과 날짜 — 자기 할일을 항상 덮도록 늘려서 돌려준다 */
+  /**
+   * 드래그 결과 날짜와 대상 단계.
+   * - 이동(move): 막대를 변형하지 않고 통째로 옮긴다. 할일이 함께 따라가므로(handleDrag)
+   *   덮개가 늘 유지돼 clamp가 필요 없다.
+   * - 시작/끝 조절: 할일은 제자리이므로 단계가 할일을 덮도록 clamp한다.
+   */
   function nextStageDates(
     stageId: string,
     mode: DragMode,
     deltaDays: number,
-  ): { projectId: string; dates: StageDates } | null {
+  ): { projectId: string; stage: BoardStage; dates: StageDates } | null {
     for (const project of myProjects) {
       const stage = boards[project.id]?.stages.find(
         (candidate) => candidate.id === stageId,
       );
       if (!stage?.startDate) continue;
-      const cover = taskDateRange(stage.tasks);
-      // 이동은 막대를 변형하지 않는다 — 늘려 덮는 clampStageToTasks 대신 이동량 자체를
-      // 할일 덮개 경계까지로 제한해, 막대가 통째로 미끄러지다 경계에서 멈추게 한다.
-      // (start/end 조절은 해당 끝만 물러나면 되므로 기존 clamp를 그대로 쓴다.)
-      if (mode === "move") {
-        const delta = clampMoveDelta(
-          stage.startDate,
-          stage.endDate,
-          deltaDays,
-          cover,
-        );
-        return {
-          projectId: project.id,
-          dates: dragStageDates("move", stage.startDate, stage.endDate, delta),
-        };
-      }
       const dragged = dragStageDates(
         mode,
         stage.startDate,
         stage.endDate,
         deltaDays,
       );
-      return {
-        projectId: project.id,
-        dates: clampStageToTasks(dragged, cover),
-      };
+      const dates =
+        mode === "move"
+          ? dragged
+          : clampStageToTasks(dragged, taskDateRange(stage.tasks));
+      return { projectId: project.id, stage, dates };
     }
     return null;
   }
@@ -255,8 +257,16 @@ export function MyWorkCalendarPanel() {
       setPreview(null);
       return;
     }
+    // 이동일 때만 이 단계의 할일도 같은 델타로 함께 옮긴다 (타임라인과 동일 모델).
+    const movesTasks = target.mode === "move";
     if (phase === "move") {
-      setPreview({ stage: { stageId: target.stageId, ...next.dates } });
+      setPreview({
+        stage: {
+          stageId: target.stageId,
+          ...next.dates,
+          taskDeltaDays: movesTasks ? deltaDays : undefined,
+        },
+      });
       return;
     }
     setPreview(null);
@@ -264,6 +274,14 @@ export function MyWorkCalendarPanel() {
       startDate: next.dates.startDate,
       endDate: next.dates.endDate,
     });
+    if (movesTasks && deltaDays !== 0) {
+      for (const task of next.stage.tasks) {
+        if (!task.scheduledDate) continue;
+        boardActions.updateTask(next.projectId, target.stageId, task.id, {
+          scheduledDate: shiftISO(task.scheduledDate, deltaDays),
+        });
+      }
+    }
   }
 
   const layouts = useMemo(

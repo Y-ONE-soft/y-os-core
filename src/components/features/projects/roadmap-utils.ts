@@ -133,28 +133,6 @@ export function clampStageToTasks(
   };
 }
 
-/**
- * 단계를 통째로(move) 옮길 때, 막대를 **늘리지 않고 길이를 유지한 채** 할일 덮개를
- * 깨지 않는 범위로 이동량 자체를 제한한다. clampStageToTasks가 결과를 늘려 덮는 것과 달리
- * 막대가 변형되지 않고 덮개 경계에서 멈춘다 — 드래그가 자연스럽게 느껴지도록.
- * - 앞으로: 시작이 첫 할일에 닿을 때까지(그 이상 가면 첫 할일이 막대 밖으로 나간다)
- * - 뒤로: 끝이 마지막 할일에 닿을 때까지
- * cover가 없으면(할일 없음) 제한하지 않는다. 이미 덮고 있지 않은(드리프트) 경우엔 그 방향을
- * 0으로 막아 강제로 끌려가지 않게 한다.
- */
-export function clampMoveDelta(
-  startDate: string,
-  endDate: string | undefined,
-  delta: number,
-  cover: { min: string; max: string } | null,
-): number {
-  if (!cover) return delta;
-  const end = endDate ?? shiftISO(startDate, OPEN_ENDED_DAYS - 1);
-  const maxForward = Math.max(0, dayOffset(cover.min, startDate));
-  const maxBackward = Math.min(0, dayOffset(cover.max, end));
-  return Math.min(maxForward, Math.max(maxBackward, delta));
-}
-
 export function barRange(
   windowStart: string,
   windowDays: number,
