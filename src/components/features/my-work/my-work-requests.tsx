@@ -6,8 +6,9 @@ import { useRequests } from "@/hooks/use-requests";
 import { RequestCard } from "@/components/features/requests/request-card";
 import type { WorkRequest } from "@/types/requests";
 
-// 종류마다 한 줄씩 — 할일 요청과 도움 요청은 성격이 달라 섞이면 훑기 어렵다
-const KIND_ROWS: { kind: WorkRequest["kind"]; label: string }[] = [
+// 종류마다 세로 열 하나씩 — 할일 요청과 도움 요청은 성격이 달라 섞이면 훑기 어렵다.
+// 알림 페이지는 전체 목록·필터를 담당하므로 이 2열 배치는 내 할일 화면에만 둔다.
+const KIND_COLUMNS: { kind: WorkRequest["kind"]; label: string }[] = [
   { kind: "ASSIGN", label: "할일 요청" },
   { kind: "HELP", label: "도움 요청" },
 ];
@@ -44,25 +45,29 @@ export function MyWorkRequests() {
       ) : sorted.length === 0 ? (
         <p className="text-xs text-muted-foreground">받은 요청이 없습니다.</p>
       ) : (
-        <div className="flex w-full flex-col gap-2.5">
-          {KIND_ROWS.map(({ kind, label }) => {
-            const rows = sorted.filter((item) => item.kind === kind);
-            // 없는 종류는 빈 줄을 만들지 않는다
-            if (rows.length === 0) return null;
+        <div className="flex w-full items-start gap-3">
+          {KIND_COLUMNS.map(({ kind, label }) => {
+            const items = sorted.filter((item) => item.kind === kind);
             return (
-              <div key={kind} className="flex w-full flex-col gap-1.5">
+              // 비어 있어도 열은 남긴다 — 한쪽이 비었다고 폭이 출렁이면 훑기 나쁘다
+              <div
+                key={kind}
+                className="flex min-w-0 flex-1 flex-col gap-1.5"
+              >
                 <p className="text-xs font-medium text-muted-foreground">
-                  {label} · {rows.length}
+                  {label} · {items.length}
                 </p>
-                <div className="flex w-full items-start gap-3 overflow-x-auto">
-                  {rows.map((request) => (
-                    <RequestCard
-                      key={request.id}
-                      request={request}
-                      className="flex-1"
-                    />
-                  ))}
-                </div>
+                {items.length === 0 ? (
+                  <p className="rounded-[10px] border border-dashed px-3.5 py-3 text-xs text-muted-foreground">
+                    받은 {label}이 없습니다.
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {items.map((request) => (
+                      <RequestCard key={request.id} request={request} />
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
