@@ -433,10 +433,17 @@ export async function createTask(input: {
   name: string;
   /** 생략 = 기본값 규칙 적용, null = 미배정으로 명시 */
   assigneeId?: string | null;
+  /** 단계에 속해 생성될 때 잡히는 예정일(YYYY-MM-DD). 없으면 일정 미정으로 만든다. */
+  scheduledDate?: string;
   /** 기본값의 최후 후보 — 요청한 사용자 */
   createdById: string;
 }) {
-  const { createdById, ...data } = input;
+  const { createdById, scheduledDate, ...rest } = input;
+  // 예정일이 있으면 마감일도 같은 값으로 세팅한다 — updateTask의 withDeadline과 같은 규칙.
+  // 이후 미완료인 채 하루가 지나면 예정일만 오늘로 이월되고 마감일은 이 값으로 남는다.
+  const data = scheduledDate
+    ? { ...rest, scheduledDate, deadline: scheduledDate }
+    : rest;
   if (data.assigneeId !== undefined) {
     return db.task.create({ data });
   }
