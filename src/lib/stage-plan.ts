@@ -22,6 +22,59 @@ export function inclusiveDays(startDate: string, endDate: string): number {
 
 export type StageSpan = { startDate: string; endDate: string };
 
+/** 직접 만들기 단계 수 상한 — 실수로 수천 개를 만드는 것만 막는 안전선 */
+export const MAX_STAGE_COUNT = 50;
+
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * 단계 수만큼 날짜 구간을 만든다 (직접 만들기 초기값).
+ *  - 일수가 단계 수 이상이면 겹치지 않게 균등 분할한다.
+ *  - 일수가 단계 수보다 적으면 하루짜리 단계를 기간에 퍼뜨려 **겹치게** 만든다.
+ *    맨 끝 단계는 종료일에 맞추고, 나머지가 겹치더라도 일단 유효한 출발점을 준다
+ *    (사용자가 뒤이어 각 단계 날짜를 직접 고친다).
+ */
+export function planStageSpans(
+  startDate: string,
+  endDate: string,
+  stageCount: number,
+): StageSpan[] {
+  const count = Math.max(1, Math.floor(stageCount));
+  const total = inclusiveDays(startDate, endDate);
+  if (total >= count) return splitRangeEvenly(startDate, endDate, count);
+
+  const spans: StageSpan[] = [];
+  for (let i = 0; i < count; i += 1) {
+    // 0 ~ total-1 사이에 시작일을 퍼뜨린다. 마지막(i=count-1)은 항상 total-1 = 종료일.
+    const offset = count === 1 ? 0 : Math.round((i * (total - 1)) / (count - 1));
+    const start = addDaysISO(startDate, offset);
+    spans.push({ startDate: start, endDate: start });
+  }
+  return spans;
+}
+
+/**
+ * 직접 만들기로 넘어온 단계 날짜 배열 검증 — 겹침은 허용한다.
+ * 화면 안내와 라우트가 같은 기준을 쓰도록 공유한다.
+ */
+export function stageSpansError(spans: StageSpan[]): string | null {
+  if (!Array.isArray(spans) || spans.length < 1) {
+    return "단계가 최소 1개는 있어야 합니다.";
+  }
+  if (spans.length > MAX_STAGE_COUNT) {
+    return `단계는 ${MAX_STAGE_COUNT}개까지 만들 수 있습니다.`;
+  }
+  for (const span of spans) {
+    if (!ISO_DATE_RE.test(span.startDate) || !ISO_DATE_RE.test(span.endDate)) {
+      return "단계 날짜 형식이 올바르지 않습니다.";
+    }
+    if (inclusiveDays(span.startDate, span.endDate) < 1) {
+      return "각 단계의 종료일은 시작일과 같거나 뒤여야 합니다.";
+    }
+  }
+  return null;
+}
+
 /** 균등 분할이 불가능한 입력인지 — 라우트 검증과 화면 안내가 같은 기준을 쓰도록 공유한다 */
 export function evenSplitError(
   startDate: string,

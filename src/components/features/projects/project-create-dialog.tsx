@@ -21,12 +21,13 @@ import { ApiError } from "@/lib/api/client";
 import { fetchPresets } from "@/lib/api/presets";
 import {
   createProjectFromPresetApi,
-  createProjectWithEvenStagesApi,
+  createProjectWithStagesApi,
 } from "@/lib/api/workspace";
 import {
-  evenSplitError,
   inclusiveDays,
-  splitRangeEvenly,
+  planStageSpans,
+  stageSpansError,
+  type StageSpan,
 } from "@/lib/stage-plan";
 import type { PresetSummary } from "@/types/preset";
 import { useSession } from "@/components/features/auth/session-context";
@@ -92,9 +93,45 @@ function ProjectCreateForm({ onDone }: { onDone: () => void }) {
   const [presetId, setPresetId] = useState<string | null>(null);
   const [baseDate, setBaseDate] = useState(todayLocalISO);
 
-  // 직접 만들기 모드
+  // 직접 만들기 모드 — 기간·단계 수는 spans의 초기값을 만드는 재료이고,
+  // 실제로 서버에 보내는 것은 편집된 spans다. 기간·단계 수를 바꾸면 재생성하되,
+  // 재생성 뒤에는 사용자가 각 단계 날짜를 직접 고칠 수 있다.
   const [range, setRange] = useState<Partial<DateRange>>({});
   const [stageCount, setStageCount] = useState(4);
+  const [spans, setSpans] = useState<StageSpan[]>([]);
+
+  // 기간·단계 수가 갖춰지면 겹침 허용 규칙으로 spans를 다시 만든다.
+  function regenerateSpans(next: {
+    range?: Partial<DateRange>;
+    stageCount?: number;
+  }) {
+    const r = next.range ?? range;
+    const count = next.stageCount ?? stageCount;
+    if (r.startDate && r.endDate && count >= 1) {
+      setSpans(planStageSpans(r.startDate, r.endDate, count));
+    } else {
+      setSpans([]);
+    }
+  }
+
+  function handleRangeChange(picked: Partial<DateRange>) {
+    setRange(picked);
+    regenerateSpans({ range: picked });
+  }
+
+  function handleStageCountChange(count: number) {
+    setStageCount(count);
+    regenerateSpans({ stageCount: count });
+  }
+
+  // 특정 단계의 날짜 한쪽을 고친다. 겹침은 허용하므로 옆 단계는 건드리지 않는다.
+  function editSpan(index: number, patch: Partial<StageSpan>) {
+    setSpans((prev) =>
+      prev.map((span, i) => (i === index ? { ...span, ...patch } : span)),
+    );
+  }
+
+  const spansInvalid = spans.length > 0 ? stageSpansError(spans) : null;
 
   useEffect(() => {
     let alive = true;
@@ -115,17 +152,6 @@ function ProjectCreateForm({ onDone }: { onDone: () => void }) {
   const selectedPreset =
     presets?.find((preset) => preset.id === presetId) ?? null;
 
-  // 균등 분할 미리보기 — 서버 생성과 같은 @/lib/stage-plan을 쓰므로 결과가 어긋나지 않는다
-  const evenPlan = useMemo(() => {
-    if (!range.startDate || !range.endDate) return null;
-    const invalid = evenSplitError(range.startDate, range.endDate, stageCount);
-    if (invalid) return { error: invalid, spans: null };
-    return {
-      error: null,
-      spans: splitRangeEvenly(range.startDate, range.endDate, stageCount),
-    };
-  }, [range.startDate, range.endDate, stageCount]);
-
   function pickPreset(preset: PresetSummary) {
     setPresetId(preset.id);
     // 이름을 아직 손대지 않았으면 프리셋 이름을 기본값으로 채운다
@@ -135,7 +161,9 @@ function ProjectCreateForm({ onDone }: { onDone: () => void }) {
   const sharedReady = name.trim().length > 0 && (!isMaster || !!groupId);
   const canSubmit =
     sharedReady &&
-    (mode === "preset" ? !!presetId : !!evenPlan && !evenPlan.error);
+    (mode === "preset"
+      ? !!presetId
+      : spans.length > 0 && !spansInvalid);
 
   async function submit() {
     if (!canSubmit || submitting) return;
@@ -155,12 +183,7 @@ function ProjectCreateForm({ onDone }: { onDone: () => void }) {
           baseDate,
         });
       } else {
-        await createProjectWithEvenStagesApi({
-          ...base,
-          startDate: range.startDate!,
-          endDate: range.endDate!,
-          stageCount,
-        });
+        await createProjectWithStagesApi({ ...base, spans });
       }
       // 생성이 끝났으면 먼저 닫는다. 목록 갱신을 기다렸다가 닫으면, 갱신이 실패했을 때
       // 이미 만들어진 프로젝트인데도 창이 열린 채 남아 사용자가 다시 눌러 중복 생성한다.
@@ -348,55 +371,83 @@ function ProjectCreateForm({ onDone }: { onDone: () => void }) {
                   — 캘린더를 드래그해 시작일과 종료일을 잡으세요
                 </span>
               </Label>
-              <RangeCalendar mode="range" value={range} onChange={setRange} />
+              <RangeCalendar
+                mode="range"
+                value={range}
+                onChange={handleRangeChange}
+              />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="stage-count">예상 단계 수</Label>
+              <Label htmlFor="stage-count">
+                예상 단계 수{" "}
+                <span className="font-normal text-muted-foreground">
+                  — 아래에서 각 단계 날짜를 직접 조정할 수 있어요
+                </span>
+              </Label>
               <Input
                 id="stage-count"
                 type="number"
                 min={1}
                 value={stageCount}
                 onChange={(event) =>
-                  setStageCount(Number(event.target.value) || 0)
+                  handleStageCountChange(Number(event.target.value) || 0)
                 }
                 className="w-24"
               />
             </div>
 
-            {/* 미리보기 — 만들기 전에 어떻게 쪼개지는지 그대로 보여준다 */}
-            {range.startDate && range.endDate && (
+            {/* 단계별 날짜 편집 — 초기값은 기간·단계 수로 생성하되, 각 단계를 직접
+                고칠 수 있다. 단계는 서로 겹쳐도 된다. */}
+            {range.startDate && range.endDate && spans.length > 0 && (
               <div className="flex flex-col gap-1.5">
                 <p className="text-[11px] text-muted-foreground">
                   {range.startDate} ~ {range.endDate} (총{" "}
-                  {inclusiveDays(range.startDate, range.endDate)}일)
+                  {inclusiveDays(range.startDate, range.endDate)}일) · 단계는
+                  겹쳐도 됩니다
                 </p>
-                {evenPlan?.error ? (
+                <ul
+                  data-testid="even-preview"
+                  className="flex max-h-[180px] flex-col gap-1 overflow-y-auto rounded-[8px] border p-2"
+                >
+                  {spans.map((span, index) => (
+                    <li
+                      key={index}
+                      className="flex items-center gap-2 text-[12px]"
+                    >
+                      <span className="w-10 shrink-0 font-medium">
+                        {index + 1}단계
+                      </span>
+                      <input
+                        type="date"
+                        aria-label={`${index + 1}단계 시작일`}
+                        value={span.startDate}
+                        onChange={(event) =>
+                          editSpan(index, { startDate: event.target.value })
+                        }
+                        className="h-8 min-w-0 flex-1 rounded-[6px] border bg-background px-2 tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      />
+                      <span className="shrink-0 text-muted-foreground">~</span>
+                      <input
+                        type="date"
+                        aria-label={`${index + 1}단계 종료일`}
+                        value={span.endDate}
+                        min={span.startDate}
+                        onChange={(event) =>
+                          editSpan(index, { endDate: event.target.value })
+                        }
+                        className="h-8 min-w-0 flex-1 rounded-[6px] border bg-background px-2 tabular-nums outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      />
+                    </li>
+                  ))}
+                </ul>
+                {spansInvalid && (
                   <p
                     role="alert"
                     className="rounded-[8px] border border-destructive/40 p-2.5 text-[12px] text-destructive"
                   >
-                    {evenPlan.error}
+                    {spansInvalid}
                   </p>
-                ) : (
-                  <ul
-                    data-testid="even-preview"
-                    className="flex max-h-[130px] flex-col gap-0.5 overflow-y-auto rounded-[8px] border p-2"
-                  >
-                    {evenPlan?.spans?.map((span, index) => (
-                      <li
-                        key={span.startDate}
-                        className="flex items-center justify-between text-[12px]"
-                      >
-                        <span className="font-medium">{index + 1}단계</span>
-                        <span className="tabular-nums text-muted-foreground">
-                          {span.startDate} ~ {span.endDate} (
-                          {inclusiveDays(span.startDate, span.endDate)}일)
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
                 )}
               </div>
             )}

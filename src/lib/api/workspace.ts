@@ -56,15 +56,13 @@ export const applyPresetToProjectApi = (
     input,
   );
 
-/** 직접 만들기 — 기간을 stageCount개로 균등 분할한 단계와 함께 만든다 */
-export const createProjectWithEvenStagesApi = (input: {
+/** 직접 만들기 — 단계 날짜 구간 배열로 만든다 (구간은 겹쳐도 된다) */
+export const createProjectWithStagesApi = (input: {
   id: string;
   groupId?: string;
   name: string;
   color: string;
-  startDate: string;
-  endDate: string;
-  stageCount: number;
+  spans: { startDate: string; endDate: string }[];
 }) => api.post<{ ok: boolean }>("/api/admin/projects/even-stages", input);
 
 export const createStageApi = (input: {
