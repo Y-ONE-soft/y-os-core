@@ -25,6 +25,7 @@ import {
   type StageDates,
 } from "@/components/features/projects/roadmap-utils";
 import { RoadmapBar } from "@/components/features/projects/roadmap-bar";
+import { DeadlineFlag } from "@/components/features/projects/deadline-flag";
 import {
   RANGE_OPTIONS,
   boundsOfStages,
@@ -366,6 +367,15 @@ export function MyWorkTimelinePanel() {
                         label={`전체 ${percent}%`}
                       />
                     )}
+                    {/* 프로젝트 마감 = 가장 늦은 단계 종료일(marks의 끝). 항상 표시. */}
+                    {marks.length > 0 && (
+                      <DeadlineFlag
+                        timeline={timeline}
+                        date={marks[marks.length - 1]}
+                        color={project.color}
+                        title={`${project.name} 마감 ${marks[marks.length - 1]}`}
+                      />
+                    )}
                   </div>
                 </div>
                 {stages.map((stage) => {
@@ -415,6 +425,17 @@ export function MyWorkTimelinePanel() {
                               label={stage.name}
                             />
                           )}
+                          {/* 단계 마감 깃발 — '데드라인 표시'가 켜진 단계에만 세운다.
+                              종료일이 없으면 시작일을 마감으로 본다(막대가 하루짜리). */}
+                          {stage.showDeadline &&
+                            (stage.endDate ?? stage.startDate) && (
+                              <DeadlineFlag
+                                timeline={timeline}
+                                date={(stage.endDate ?? stage.startDate)!}
+                                color={stage.color}
+                                title={`${stage.name} 마감 ${stage.endDate ?? stage.startDate}`}
+                              />
+                            )}
                         </div>
                       </div>
                       {stage.tasks.map((task) => (
