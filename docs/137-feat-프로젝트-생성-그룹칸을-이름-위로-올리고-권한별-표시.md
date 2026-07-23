@@ -38,6 +38,12 @@ npm run build             # 성공 — Compiled successfully
 
 **미검증** — 화면 렌더(그룹 칸 순서, 스탭 비활성 표시, 마스터 설명)는 프리뷰에서 확인해야 한다. 이 다이얼로그는 세션·스토어 기반 클라이언트 컴포넌트라 SSR로는 안 보이고, 브라우저 자동화 도구가 없다.
 
+## 사후 검증 결과 (추록)
+
+- **PR**: [#125](https://github.com/Y-ONE-soft/y-os-core/pull/125)
+- **프리뷰 배포**: `● Ready` — https://y-os-core-5v8lklcg7-project-hosting-center.vercel.app
+- **PR 체크**: `Vercel` pass, `Vercel Preview Comments` pass
+
 ## 병렬 작업 메모
 
 착수 시점 main = `956f492`. `project-create-dialog.tsx`를 만지는 세션이 없음을 확인하고 진행했다. 문서 번호는 136까지 사용되어 137로 잡았다.
