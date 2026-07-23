@@ -41,7 +41,13 @@ export type CalOverlay =
       endsHere?: boolean;
     })
   // 할일 칩 — Task에 예정일이 생기면 이 종류로 만든다.
-  | (OverlayBase & { kind: "task"; taskId: string; done?: boolean });
+  // late = 마감일을 넘겨 자동 이월된 미완료 할일(예정일 > 마감일). 캘린더에서 강조한다.
+  | (OverlayBase & {
+      kind: "task";
+      taskId: string;
+      done?: boolean;
+      late?: boolean;
+    });
 
 export type PlacedOverlay = CalOverlay & { lane: number };
 

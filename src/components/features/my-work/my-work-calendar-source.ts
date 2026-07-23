@@ -110,6 +110,11 @@ function taskChip(
     color,
     label: task.name,
     done: task.done,
+    // 마감일보다 예정일이 뒤로 밀렸으면(자동 이월된 미완료 할일) 지연 표시 대상.
+    // 예정일 문자열이 마감일보다 크면 지났다는 뜻(YYYY-MM-DD는 사전순 = 날짜순).
+    late: Boolean(
+      !task.done && task.deadline && task.scheduledDate > task.deadline,
+    ),
   };
 }
 

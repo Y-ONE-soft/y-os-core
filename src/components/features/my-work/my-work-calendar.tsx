@@ -257,9 +257,13 @@ function OverlayItem({
   // 드래그와 클릭의 구분은 캘린더 루트의 moved 플래그가 처리한다.
   return (
     <div
+      title={overlay.late ? `${overlay.label} — 마감일이 지났습니다` : undefined}
       className={cn(
         "absolute flex items-center gap-1 overflow-hidden rounded-[4px] px-1",
         onDragStart && "cursor-grab active:cursor-grabbing",
+        // 마감일을 넘겨 오늘로 밀려온 미완료 할일 — 붉은 링·틴트로 구분한다.
+        // (late는 완료가 아닐 때만 세팅되므로 done 배경과 겹치지 않는다)
+        overlay.late && "bg-destructive/10 ring-1 ring-inset ring-destructive/60",
       )}
       style={{
         left: `calc(${left} + 4px)`,
