@@ -97,20 +97,12 @@ export async function createProjectFromPreset(
   });
 }
 
-/** 단계가 이미 있는 프로젝트에 프리셋을 적용하려 할 때 */
-export class ProjectNotEmptyError extends Error {
-  constructor() {
-    super("이미 단계가 있는 프로젝트에는 프리셋을 적용할 수 없습니다.");
-    this.name = "ProjectNotEmptyError";
-  }
-}
-
 /**
  * 이미 만들어진 프로젝트에 프리셋을 적용한다 (프로젝트 상세의 '프리셋 사용하기').
  *
- * **단계가 하나도 없는 프로젝트에만 허용한다.** 기존 단계에 이어붙이거나 덮어쓰는 것은
- * 어느 쪽이든 사용자가 만든 내용을 건드리게 되고, 화면도 단계가 있으면 버튼을
- * 비활성화하므로 서버는 같은 규칙을 최종 판정으로 다시 확인한다.
+ * **기존 단계·할일이 있으면 모두 지우고 프리셋으로 교체한다.** 이어붙이면 순서·날짜가
+ * 엉키므로 통째로 갈아끼운다. 되돌릴 수 없는 삭제이므로 화면에서 확인 다이얼로그를
+ * 거치게 하고(preset-apply-dialog), 서버는 그 결정을 신뢰해 바로 교체한다.
  *
  * 단계 생성 규칙(날짜 오프셋·order·할일 정렬 id)은 createProjectFromPreset과 동일하다.
  */
@@ -124,11 +116,11 @@ export async function applyPresetToProject(input: {
   const preset = await getPreset(input.ownerId, input.presetId);
 
   await db.$transaction(async (tx) => {
-    // 빈 프로젝트 판정을 트랜잭션 안에서 해야 동시 요청 두 건이 함께 통과하지 않는다
-    const existing = await tx.stage.count({
-      where: { projectId: input.projectId },
-    });
-    if (existing > 0) throw new ProjectNotEmptyError();
+    // 기존 구성을 전부 지운다. 단계에 속한 할일은 Stage cascade로 지워지지만,
+    // 백로그 할일(stageId = null)은 단계에 매이지 않아 별도로 지워야 완전 교체가 된다.
+    // 삭제·재생성을 한 트랜잭션에 묶어, 동시 요청이 섞여 중복이 남지 않게 한다.
+    await tx.task.deleteMany({ where: { projectId: input.projectId } });
+    await tx.stage.deleteMany({ where: { projectId: input.projectId } });
 
     // 담당자 기본값은 **프로젝트 소유자** 기준이다 — 여기서는 기존 프로젝트에
     // 적용하므로 요청자와 소유자가 다를 수 있다(마스터가 남의 프로젝트에 적용).
@@ -149,7 +141,7 @@ export async function applyPresetToProject(input: {
           color: stage.color,
           startDate: span.startDate,
           endDate: span.endDate,
-          // 빈 프로젝트에만 적용하므로 1..N을 그대로 매긴다 (@@unique([projectId, order]))
+          // 위에서 기존 단계를 모두 지웠으므로 1..N을 그대로 매긴다 (@@unique([projectId, order]))
           order: stageIndex + 1,
         },
       });

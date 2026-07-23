@@ -84,15 +84,11 @@ export function ProjectDetailPage({ projectId }: { projectId: string }) {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          {/* 단계가 있어도 허용 — 적용 시 기존 단계를 지우고 교체한다.
+              삭제 경고는 프리셋 적용 다이얼로그가 띄운다. */}
           <Button
             size="sm"
             variant="outline"
-            disabled={hasStages}
-            title={
-              hasStages
-                ? "이미 단계가 있어 프리셋을 적용할 수 없습니다"
-                : undefined
-            }
             onClick={() => setPresetApplyOpen(true)}
           >
             <SlidersHorizontal className="size-4" />

@@ -18,6 +18,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import * as cache from "@/components/features/projects/workspace-cache";
+import { useProjectBoard } from "@/components/features/projects/board-store";
 import { todayISO } from "@/components/features/projects/roadmap-utils";
 
 /**
@@ -37,6 +38,11 @@ export function PresetApplyDialog({
   const [baseDate, setBaseDate] = useState(todayISO);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 기존 단계가 있으면 적용이 삭제·교체가 되므로 경고를 띄운다.
+  const { stages } = useProjectBoard(projectId);
+  const existingStageCount = stages.length;
+  const willReplace = existingStageCount > 0;
 
   useEffect(() => {
     let alive = true;
@@ -81,6 +87,13 @@ export function PresetApplyDialog({
         </DialogHeader>
 
         <div className="flex flex-col gap-3">
+          {willReplace && (
+            <p className="rounded-[8px] border border-destructive/30 bg-destructive/10 p-3 text-[12px] leading-[17px] text-destructive">
+              이 프로젝트에는 이미 단계 {existingStageCount}개가 있습니다. 적용하면
+              기존 단계와 할일이 모두 삭제되고 프리셋으로 교체됩니다. 되돌릴 수
+              없습니다.
+            </p>
+          )}
           <div className="flex flex-col gap-1.5">
             <Label>프리셋</Label>
             {presets === null ? (
@@ -139,8 +152,12 @@ export function PresetApplyDialog({
           <Button variant="ghost" onClick={onClose}>
             취소
           </Button>
-          <Button disabled={!canSubmit} onClick={() => void submit()}>
-            {submitting ? "적용 중…" : "적용"}
+          <Button
+            variant={willReplace ? "destructive" : "default"}
+            disabled={!canSubmit}
+            onClick={() => void submit()}
+          >
+            {submitting ? "적용 중…" : willReplace ? "교체 적용" : "적용"}
           </Button>
         </DialogFooter>
       </DialogContent>
