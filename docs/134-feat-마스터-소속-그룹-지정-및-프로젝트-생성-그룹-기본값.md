@@ -60,6 +60,13 @@ npm run build             # 성공 — Compiled successfully
 
 **미검증** — 화면(내 정보 그룹 select, 프로젝트 생성 드롭다운 기본값)의 실제 렌더는 프리뷰에서 확인해야 한다. 프로젝트 생성 기본값은 클라이언트 상태(`user.groupId`) 초기화라 코드로만 확인했고, 브라우저 자동화 도구가 없다.
 
+## 사후 검증 결과 (추록)
+
+- **PR**: [#120](https://github.com/Y-ONE-soft/y-os-core/pull/120)
+- **프리뷰 배포**: `● Ready` — https://y-os-core-bpwap8cte-project-hosting-center.vercel.app
+- **PR 체크**: `Vercel` pass, `Vercel Preview Comments` pass
+- 사용자가 프리뷰를 확인한 뒤 반영 승인
+
 ## 병렬 작업 메모
 
 착수 시점 main = `bdede3c`. `me/`·`auth/`·`project-create-dialog.tsx`를 만지는 세션이 없음을 확인하고 진행했다. 스키마 변경은 없다(`User.groupId`는 이미 존재). 문서 번호는 133까지 사용되어 134로 잡았다.
