@@ -213,16 +213,29 @@ export const boardActions = {
   },
   addTask(projectId: string, stageId: string, name: string) {
     const id = `tk-${crypto.randomUUID()}`;
+    // 단계에 속해 생기는 할일은 그 단계 시작일을 예정일(=마감일)로 갖는다.
+    const stage = cache
+      .getSnapshot()
+      .boards[projectId]?.stages.find((item) => item.id === stageId);
+    const scheduledDate = scheduleFor(stage?.startDate);
     updateBoard(projectId, (board) => ({
       ...board,
-      stages: board.stages.map((stage) =>
-        stage.id === stageId
-          ? { ...stage, tasks: [...stage.tasks, { id, name, done: false }] }
-          : stage,
+      stages: board.stages.map((item) =>
+        item.id === stageId
+          ? {
+              ...item,
+              tasks: [
+                ...item.tasks,
+                { id, name, done: false, scheduledDate, deadline: scheduledDate },
+              ],
+            }
+          : item,
       ),
     }));
     // 담당자 기본값은 서버가 채운다 — 응답 후 서버 값으로 맞춘다
-    cache.persistAndSync(createTaskApi({ id, projectId, stageId, name }));
+    cache.persistAndSync(
+      createTaskApi({ id, projectId, stageId, name, scheduledDate }),
+    );
   },
   addBacklogTask(projectId: string, name: string) {
     const id = `tk-${crypto.randomUUID()}`;
@@ -303,7 +316,13 @@ export const boardActions = {
       toStageId === null
         ? (scheduledDateOverride ?? null)
         : (scheduledDateOverride ?? scheduleFor(toStage?.startDate));
-    const moved: BoardTask = { ...task, scheduledDate: scheduledDate ?? undefined };
+    // 예정일을 새로 잡으면 마감일도 그 값(재계획) — 서버 withDeadline과 같은 규칙을
+    // 낙관적 캐시에도 반영해, 편입 직후 상세에서 마감·미뤄짐이 바로 맞게 보이도록.
+    const moved: BoardTask = {
+      ...task,
+      scheduledDate: scheduledDate ?? undefined,
+      deadline: scheduledDate ?? undefined,
+    };
 
     // 대상 위치에 추가
     if (toProjectId === null) {

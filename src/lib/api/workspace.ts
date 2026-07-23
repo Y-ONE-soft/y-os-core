@@ -103,6 +103,8 @@ export const createTaskApi = (input: {
   name: string;
   /** null = 미배정 */
   assigneeId?: string | null;
+  /** 단계에 속해 생성될 때의 예정일(YYYY-MM-DD) — 없으면 일정 미정 */
+  scheduledDate?: string;
 }) => api.post<{ ok: boolean }>("/api/admin/tasks", input);
 
 export const patchTaskApi = (taskId: string, patch: Record<string, unknown>) =>
