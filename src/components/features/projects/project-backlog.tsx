@@ -23,7 +23,11 @@ import {
   useProjectBoard,
 } from "@/components/features/projects/board-store";
 import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
-import { setTaskDragData } from "@/components/features/projects/task-drag";
+import {
+  getTaskDragData,
+  isTaskDrag,
+  setTaskDragData,
+} from "@/components/features/projects/task-drag";
 
 // 내 할일 백로그와 같은 티켓 형태(할일명 클릭 → 상세, 소속 배지 드롭다운).
 // 다만 이 화면은 프로젝트 스코프가 이미 정해져 있으므로 프로젝트는 바꾸지 않고
@@ -31,9 +35,36 @@ import { setTaskDragData } from "@/components/features/projects/task-drag";
 export function ProjectBacklog({ projectId }: { projectId: string }) {
   const { backlog, stages } = useProjectBoard(projectId);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+  // 보드(단계) 카드를 끌어와 놓으면 백로그로 되돌린다 — 놓일 자리를 하이라이트한다
+  const [dropActive, setDropActive] = useState(false);
 
   return (
-    <aside className="flex w-[300px] shrink-0 flex-col gap-2 rounded-[8px] border bg-background p-3.5 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.05)]">
+    <aside
+      onDragOver={(event) => {
+        // 백로그 카드끼리의 드래그도 걸리지만, 같은 자리 드롭은 assignTask가 걸러낸다
+        if (!isTaskDrag(event)) return;
+        event.preventDefault(); // 기본값은 '드롭 금지'라 막아줘야 놓을 수 있다
+        event.dataTransfer.dropEffect = "move";
+        setDropActive(true);
+      }}
+      onDragLeave={(event) => {
+        // 자식 위로 옮겨갈 때도 leave가 뜨므로 영역 밖으로 나갔을 때만 끈다
+        if (event.currentTarget.contains(event.relatedTarget as Node)) return;
+        setDropActive(false);
+      }}
+      onDrop={(event) => {
+        const taskId = getTaskDragData(event);
+        setDropActive(false);
+        if (!taskId) return;
+        event.preventDefault();
+        // 단계 → 백로그(단계 null). 예정일은 assignTask가 일정 미정으로 되돌린다.
+        boardActions.assignTask(projectId, taskId, projectId, null);
+      }}
+      className={cn(
+        "flex w-[300px] shrink-0 flex-col gap-2 rounded-[8px] border bg-background p-3.5 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.05)] transition-shadow",
+        dropActive && "ring-2 ring-primary ring-offset-1",
+      )}
+    >
       <div className="flex items-center gap-1.5">
         <h2 className="text-[13.5px] font-semibold">백로그</h2>
         <span className="text-xs font-medium text-muted-foreground">
