@@ -387,30 +387,51 @@ export function ProjectsNav() {
                       <span className="min-w-0 flex-1 truncate text-left text-[13px] font-semibold text-foreground">
                         {group.name}
                       </span>
-                      <span className="text-xs font-medium text-muted-foreground">
+                      {/* 개수는 호버 시 사라져 ⋮ 자리를 내준다 (프로젝트 행은 개수가 없어 불필요) */}
+                      <span className="text-xs font-medium text-muted-foreground transition-opacity group-hover:opacity-0">
                         {group.projects.length}
                       </span>
                     </button>
                   );
                   return (
                     <li key={group.id}>
-                      {isMaster ? (
-                        <ContextMenu>
-                          <ContextMenuTrigger asChild>
-                            {groupRow}
-                          </ContextMenuTrigger>
-                          <ContextMenuContent className="w-44">
-                            <ContextMenuItem
-                              variant="destructive"
-                              onSelect={() => deleteGroup(group.id)}
-                            >
-                              그룹 삭제
-                            </ContextMenuItem>
-                          </ContextMenuContent>
-                        </ContextMenu>
-                      ) : (
-                        groupRow
-                      )}
+                      {/* 헤더만 group 래퍼로 감싼다 — li 전체를 잡으면 하위 프로젝트에
+                          올려도 그룹 ⋮가 떠서, 호버 대상을 헤더 행으로 한정한다.
+                          프로젝트 행의 group과는 별개 서브트리라 서로 간섭하지 않는다. */}
+                      <div className="group relative flex items-center">
+                        {isMaster ? (
+                          <ContextMenu>
+                            <ContextMenuTrigger asChild>
+                              {groupRow}
+                            </ContextMenuTrigger>
+                            <ContextMenuContent className="w-44">
+                              <ContextMenuItem
+                                variant="destructive"
+                                onSelect={() => deleteGroup(group.id)}
+                              >
+                                그룹 삭제
+                              </ContextMenuItem>
+                            </ContextMenuContent>
+                          </ContextMenu>
+                        ) : (
+                          groupRow
+                        )}
+                        {/* groupRow(button) 안에는 넣을 수 없다 — 버튼 중첩이자
+                            누르면 접기/펴기가 실행된다. 삭제는 마스터만. */}
+                        {isMaster && (
+                          <RowActions
+                            label={group.name}
+                            className="absolute right-1.5"
+                            actions={[
+                              {
+                                label: "그룹 삭제",
+                                destructive: true,
+                                onSelect: () => deleteGroup(group.id),
+                              },
+                            ]}
+                          />
+                        )}
+                      </div>
                       {expanded && (
                         <ul className="flex flex-col gap-0.5 pt-0.5">
                           {group.projects.map((project) => {
