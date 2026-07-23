@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import { CollaboratorRequestDialog } from "@/components/features/projects/collab
 import { OverlayBreadcrumb } from "@/components/features/projects/overlay-breadcrumb";
 import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
 import { useProjectStore } from "@/components/features/projects/project-store";
+import { refresh as refreshWorkspace } from "@/components/features/projects/workspace-cache";
 import {
   requestActions,
   usePendingRequestsFor,
@@ -68,6 +69,13 @@ export function StageDetailOverlay({
   const [comment, setComment] = useState("");
   // 단계에 딸린 할일 목록에서 특정 할일을 눌러 상세를 겹쳐 여는 상태
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+
+  // 공동 작업자(collaborators)는 수락된 지정 요청에서 서버가 계산해 워크스페이스에
+  // 실어 준다 — 요청 도메인과 별도 스냅샷이라, 다른 사람이 수락해도 이 화면은
+  // 리로드 전엔 안 바뀐다. 단계 상세를 열 때 워크스페이스를 다시 받아 최신화한다.
+  useEffect(() => {
+    if (stageId !== null) void refreshWorkspace();
+  }, [stageId]);
 
   if (!stage) return null;
 
