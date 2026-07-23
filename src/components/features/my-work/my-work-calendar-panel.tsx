@@ -325,6 +325,9 @@ export function MyWorkCalendarPanel() {
         onToggleTask={handleToggleTask}
         onDrag={handleDrag}
         onDropTask={handleDropTask}
+        onAddTask={(projectId, date, name) =>
+          boardActions.addScheduledTask(projectId, name, date, user?.id)
+        }
       />
       {detailStage && (
         <StageDetailOverlay
