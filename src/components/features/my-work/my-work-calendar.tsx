@@ -14,7 +14,10 @@ import {
   getTaskDragData,
   isTaskDrag,
 } from "@/components/features/projects/task-drag";
-import type { CalendarProject } from "@/components/features/my-work/my-work-calendar-source";
+import {
+  UNASSIGNED_BOX,
+  type CalendarProject,
+} from "@/components/features/my-work/my-work-calendar-source";
 import {
   type PlacedOverlay,
   type ProjectBox,
@@ -26,8 +29,13 @@ const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"] as const;
 const DATE_ROW_PX = 24; // 날짜 숫자 영역
 const LANE_PX = 28; // 스팬 레인 1단 높이
 // 주 행 최소 높이 — 내용이 없어도 이 높이는 확보해 날짜 칸이 찌그러지지 않게 한다.
-// 날짜 숫자(24) + 할일 두 줄 남짓 여유. 화면이 낮으면 이 높이가 유지되고 캘린더가 스크롤한다.
-const WEEK_MIN_PX = 104;
+// 날짜 숫자(24) + 여유 레인. 화면이 낮으면 이 높이가 유지되고 캘린더가 스크롤한다.
+// 날짜 클릭으로 할일을 추가하려면 칸 아래에 눌러서 새 할일을 놓을 빈 공간이 필요하므로
+// 예전(104)보다 키워, 박스가 없는 날도 넉넉한 클릭 영역을 갖게 한다.
+const WEEK_MIN_PX = 140;
+// 콘텐츠(박스·칩) 아래에 항상 남겨 두는 빈 레인 수. 박스가 칸을 꽉 채워도 그 아래로
+// 이만큼은 "프로젝트 없음" 할일을 놓을 수 있는 빈 공간이 남는다.
+const WEEK_PAD_LANES = 1;
 const STAGE_PX = 22; // 단계 막대 높이 — 겹쳐도 집어낼 수 있게 두껍게
 const TASK_PX = 20; // 할일 칩 높이
 
@@ -70,32 +78,27 @@ function shade(hex: string, factor: number) {
   return `#${hex2(channel(1))}${hex2(channel(3))}${hex2(channel(5))}`;
 }
 
-/** 프로젝트 박스 — 그 프로젝트의 단계 줄과 할일 줄을 함께 감싼다. 박스를 누르면 상세로. */
+/** 프로젝트 박스 — 그 프로젝트의 단계 줄과 할일 줄을 함께 감싼다. 이름 라벨을 누르면 상세로. */
 function ProjectBoxItem({
   box,
   project,
-  draggingBacklog,
 }: {
   box: ProjectBox;
   project: CalendarProject | undefined;
-  /** 백로그 할일을 드래그하는 동안엔 박스를 투명하게 만들어 아래 날짜 칸의 드롭을 막지 않는다 */
-  draggingBacklog: boolean;
 }) {
   const color = project?.color ?? "#71717a";
+  // 미배정("__unassigned__") 묶음은 실제 프로젝트가 아니라 상세 링크를 걸지 않는다.
+  const isProject = box.project !== UNASSIGNED_BOX;
 
   return (
-    <Link
-      href={`/projects/${box.project}`}
-      title={project ? `${project.name} 상세 열기` : undefined}
-      // a 기본 드래그를 끈다 — 박스를 잡아끌면 링크 이미지 드래그가 시작돼 거슬린다
-      draggable={false}
+    <div
+      // 박스는 색 밴드(시각)만 담당하고 클릭은 받지 않는다(pointer-events-none):
+      //  - 본문을 누르면 아래 날짜 칸으로 클릭이 통과해 "이 프로젝트에 할일 추가"가 된다
+      //    (소속 판정은 주 행 클릭 핸들러가 열·레인으로 한다).
+      //  - HTML5 드롭도 박스에 막히지 않고 날짜 칸이 그대로 받는다.
+      // 상세로 가는 링크는 아래 이름 라벨(pointer-events-auto)에만 둔다.
       className={cn(
-        "absolute block border transition-colors",
-        // 박스 위에 겹쳐 그려지는 단계 막대·할일 칩은 DOM상 뒤 형제라 위에 쌓인다.
-        // 따라서 그 위를 누르면 그것들이 클릭을 받고, 박스의 빈 영역만 이 링크가 받는다.
-        // 단, HTML5 드롭은 pointer-events가 auto인 최상위 요소가 가로채므로, 백로그를
-        // 끄는 동안에는 박스를 pointer-events-none으로 돌려 아래 날짜 칸이 드롭을 받게 한다.
-        draggingBacklog ? "pointer-events-none" : "pointer-events-auto hover:brightness-95",
+        "pointer-events-none absolute block border",
         // 주 경계에서 잘린 면은 열어 둬야 다음 주로 이어진 한 범위로 읽힌다
         box.continuesLeft ? "border-l-0" : "rounded-l-[2px]",
         box.continuesRight ? "border-r-0" : "rounded-r-[2px]",
@@ -104,25 +107,86 @@ function ProjectBoxItem({
         left: colLeft(box.col),
         width: colWidth(box.span),
         // 레인 블록에서 아래쪽 간격만큼을 덜어내 다음 박스와 붙지 않게 한다.
-        // (예전에는 높이가 레인 블록보다 커서 아래 박스와 4px 겹쳤다)
         top: laneTop(box.lane) - BOX_PAD_PX,
         height: box.lanes * LANE_PX - BOX_GAP_PX,
         backgroundColor: hexToRgba(color, 0.07),
         borderColor: hexToRgba(color, 0.3),
       }}
     >
-      {/* 프로젝트 이름은 범위가 시작하는 주에만 — 주마다 반복하지 않는다 */}
-      {!box.continuesLeft && project && (
-        <span
-          className="absolute right-1 top-0.5 max-w-[45%] truncate text-[9px] font-medium"
-          style={{ color: hexToRgba(color, 0.75) }}
-        >
-          {project.name}
-        </span>
-      )}
-      {/* 할일이 늘어도 박스는 한 덩어리로 둔다 — 줄 구분선을 그으면 프로젝트가
-          여러 개로 쪼개진 것처럼 읽힌다 */}
-    </Link>
+      {/* 프로젝트 이름은 범위가 시작하는 주에만 — 주마다 반복하지 않는다.
+          라벨만 클릭을 받아(pointer-events-auto) 상세로 이동한다. */}
+      {!box.continuesLeft &&
+        project &&
+        (isProject ? (
+          <Link
+            href={`/projects/${box.project}`}
+            title={`${project.name} 상세 열기`}
+            // a 기본 드래그를 끈다 — 잡아끌면 링크 이미지 드래그가 시작돼 거슬린다
+            draggable={false}
+            className="pointer-events-auto absolute right-1 top-0.5 max-w-[45%] truncate text-[9px] font-medium hover:underline"
+            style={{ color: hexToRgba(color, 0.75) }}
+          >
+            {project.name}
+          </Link>
+        ) : (
+          <span
+            className="absolute right-1 top-0.5 max-w-[45%] truncate text-[9px] font-medium"
+            style={{ color: hexToRgba(color, 0.75) }}
+          >
+            {project.name}
+          </span>
+        ))}
+    </div>
+  );
+}
+
+/** 날짜 칸을 눌렀을 때 뜨는 인라인 입력창 — Enter로 추가, Esc·포커스 이탈로 취소. */
+function AddTaskInput({
+  color,
+  projectName,
+  style,
+  onSubmit,
+  onCancel,
+}: {
+  color: string;
+  /** 붙을 프로젝트 이름 — 없으면(미배정) 플레이스홀더가 "프로젝트 없음" */
+  projectName: string | null;
+  style: React.CSSProperties;
+  onSubmit: (name: string) => void;
+  onCancel: () => void;
+}) {
+  const [value, setValue] = useState("");
+  return (
+    <div
+      // 이 위 클릭이 주 행의 추가 핸들러로 다시 흘러가 입력창이 재생성되지 않게 막는다
+      data-add-input
+      onClick={(event) => event.stopPropagation()}
+      className="absolute z-30 flex items-center gap-1 rounded-[4px] border bg-popover px-1.5 py-1 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.12)]"
+      style={style}
+    >
+      <span
+        aria-hidden
+        className="size-[8px] shrink-0 rounded-full"
+        style={{ backgroundColor: color }}
+      />
+      <input
+        autoFocus
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            const name = value.trim();
+            if (name) onSubmit(name);
+          } else if (event.key === "Escape") {
+            onCancel();
+          }
+        }}
+        // 다른 곳을 누르면 취소 — Enter로 추가하면 그 전에 언마운트되므로 blur가 안 겹친다
+        onBlur={onCancel}
+        placeholder={projectName ? `${projectName}에 추가` : "프로젝트 없음"}
+        className="w-full min-w-0 bg-transparent text-[11px] outline-none placeholder:text-muted-foreground"
+      />
+    </div>
   );
 }
 
@@ -342,6 +406,7 @@ export function MyWorkCalendar({
   onToggleTask,
   onDrag,
   onDropTask,
+  onAddTask,
 }: {
   grid: MonthGrid;
   layouts: WeekLayout[];
@@ -358,14 +423,20 @@ export function MyWorkCalendar({
   ) => void;
   /** 백로그에서 끌어온 할일을 날짜 칸에 떨어뜨렸을 때 (HTML5 DnD) */
   onDropTask?: (taskId: string, date: string) => void;
+  /** 빈 날짜 칸을 눌러 할일을 새로 만들 때. projectId=null이면 프로젝트 없음(미배정) */
+  onAddTask?: (projectId: string | null, date: string, name: string) => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   // 백로그에서 끌어온 할일이 놓일 날짜 칸 — 어디에 떨어지는지 보이게 한다
   const [dropDate, setDropDate] = useState<string | null>(null);
-  // 백로그 드래그가 캘린더 위에 있는 동안 true. 프로젝트 박스를 pointer-events-none으로
-  // 돌려, 박스가 덮은 날짜 칸에도 백로그를 떨어뜨릴 수 있게 한다(박스는 클릭 대상이라
-  // 평소 pointer-events-auto이고, 그대로 두면 HTML5 드롭을 가로챈다).
-  const [draggingBacklog, setDraggingBacklog] = useState(false);
+  // 날짜 칸을 눌러 할일을 추가하는 중일 때, 입력창을 띄울 위치와 판정된 소속.
+  const [adding, setAdding] = useState<{
+    week: number;
+    col: number;
+    lane: number;
+    date: string;
+    projectId: string | null;
+  } | null>(null);
   const weekRefs = useRef<(HTMLDivElement | null)[]>([]);
   // 주 경계로 잘린 단계 조각을 하나로 묶어 강조한다 (CSS :hover는 조각 단위)
   const [hoveredStageId, setHoveredStageId] = useState<string | null>(null);
@@ -452,6 +523,44 @@ export function MyWorkCalendar({
     onDrag(drag.target, delta, delta === 0 ? "cancel" : "commit");
   }
 
+  /**
+   * 빈 칸을 눌러 그 날짜에 할일을 추가한다. 클릭 지점의 열=날짜, 레인=세로위치로
+   * 프로젝트 박스를 찾아 소속을 정한다 — 박스 안이면 그 프로젝트, 밖이면 프로젝트 없음.
+   */
+  function handleAddClick(week: number, event: React.MouseEvent) {
+    if (!onAddTask) return; // 읽기 전용(작업 현황)에서는 추가하지 않는다
+    const target = event.target as HTMLElement;
+    // 막대·칩·링크·입력창 등 실제 컨트롤 위 클릭은 그쪽이 처리한다
+    if (target.closest("button, a, input, [data-add-input]")) return;
+    const rect = weekRefs.current[week]?.getBoundingClientRect();
+    if (!rect) return;
+    const col = Math.min(
+      6,
+      Math.max(0, Math.floor(((event.clientX - rect.left) / rect.width) * 7)),
+    );
+    // 달 밖(회색) 칸에는 추가하지 않는다 — 날짜 숫자가 없어 혼란스럽다
+    if (grid.weeks[week]?.[col] == null) return;
+    const y = event.clientY - rect.top;
+    // 날짜 숫자 영역(맨 위)은 어떤 박스도 덮지 않는다 → lane<0 = 소속 없음(미배정)
+    const lane = y < DATE_ROW_PX ? -1 : Math.floor((y - DATE_ROW_PX) / LANE_PX);
+    const box = layouts[week].boxes.find(
+      (item) =>
+        col >= item.col &&
+        col < item.col + item.span &&
+        lane >= item.lane &&
+        lane < item.lane + item.lanes,
+    );
+    const projectId =
+      !box || box.project === UNASSIGNED_BOX ? null : box.project;
+    setAdding({
+      week,
+      col,
+      lane: Math.max(0, lane),
+      date: shiftISO(grid.gridStart, week * 7 + col),
+      projectId,
+    });
+  }
+
   return (
     <div
       ref={rootRef}
@@ -463,16 +572,10 @@ export function MyWorkCalendar({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
-      // 백로그 드래그 감지 — 박스가 auto인 첫 순간에도 잡도록 캡처 단계에서 켠다.
-      // 끄는 신호는 드롭(성공)과 캘린더 밖 이탈(취소) 둘 다 — dragend는 드래그 소스
-      // 요소에서 발생해 여기로 오지 않으므로 의존하지 않는다.
-      onDragOverCapture={(event) => {
-        if (isTaskDrag(event) && !draggingBacklog) setDraggingBacklog(true);
-      }}
-      onDropCapture={() => setDraggingBacklog(false)}
+      // 프로젝트 박스가 pointer-events-none이라 박스가 덮은 날짜 칸도 드롭을 그대로
+      // 받는다. 캘린더 밖으로 나가면 드롭 표시만 지운다.
       onDragLeave={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node)) {
-          setDraggingBacklog(false);
           setDropDate(null);
         }
       }}
@@ -500,9 +603,11 @@ export function MyWorkCalendar({
         // 주 행은 flex-1이라, 화면이 낮으면 캘린더 공간을 균등 분할해 각 칸이
         // 납작해진다(빈 달은 59px까지 찌그러져 날짜·할일이 안 보였다). 내용 유무와
         // 무관하게 최소 높이를 보장해 압축을 막고, 6주가 넘치면 캘린더가 스크롤한다.
+        // 콘텐츠 아래에 WEEK_PAD_LANES만큼 빈 레인을 더해, 박스가 채워진 주에도
+        // 날짜 클릭으로 할일을 놓을 빈 공간이 남게 한다.
         const minHeight = Math.max(
           WEEK_MIN_PX,
-          DATE_ROW_PX + laneCount * LANE_PX + 8,
+          DATE_ROW_PX + (laneCount + WEEK_PAD_LANES) * LANE_PX + 8,
         );
         return (
           <div
@@ -510,6 +615,7 @@ export function MyWorkCalendar({
             ref={(node) => {
               weekRefs.current[weekIndex] = node;
             }}
+            onClick={(event) => handleAddClick(weekIndex, event)}
             className="relative flex w-full flex-1"
             style={{ minHeight }}
           >
@@ -543,6 +649,8 @@ export function MyWorkCalendar({
                 className={cn(
                   "flex-1 border-b px-2 pb-1 pt-1.5",
                   dayIndex < 6 && "border-r",
+                  // 달 안 칸은 눌러서 할일을 추가할 수 있다는 힌트
+                  onAddTask && date !== null && "cursor-pointer",
                   date === null && "bg-muted",
                   date !== null && date === grid.todayDate && "bg-accent",
                   dropDate === cellDate && "bg-primary/10 ring-1 ring-inset ring-primary",
@@ -566,7 +674,6 @@ export function MyWorkCalendar({
                 key={box.project}
                 box={box}
                 project={projects[box.project]}
-                draggingBacklog={draggingBacklog}
               />
             ))}
             {overlays.map((overlay) => (
@@ -582,6 +689,31 @@ export function MyWorkCalendar({
                 onDragStart={onDrag ? handleDragStart : undefined}
               />
             ))}
+            {adding?.week === weekIndex && onAddTask && (
+              <AddTaskInput
+                color={
+                  adding.projectId
+                    ? (projects[adding.projectId]?.color ?? "#71717a")
+                    : "#71717a"
+                }
+                projectName={
+                  adding.projectId
+                    ? (projects[adding.projectId]?.name ?? null)
+                    : null
+                }
+                style={{
+                  left: colLeft(adding.col),
+                  top: laneTop(adding.lane),
+                  // 오른쪽으로 넘치지 않게 최대 3칸까지만 넓힌다
+                  width: colWidth(Math.min(3, 7 - adding.col)),
+                }}
+                onSubmit={(name) => {
+                  onAddTask(adding.projectId, adding.date, name);
+                  setAdding(null);
+                }}
+                onCancel={() => setAdding(null)}
+              />
+            )}
           </div>
         );
       })}

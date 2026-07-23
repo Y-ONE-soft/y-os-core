@@ -259,6 +259,44 @@ export const boardActions = {
     );
   },
   /**
+   * 예정일이 잡힌 할일을 만든다 — 캘린더에서 날짜 칸을 눌러 추가하는 경로.
+   * projectId=null이면 미배정, 값이 있으면 그 프로젝트의 백로그(단계 없음)로 넣는다.
+   * 어느 쪽이든 예정일이 있어 캘린더의 그 날짜 칸에 바로 칩으로 뜬다.
+   * assigneeId=만든 사람 — addUnassignedTask와 같은 이유로 낙관적 항목에 미리 박는다.
+   */
+  addScheduledTask(
+    projectId: string | null,
+    name: string,
+    scheduledDate: string,
+    assigneeId?: string,
+  ) {
+    const id = `tk-${crypto.randomUUID()}`;
+    // 새로 잡은 예정일이 곧 마감일 — 서버 withDeadline 규칙을 낙관적 캐시에도 맞춘다.
+    const task: BoardTask = {
+      id,
+      name,
+      done: false,
+      scheduledDate,
+      deadline: scheduledDate,
+      assigneeId,
+    };
+    if (projectId === null) {
+      cache.apply((prev) => ({
+        ...prev,
+        unassigned: [...prev.unassigned, task],
+      }));
+    } else {
+      updateBoard(projectId, (board) => ({
+        ...board,
+        backlog: [...board.backlog, task],
+      }));
+    }
+    // 담당자 기본값은 서버가 채운다 — 응답 후 서버 값으로 맞춘다
+    cache.persistAndSync(
+      createTaskApi({ id, projectId, stageId: null, name, scheduledDate }),
+    );
+  },
+  /**
    * 할일의 소속(프로젝트·단계)을 한 번에 지정한다. 프로젝트 `null`은 미배정,
    * 단계 `null`은 백로그를 뜻하며 단계 이동·프로젝트 이동·미배정 전환을 모두 다룬다.
    */
