@@ -40,7 +40,6 @@ export function ProjectBoard({
   onOpenStage: (stageId: string) => void;
 }) {
   const { stages } = useProjectBoard(projectId);
-  const [addingStageId, setAddingStageId] = useState<string | null>(null);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   // 드롭 대상으로 잡힌 컬럼 — 어디에 놓이는지 보이게 하이라이트한다
   const [dropStageId, setDropStageId] = useState<string | null>(null);
@@ -257,48 +256,31 @@ export function ProjectBoard({
                   </ContextMenuContent>
                 </ContextMenu>
               ))}
-              {addingStageId === stage.id ? (
-                <div
-                  data-column-child
-                  onClick={(event) => event.stopPropagation()}
-                  className="flex w-full shrink-0 items-center gap-2 rounded-[8px] border-[1.5px] border-primary bg-background px-2.5 py-2 shadow-xs"
-                >
-                  <input
-                    autoFocus
-                    placeholder="할일명 입력 후 Enter"
-                    aria-label={`${stage.name} 할일 추가`}
-                    className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        const name = event.currentTarget.value.trim();
-                        if (name)
-                          boardActions.addTask(projectId, stage.id, name);
-                        setAddingStageId(null);
+              {/* 버튼을 눌러 여는 대신 항상 보이는 입력 — 바로 쳐서 Enter로 추가한다.
+                  컬럼 전체가 클릭 대상(단계 상세 열기)이라 입력 클릭은 stopPropagation 한다. */}
+              <div
+                data-column-child
+                onClick={(event) => event.stopPropagation()}
+                className="flex w-full shrink-0 items-center gap-2 rounded-[8px] bg-background/60 px-2.5 py-[5px] focus-within:ring-1 focus-within:ring-primary"
+              >
+                <input
+                  placeholder="＋ 할일 이름 입력 후 Enter"
+                  aria-label={`${stage.name} 할일 추가`}
+                  className="min-w-0 flex-1 bg-transparent text-xs text-foreground outline-none placeholder:text-muted-foreground"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      const name = event.currentTarget.value.trim();
+                      if (name) {
+                        boardActions.addTask(projectId, stage.id, name);
+                        event.currentTarget.value = "";
                       }
-                      if (event.key === "Escape") setAddingStageId(null);
-                    }}
-                    onBlur={() => setAddingStageId(null)}
-                  />
-                  <span
-                    aria-hidden
-                    className="text-[11px] text-muted-foreground"
-                  >
-                    ↵
-                  </span>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  data-column-child
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    setAddingStageId(stage.id);
+                    }
                   }}
-                  className="flex w-full shrink-0 items-center rounded-[8px] py-[5px] pl-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-background/60 hover:text-foreground"
-                >
-                  ＋ 할일
-                </button>
-              )}
+                />
+                <span aria-hidden className="text-[11px] text-muted-foreground">
+                  ↵
+                </span>
+              </div>
             </div>
           </section>
         );

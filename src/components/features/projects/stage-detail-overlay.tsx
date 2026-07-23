@@ -21,6 +21,7 @@ import {
 import { AssigneeList } from "@/components/features/projects/assignee-list";
 import { CollaboratorRequestDialog } from "@/components/features/projects/collaborator-request-dialog";
 import { OverlayBreadcrumb } from "@/components/features/projects/overlay-breadcrumb";
+import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
 import { useProjectStore } from "@/components/features/projects/project-store";
 import {
   requestActions,
@@ -65,6 +66,8 @@ export function StageDetailOverlay({
   const pendingRequests = usePendingRequestsFor({ stageId });
   const [collabOpen, setCollabOpen] = useState(false);
   const [comment, setComment] = useState("");
+  // 단계에 딸린 할일 목록에서 특정 할일을 눌러 상세를 겹쳐 여는 상태
+  const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
 
   if (!stage) return null;
 
@@ -73,6 +76,7 @@ export function StageDetailOverlay({
 
   const comments = stage.comments ?? [];
   const collaboratorCount = stage.requestedCollaborators?.length ?? 0;
+  const doneCount = stage.tasks.filter((task) => task.done).length;
 
   const submitComment = () => {
     const text = comment.trim();
@@ -152,6 +156,67 @@ export function StageDetailOverlay({
                 placeholder="작업 내용, 요구사항, 진행 메모 등을 자세히 작성하세요…"
                 className="min-h-[160px] rounded-[8px] px-3 py-3"
               />
+            </section>
+            <section className="flex shrink-0 flex-col gap-2">
+              <h3 className="text-sm font-semibold">
+                할일&nbsp;&nbsp;·&nbsp;&nbsp;{doneCount}/{stage.tasks.length}
+              </h3>
+              {stage.tasks.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  이 단계에 할일이 없습니다.
+                </p>
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {stage.tasks.map((task) => (
+                    <li key={task.id}>
+                      <div className="flex items-center gap-2.5 rounded-[8px] border bg-background px-3 py-2 transition-colors hover:bg-accent/40">
+                        <Checkbox
+                          checked={task.done}
+                          onCheckedChange={() =>
+                            boardActions.toggleTask(projectId, stage.id, task.id)
+                          }
+                          aria-label={`${task.name} 완료`}
+                          className="size-4 rounded-[4px] border-primary"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setDetailTaskId(task.id)}
+                          className="min-w-0 flex-1 truncate text-left text-[13px] font-medium"
+                        >
+                          <span
+                            className={cn(
+                              task.done && "text-muted-foreground line-through",
+                            )}
+                          >
+                            {task.name}
+                          </span>
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {/* 버튼을 눌러 입력을 여는 대신, 항상 보이는 입력에 바로 쳐서 Enter로 추가한다
+                  (내 할일 백로그와 같은 방식). 추가 후 입력을 비워 연속 입력이 편하다. */}
+              <div className="flex h-9 w-full items-center gap-1.5 rounded-[8px] border bg-background px-2.5 focus-within:border-primary">
+                <input
+                  placeholder="＋ 할일 이름 입력 후 Enter"
+                  aria-label="할일 추가"
+                  className="min-w-0 flex-1 bg-transparent text-[13px] outline-none placeholder:text-muted-foreground"
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      const name = event.currentTarget.value.trim();
+                      if (name) {
+                        boardActions.addTask(projectId, stage.id, name);
+                        event.currentTarget.value = "";
+                      }
+                    }
+                  }}
+                />
+                <span aria-hidden className="text-[11px] text-muted-foreground">
+                  ↵
+                </span>
+              </div>
             </section>
             <section className="flex shrink-0 flex-col gap-2.5">
               <h3 className="text-sm font-semibold">
@@ -348,6 +413,11 @@ export function StageDetailOverlay({
             </div>
           </aside>
         </div>
+        {/* 할일 목록에서 연 할일 상세 — 단계 상세 위에 겹쳐 뜬다 (닫으면 단계 상세로 복귀) */}
+        <TaskDetailOverlay
+          taskId={detailTaskId}
+          onClose={() => setDetailTaskId(null)}
+        />
         {collabOpen && (
           <CollaboratorRequestDialog
             open={collabOpen}
