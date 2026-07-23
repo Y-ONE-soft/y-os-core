@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { useTypeToFocus } from "@/hooks/use-type-to-focus";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   ContextMenu,
@@ -42,6 +43,9 @@ export function MyWorkBacklog() {
   const boards = useBoardState();
   const unassigned = useUnassignedTasks();
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+  // 화면 어디서든 타이핑하면 이 입력으로 캡처한다
+  const addInputRef = useRef<HTMLInputElement>(null);
+  useTypeToFocus(addInputRef);
 
   const projects = groups.flatMap((group) => group.projects);
   const items = [
@@ -61,6 +65,7 @@ export function MyWorkBacklog() {
       </div>
       <div className="flex h-8 shrink-0 items-center rounded-[8px] bg-muted px-2.5 focus-within:ring-1 focus-within:ring-primary">
         <input
+          ref={addInputRef}
           // 화면에 들어오면 입력창에 커서를 둬, 클릭 없이 바로 쳐서 Enter로 추가할 수 있게 한다
           autoFocus
           placeholder="＋ 할일 이름 입력 후 Enter"
