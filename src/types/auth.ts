@@ -13,10 +13,14 @@ export type SessionUser = {
   phone: string | null;
 };
 
-/** 내 정보 페이지에서 본인이 바꿀 수 있는 필드 — 아이디·역할·소속은 제외 */
+/**
+ * 내 정보 페이지에서 본인이 바꿀 수 있는 필드.
+ * groupId는 마스터만 바꿀 수 있다(스탭 소속은 관리자 관리) — 라우트에서 역할로 가른다.
+ */
 export type ProfilePatch = Partial<{
   name: string;
   title: string | null;
   email: string | null;
   phone: string | null;
+  groupId: string;
 }>;

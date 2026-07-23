@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { SESSION_COOKIE } from "@/lib/constants";
+import { db } from "@/server/db";
 import {
   EmailTakenError,
   getSessionUser,
@@ -65,6 +66,30 @@ export async function PATCH(request: Request) {
       patch[key] = normalize(body[key]);
     }
   }
+
+  // 소속 그룹은 마스터만 바꿀 수 있다. 스탭이 보내면 조용히 무시한다.
+  // 빈 값(소속 없음)은 허용하지 않고, 실제 존재하는 그룹만 받는다(FK 위반 500 방지).
+  if ("groupId" in body && current.role === "MASTER") {
+    const groupId = body.groupId;
+    if (typeof groupId !== "string" || !groupId.trim()) {
+      return NextResponse.json(
+        { error: "소속 그룹을 선택하세요." },
+        { status: 400 },
+      );
+    }
+    const group = await db.projectGroup.findUnique({
+      where: { id: groupId },
+      select: { id: true },
+    });
+    if (!group) {
+      return NextResponse.json(
+        { error: "존재하지 않는 그룹입니다." },
+        { status: 400 },
+      );
+    }
+    patch.groupId = groupId;
+  }
+
   if (Object.keys(patch).length === 0) {
     return NextResponse.json({ error: "잘못된 요청입니다." }, { status: 400 });
   }

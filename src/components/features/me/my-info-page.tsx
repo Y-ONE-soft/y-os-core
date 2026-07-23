@@ -13,8 +13,17 @@ import { useSession } from "@/components/features/auth/session-context";
 import { useProjectStore } from "@/components/features/projects/project-store";
 import type { SessionUser } from "@/types/auth";
 
-/** 편집 가능한 필드만 폼 상태로 다룬다 — 아이디·역할·소속은 읽기 전용 표시 */
-type Form = { name: string; title: string; email: string; phone: string };
+/**
+ * 편집 가능한 필드만 폼 상태로 다룬다. 아이디·역할은 항상 읽기 전용.
+ * 소속 그룹은 마스터만 편집한다(스탭은 읽기 전용) — groupId도 폼에 담고 렌더에서 가른다.
+ */
+type Form = {
+  name: string;
+  title: string;
+  email: string;
+  phone: string;
+  groupId: string;
+};
 
 /** 이 화면의 패널 — 백로그·로드맵 등 앱 전반과 같은 규격 */
 const PANEL =
@@ -215,11 +224,13 @@ function MyInfoForm({
   setUser: (next: SessionUser) => void;
 }) {
   const { groups } = useProjectStore();
+  const isMaster = user.role === "MASTER";
   const [form, setForm] = useState<Form>(() => ({
     name: user.name,
     title: user.title ?? "",
     email: user.email ?? "",
     phone: user.phone ?? "",
+    groupId: user.groupId ?? "",
   }));
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<
@@ -250,6 +261,10 @@ function MyInfoForm({
     if (form.title.trim() !== (user.title ?? "")) patch.title = form.title.trim();
     if (form.email.trim() !== (user.email ?? "")) patch.email = form.email.trim();
     if (form.phone.trim() !== (user.phone ?? "")) patch.phone = form.phone.trim();
+    // 소속 그룹은 마스터만 바꾼다. 빈 값(소속 없음)은 보내지 않는다 — 서버도 거른다.
+    if (isMaster && form.groupId && form.groupId !== (user.groupId ?? "")) {
+      patch.groupId = form.groupId;
+    }
     return patch;
   };
 
@@ -324,24 +339,29 @@ function MyInfoForm({
             </h2>
             {/* 아이디는 이름 아래 @{username}으로 이미 보인다 */}
             <ReadOnlyRow label="역할" value={roleLabel} />
-            {/* 그룹 이름은 스토어 로드 후에야 안다. 그동안 "—"를 보여주면
-                "소속 없음"으로 읽히므로 자리만 잡아둔다. */}
-            <div className="flex items-center justify-between gap-3 py-2">
-              <span className="shrink-0 text-[13px] text-muted-foreground">
-                소속 그룹
-              </span>
-              {groupName ? (
-                <span className="min-w-0 truncate text-[13px] font-medium">
-                  {groupName}
+            {/* 스탭은 소속을 관리자가 정하므로 여기서 읽기 전용으로 보인다.
+                마스터는 오른쪽 프로필 폼에서 직접 고르므로 여기 중복 표시하지 않는다.
+                그룹 이름은 스토어 로드 후에야 안다 — 그 전에는 자리만 잡아둔다. */}
+            {!isMaster && (
+              <div className="flex items-center justify-between gap-3 py-2">
+                <span className="shrink-0 text-[13px] text-muted-foreground">
+                  소속 그룹
                 </span>
-              ) : (
-                <Skeleton className="h-3.5 w-16" />
-              )}
-            </div>
+                {groupName ? (
+                  <span className="min-w-0 truncate text-[13px] font-medium">
+                    {groupName}
+                  </span>
+                ) : (
+                  <Skeleton className="h-3.5 w-16" />
+                )}
+              </div>
+            )}
           </div>
 
           <p className="text-[11px] leading-[15px] text-muted-foreground">
-            아이디·역할·소속은 관리자가 관리합니다.
+            {isMaster
+              ? "아이디·역할은 관리자가 관리합니다."
+              : "아이디·역할·소속은 관리자가 관리합니다."}
           </p>
         </section>
 
@@ -392,6 +412,26 @@ function MyInfoForm({
                   className="h-9 rounded-[8px]"
                 />
               </Field>
+              {/* 소속 그룹은 마스터만 편집한다. 프로젝트 생성이 이 그룹을 기본값으로 쓴다.
+                  "소속 없음"은 불가 — 빈 옵션을 두지 않고 항상 한 그룹을 고르게 한다. */}
+              {isMaster && (
+                <Field id="me-group" label="소속 그룹">
+                  <select
+                    id="me-group"
+                    value={form.groupId}
+                    onChange={(event) => set("groupId")(event.target.value)}
+                    className="h-9 rounded-[8px] border bg-background px-2.5 text-sm outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  >
+                    {/* 저장된 그룹이 스토어에 아직 없을 때를 대비해 현재 값 자리를 비워둔다 */}
+                    {!groupsLoaded && <option value={form.groupId}>불러오는 중…</option>}
+                    {groups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
             </div>
           </div>
 

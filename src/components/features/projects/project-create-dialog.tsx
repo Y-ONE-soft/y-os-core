@@ -77,7 +77,9 @@ function ProjectCreateForm({ onDone }: { onDone: () => void }) {
   const [mode, setMode] = useState<Mode>("preset");
   // 두 모드가 함께 쓰는 값
   const [name, setName] = useState("");
-  const [groupId, setGroupId] = useState<string>("");
+  // 마스터는 여러 그룹을 다루므로 드롭다운으로 고르되, 기본값은 자기 소속 그룹이다
+  // (내 정보에서 지정). 다른 그룹도 선택할 수 있다. 스탭은 이 값을 쓰지 않는다.
+  const [groupId, setGroupId] = useState<string>(user?.groupId ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -265,7 +267,8 @@ function ProjectCreateForm({ onDone }: { onDone: () => void }) {
 
         {isMaster && (
           <div className="flex flex-col gap-1.5">
-            {/* 마스터는 전체 그룹을 다루므로 어디에 만들지 정해야 한다 */}
+            {/* 마스터는 전체 그룹을 다루므로 어디에 만들지 고른다. 기본값은 내 소속 그룹
+                (내 정보에서 지정) — 빈 "그룹 선택" 없이 항상 한 그룹이 잡혀 있다. */}
             <Label htmlFor="project-group">그룹</Label>
             <select
               id="project-group"
@@ -273,7 +276,10 @@ function ProjectCreateForm({ onDone }: { onDone: () => void }) {
               onChange={(event) => setGroupId(event.target.value)}
               className="h-9 rounded-[8px] border bg-transparent px-2.5 text-[13px]"
             >
-              <option value="">그룹 선택</option>
+              {/* 내 소속 그룹이 아직 스토어에 없을 때만 자리 표시 */}
+              {!groups.some((group) => group.id === groupId) && (
+                <option value={groupId}>그룹 선택</option>
+              )}
               {groups.map((group) => (
                 <option key={group.id} value={group.id}>
                   {group.name}
