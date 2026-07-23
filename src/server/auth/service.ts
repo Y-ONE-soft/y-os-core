@@ -32,7 +32,8 @@ export class EmailTakenError extends Error {
 
 /**
  * 본인 프로필 수정 — 대상은 호출자가 넘긴 userId로 고정된다.
- * username·role·groupId는 받지 않는다(권한·조직 구조라 본인이 바꿀 값이 아님).
+ * username·role은 받지 않는다(권한·조직 구조라 본인이 바꿀 값이 아님).
+ * groupId는 patch에 있으면 반영하지만, 마스터만 넣도록 라우트에서 미리 거른다.
  */
 export async function updateProfile(
   userId: string,
