@@ -258,14 +258,35 @@ export function TaskDetailOverlay({
                 }
                 className="size-[22px] rounded-[6px] border-primary [&_svg]:size-4"
               />
-              <DialogTitle
+              {/* Radix Dialog는 접근성상 DialogTitle이 필요하다 — 화면용 제목은 편집
+                  가능한 입력으로 두고, 실제 타이틀은 sr-only로 유지한다.
+                  (단계 상세와 동일 패턴 — docs/126) */}
+              <DialogTitle className="sr-only">{task.name}</DialogTitle>
+              <Input
+                key={task.id}
+                defaultValue={task.name}
+                aria-label="할일명"
+                onBlur={(event) => {
+                  const value = event.target.value.trim();
+                  // 빈 이름은 저장하지 않고 원래 이름으로 되돌린다
+                  if (!value) {
+                    event.target.value = task.name;
+                    return;
+                  }
+                  if (value !== task.name) {
+                    boardActions.updateTask(projectId, stageId, task.id, {
+                      name: value,
+                    });
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                }}
                 className={cn(
-                  "text-[30px] leading-tight font-semibold",
+                  "h-auto border-0 px-0 py-0 text-[30px] leading-tight font-semibold shadow-none focus-visible:ring-0 md:text-[30px]",
                   task.done && "text-muted-foreground line-through",
                 )}
-              >
-                {task.name}
-              </DialogTitle>
+              />
             </div>
             <section className="flex shrink-0 flex-col gap-2.5">
               <h3 className="text-sm font-semibold">내용</h3>
