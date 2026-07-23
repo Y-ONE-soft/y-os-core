@@ -147,12 +147,25 @@ export function MyWorkCalendarPanel() {
       for (const stage of boards[project.id]?.stages ?? []) {
         const task = stage.tasks.find((candidate) => candidate.id === taskId);
         if (!task?.scheduledDate) continue;
+        // 명시적 union — 단계가 있으면 프로젝트도 있고, 미배정이면 둘 다 null이라는
+        // 상관관계를 유지해, 아래에서 stage null을 걸러내면 projectId가 string으로 좁혀진다.
         return {
           projectId: project.id,
           stage,
           scheduledDate: shiftISO(task.scheduledDate, deltaDays),
-        };
+        } as
+          | { projectId: string; stage: BoardStage; scheduledDate: string }
+          | { projectId: null; stage: null; scheduledDate: string };
       }
+    }
+    // 미배정 할일 — 소속 프로젝트·단계가 없다. 예정일만 옮긴다.
+    const solo = unassigned.find((task) => task.id === taskId);
+    if (solo?.scheduledDate) {
+      return {
+        projectId: null,
+        stage: null,
+        scheduledDate: shiftISO(solo.scheduledDate, deltaDays),
+      };
     }
     return null;
   }
@@ -225,6 +238,20 @@ export function MyWorkCalendarPanel() {
       const next = nextTaskSchedule(target.taskId, deltaDays);
       if (!next) {
         setPreview(null);
+        return;
+      }
+      // 미배정 할일은 단계가 없어 예정일만 옮긴다 (단계 커버 로직 없음).
+      if (!next.stage) {
+        if (phase === "move") {
+          setPreview({
+            task: { taskId: target.taskId, scheduledDate: next.scheduledDate },
+          });
+          return;
+        }
+        setPreview(null);
+        boardActions.updateTask(null, null, target.taskId, {
+          scheduledDate: next.scheduledDate,
+        });
         return;
       }
       // 할일이 단계 밖으로 나가면 단계가 늘어나 덮는다 (하위를 커버하는 규칙)

@@ -173,23 +173,13 @@ export function buildCalendarSource(
     }
   }
 
-  // 미배정 할일은 소속 프로젝트가 없어 어느 박스에도 못 들어간다 — 전용 묶음으로 모은다.
-  // 백로그와 같은 규칙으로 담당자가 나인 것만.
-  let hasUnassigned = false;
+  // 미배정 할일은 소속 프로젝트가 없다. 칩만 날짜 칸에 그리고, 프로젝트처럼 박스(배경)로
+  // 묶지 않는다 — meta에 등록하지 않으므로 렌더러가 이 묶음의 박스를 그리지 않는다.
+  // (칩은 UNASSIGNED_BOX 키로 레이아웃에 배치돼 위치만 잡힌다.)
   for (const task of unassigned) {
     if (!isMyTask(task, viewerId)) continue;
     const chip = taskChip(grid, UNASSIGNED_BOX, UNASSIGNED_COLOR, task);
-    if (chip) {
-      overlays.push(chip);
-      hasUnassigned = true;
-    }
-  }
-  if (hasUnassigned) {
-    meta[UNASSIGNED_BOX] = {
-      id: UNASSIGNED_BOX,
-      name: "미배정",
-      color: UNASSIGNED_COLOR,
-    };
+    if (chip) overlays.push(chip);
   }
 
   return { overlays, projects: meta, stageCount };
