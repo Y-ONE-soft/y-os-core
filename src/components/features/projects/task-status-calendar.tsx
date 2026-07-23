@@ -41,8 +41,8 @@ export function TaskStatusCalendar({
     [grid, projects, boards],
   );
   const layouts = useMemo(
-    () => buildWeekLayouts(source.overlays, grid.weekCount),
-    [source.overlays, grid.weekCount],
+    () => buildWeekLayouts(source.overlays, grid.rowCount, grid.columns),
+    [source.overlays, grid.rowCount, grid.columns],
   );
 
   function shiftMonth(amount: number) {
@@ -62,14 +62,10 @@ export function TaskStatusCalendar({
         >
           ◀
         </button>
-        {/* 월 숫자 고정폭 — 1자리 달에도 제목 폭이 같아야 화살표가 밀리지 않는다
-            (내 할일 캘린더와 동일) */}
-        <h2 className="text-[15px] font-semibold tabular-nums">
-          {grid.year}년{" "}
-          <span className="inline-block w-[2ch] text-right">
-            {grid.month + 1}
-          </span>
-          월
+        {/* 제목 폭 고정 — 1자리 달에도 폭이 같아야 화살표가 밀리지 않는다
+            (내 할일 캘린더와 동일). 이 화면은 월 보기만 쓴다. */}
+        <h2 className="min-w-[9ch] text-[15px] font-semibold tabular-nums">
+          {grid.title}
         </h2>
         <button
           type="button"

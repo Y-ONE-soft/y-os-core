@@ -10,10 +10,13 @@ import {
   useUnassignedTasks,
 } from "@/components/features/projects/board-store";
 import {
+  addDays,
   clampStageToTasks,
   dragStageDates,
+  fromISO,
   shiftISO,
   taskDateRange,
+  toISO,
   type DragMode,
   type StageDates,
 } from "@/components/features/projects/roadmap-utils";
@@ -24,7 +27,13 @@ import {
   MyWorkCalendar,
   type DragTarget,
 } from "@/components/features/my-work/my-work-calendar";
-import { buildMonthGrid } from "@/components/features/my-work/my-work-month";
+import {
+  buildDayGrid,
+  buildMonthGrid,
+  buildWeekGrid,
+  type CalendarView,
+} from "@/components/features/my-work/my-work-month";
+import { MyWorkCalendarToolbar } from "@/components/features/my-work/my-work-calendar-toolbar";
 import { buildCalendarSource } from "@/components/features/my-work/my-work-calendar-source";
 import {
   applyMyWorkFilter,
@@ -39,16 +48,36 @@ export function MyWorkCalendarPanel() {
   const boards = useBoardState();
   const unassigned = useUnassignedTasks();
 
-  // 보고 있는 달의 1일. 오늘 판정은 렌더 시점의 실제 날짜로 한다.
-  const [monthAnchor, setMonthAnchor] = useState(() => {
-    const today = new Date();
-    return new Date(today.getFullYear(), today.getMonth(), 1);
-  });
+  // 보기 단위(일·주·월)와 기준 날짜. 오늘 판정은 렌더 시점의 실제 날짜로 한다.
+  const [view, setView] = useState<CalendarView>("month");
+  // 앵커 = 보고 있는 기간을 정하는 하루. 월 보기는 그 달, 주 보기는 그 주, 일 보기는 그날.
+  const [anchorISO, setAnchorISO] = useState(() => toISO(new Date()));
 
-  const grid = useMemo(
-    () => buildMonthGrid(monthAnchor, new Date()),
-    [monthAnchor],
-  );
+  const grid = useMemo(() => {
+    const anchor = fromISO(anchorISO);
+    const today = new Date();
+    if (view === "day") return buildDayGrid(anchor, today);
+    if (view === "week") return buildWeekGrid(anchor, today);
+    return buildMonthGrid(anchor, today);
+  }, [view, anchorISO]);
+
+  // ◀▶ 이동 — 보기 단위만큼 앵커를 옮긴다 (일=1일, 주=7일, 월=한 달).
+  function shiftPeriod(direction: -1 | 1) {
+    const anchor = fromISO(anchorISO);
+    if (view === "day") {
+      setAnchorISO(toISO(addDays(anchor, direction)));
+    } else if (view === "week") {
+      setAnchorISO(toISO(addDays(anchor, direction * 7)));
+    } else {
+      setAnchorISO(
+        toISO(new Date(anchor.getFullYear(), anchor.getMonth() + direction, 1)),
+      );
+    }
+  }
+
+  function goToday() {
+    setAnchorISO(toISO(new Date()));
+  }
 
   // "내 할일" 기준 — 작업 현황·사이드바와 같은 소유자 판정을 따른다.
   // 필터 바에서 담당자·프로젝트를 고르면 그 범위로 좁힌다 (뷰에만 적용).
@@ -312,8 +341,8 @@ export function MyWorkCalendarPanel() {
   }
 
   const layouts = useMemo(
-    () => buildWeekLayouts(source.overlays, grid.weekCount),
-    [source.overlays, grid.weekCount],
+    () => buildWeekLayouts(source.overlays, grid.rowCount, grid.columns),
+    [source.overlays, grid.rowCount, grid.columns],
   );
 
   const [detailStage, setDetailStage] = useState<{
@@ -327,54 +356,40 @@ export function MyWorkCalendarPanel() {
     ? myProjects.find((project) => project.id === detailStage.projectId)
     : undefined;
 
-  function shiftMonth(amount: number) {
-    setMonthAnchor(
-      (prev) => new Date(prev.getFullYear(), prev.getMonth() + amount, 1),
-    );
-  }
+  const periodLabel =
+    view === "day" ? "이 날" : view === "week" ? "이 주" : "이 달";
 
   return (
     <>
       <div className="flex shrink-0 items-center gap-2.5">
         <button
           type="button"
-          aria-label="이전 달"
-          onClick={() => shiftMonth(-1)}
+          aria-label="이전"
+          onClick={() => shiftPeriod(-1)}
           className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
         >
           ◀
         </button>
-        {/* 월 숫자는 2자리 고정폭 슬롯에 넣는다 — 1자리 달(7월)에도 제목 폭이 같아야
-            양옆 화살표가 달을 넘길 때마다 밀리지 않는다 */}
-        <h2 className="text-[15px] font-semibold tabular-nums">
-          {grid.year}년{" "}
-          <span className="inline-block w-[2ch] text-right">
-            {grid.month + 1}
-          </span>
-          월
+        <h2 className="min-w-[9ch] text-[15px] font-semibold tabular-nums">
+          {grid.title}
         </h2>
         <button
           type="button"
-          aria-label="다음 달"
-          onClick={() => shiftMonth(1)}
+          aria-label="다음"
+          onClick={() => shiftPeriod(1)}
           className="text-[11px] text-muted-foreground transition-colors hover:text-foreground"
         >
           ▶
         </button>
         <p className="text-xs text-muted-foreground">
-          이 달 {source.stageCount}건
+          {periodLabel} {source.stageCount}건
         </p>
-        {/* ml-auto는 제거된 기간 세그먼트가 갖고 있던 우측 정렬 역할을 이어받은 것 */}
-        <button
-          type="button"
-          onClick={() => {
-            const today = new Date();
-            setMonthAnchor(new Date(today.getFullYear(), today.getMonth(), 1));
-          }}
-          className="ml-auto rounded-[8px] border px-2.5 py-[5px] text-xs font-medium text-muted-foreground transition-colors hover:bg-accent/60 hover:text-foreground"
-        >
-          오늘
-        </button>
+        <MyWorkCalendarToolbar
+          view={view}
+          onViewChange={setView}
+          onToday={goToday}
+          className="ml-auto"
+        />
       </div>
       <MyWorkCalendar
         grid={grid}

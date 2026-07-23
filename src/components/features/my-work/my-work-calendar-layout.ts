@@ -11,8 +11,6 @@
 //  6. 박스는 최소 2줄 — 단계 막대 두 개 두께. 할일이 2줄 이상이면 그만큼 두꺼워진다.
 //  7. 레인은 주마다 채워지는 대로 쌓는다. 빈 레인을 예약하지 않는다.
 
-import { DAYS_PER_WEEK } from "@/components/features/my-work/my-work-month";
-
 type ColRange = { col: number; span: number };
 
 /** 그리드 전체 기준 절대 일자 구간 [start, end) — `주 × 7 + 열` */
@@ -75,8 +73,8 @@ function overlaps(a: ColRange, b: ColRange) {
   return a.col < b.col + b.span && b.col < a.col + a.span;
 }
 
-function dayStart(overlay: CalOverlay) {
-  return overlay.week * DAYS_PER_WEEK + overlay.col;
+function dayStart(overlay: CalOverlay, columns: number) {
+  return overlay.week * columns + overlay.col;
 }
 
 /** 단계 줄은 단계가 없어도 자리를 잡는다 — 할일이 단계 자리로 올라오지 않게. */
@@ -89,10 +87,10 @@ const MIN_BOX_LANES = 2;
 const KIND_ORDER: Record<CalOverlay["kind"], number> = { stage: 0, task: 1 };
 
 /** 프로젝트별 전체 기간 — 단계든 할일이든 가장 이른 시작부터 가장 늦은 끝까지. */
-function collectProjectRanges(overlays: CalOverlay[]) {
+function collectProjectRanges(overlays: CalOverlay[], columns: number) {
   const ranges = new Map<string, DayRange>();
   for (const overlay of overlays) {
-    const start = dayStart(overlay);
+    const start = dayStart(overlay, columns);
     const end = start + overlay.span;
     const current = ranges.get(overlay.project);
     if (!current) {
@@ -109,9 +107,10 @@ function layoutWeek(
   weekIndex: number,
   overlays: CalOverlay[],
   projectRanges: Map<string, DayRange>,
+  columns: number,
 ): WeekLayout {
-  const weekStart = weekIndex * DAYS_PER_WEEK;
-  const weekEnd = weekStart + DAYS_PER_WEEK;
+  const weekStart = weekIndex * columns;
+  const weekEnd = weekStart + columns;
 
   // 이 주에 걸치는 프로젝트 — 항목이 이 주에 없어도 기간이 지나가면 박스가 이어진다.
   // 시작이 이른 것부터, 같으면 긴 것부터 앉힌다 (데이터 순서와 무관하게 결과가 안정적이도록).
@@ -196,17 +195,19 @@ function layoutWeek(
   return { boxes, overlays: placed, laneCount: lanes.length };
 }
 
-/** 주차별 배치 결과 — 캘린더는 이 값만 읽는다. */
+/** 행(주)별 배치 결과 — 캘린더는 이 값만 읽는다. columns는 한 행의 칸 수(일=1, 주·월=7). */
 export function buildWeekLayouts(
   overlays: CalOverlay[],
-  weekCount: number,
+  rowCount: number,
+  columns: number,
 ): WeekLayout[] {
-  const projectRanges = collectProjectRanges(overlays);
-  return Array.from({ length: weekCount }, (_, weekIndex) =>
+  const projectRanges = collectProjectRanges(overlays, columns);
+  return Array.from({ length: rowCount }, (_, weekIndex) =>
     layoutWeek(
       weekIndex,
       overlays.filter((overlay) => overlay.week === weekIndex),
       projectRanges,
+      columns,
     ),
   );
 }

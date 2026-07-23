@@ -8,10 +8,9 @@ import {
   taskTone,
 } from "@/components/features/projects/project-palette";
 import {
-  DAYS_PER_WEEK,
   gridDay,
   gridDayCount,
-  type MonthGrid,
+  type CalendarGrid,
 } from "@/components/features/my-work/my-work-month";
 import type { CalOverlay } from "@/components/features/my-work/my-work-calendar-layout";
 import { isMyTask } from "@/components/features/my-work/my-work-scope";
@@ -36,7 +35,7 @@ export type CalendarSource = {
  * 여러 주에 걸친 단계는 주마다 조각을 만든다 (stageId는 같다).
  */
 function stageSegments(
-  grid: MonthGrid,
+  grid: CalendarGrid,
   project: Project,
   stage: ProjectBoardData["stages"][number],
   /** 그 프로젝트 보드에서의 단계 순서 (0-based) — 배지에 1-based로 표시 */
@@ -50,20 +49,21 @@ function stageSegments(
     ? gridDay(grid, stage.endDate)
     : rawStart + OPEN_ENDED_DAYS - 1;
 
+  const columns = grid.columns;
   const totalDays = gridDayCount(grid);
   const start = Math.max(0, rawStart);
   const end = Math.min(totalDays - 1, rawEnd);
-  if (start > end) return []; // 이 달 그리드 밖
+  if (start > end) return []; // 그리드 밖
 
   const segments: CalOverlay[] = [];
   for (let day = start; day <= end; ) {
-    const week = Math.floor(day / DAYS_PER_WEEK);
-    const weekEnd = (week + 1) * DAYS_PER_WEEK - 1;
+    const week = Math.floor(day / columns);
+    const weekEnd = (week + 1) * columns - 1;
     const segmentEnd = Math.min(end, weekEnd);
     segments.push({
       kind: "stage",
       week,
-      col: day - week * DAYS_PER_WEEK,
+      col: day - week * columns,
       span: segmentEnd - day + 1,
       project: project.id,
       stageId: stage.id,
@@ -90,7 +90,7 @@ const UNASSIGNED_COLOR = "#71717a";
 
 /** 예정일이 잡힌 할일을 그 날짜 칸의 칩으로 만든다 (하루 = span 1) */
 function taskChip(
-  grid: MonthGrid,
+  grid: CalendarGrid,
   boxKey: string,
   color: string,
   task: BoardTask,
@@ -98,13 +98,13 @@ function taskChip(
   if (!task.scheduledDate) return null;
 
   const day = gridDay(grid, task.scheduledDate);
-  if (day < 0 || day >= gridDayCount(grid)) return null; // 이 달 그리드 밖
+  if (day < 0 || day >= gridDayCount(grid)) return null; // 그리드 밖
 
-  const week = Math.floor(day / DAYS_PER_WEEK);
+  const week = Math.floor(day / grid.columns);
   return {
     kind: "task",
     week,
-    col: day - week * DAYS_PER_WEEK,
+    col: day - week * grid.columns,
     span: 1,
     project: boxKey,
     taskId: task.id,
@@ -120,7 +120,7 @@ function taskChip(
 }
 
 export function buildCalendarSource(
-  grid: MonthGrid,
+  grid: CalendarGrid,
   projects: Project[],
   boards: Record<string, ProjectBoardData>,
   /** 프로젝트 없는 할일 — 예정일이 있으면 "미배정" 묶음으로 그린다 */
