@@ -62,17 +62,17 @@ export function MyWorkCalendarPanel() {
   }, [view, anchorISO]);
 
   // ◀▶ 이동 — 보기 단위만큼 앵커를 옮긴다 (일=1일, 주=7일, 월=한 달).
+  // 함수형 업데이트로 항상 '현재' 앵커에서 옮긴다 — 드래그 중 가장자리 자동 전환은
+  // 인터벌 콜백이 낡은 클로저를 붙잡으므로, prev를 읽지 않으면 같은 달만 반복 전환된다.
   function shiftPeriod(direction: -1 | 1) {
-    const anchor = fromISO(anchorISO);
-    if (view === "day") {
-      setAnchorISO(toISO(addDays(anchor, direction)));
-    } else if (view === "week") {
-      setAnchorISO(toISO(addDays(anchor, direction * 7)));
-    } else {
-      setAnchorISO(
-        toISO(new Date(anchor.getFullYear(), anchor.getMonth() + direction, 1)),
+    setAnchorISO((prev) => {
+      const anchor = fromISO(prev);
+      if (view === "day") return toISO(addDays(anchor, direction));
+      if (view === "week") return toISO(addDays(anchor, direction * 7));
+      return toISO(
+        new Date(anchor.getFullYear(), anchor.getMonth() + direction, 1),
       );
-    }
+    });
   }
 
   function goToday() {
@@ -430,6 +430,7 @@ export function MyWorkCalendarPanel() {
         onAddTask={(projectId, stageId, date, name) =>
           boardActions.addScheduledTask(projectId, name, date, user?.id, stageId)
         }
+        onEdgeTurn={shiftPeriod}
       />
       {detailStage && (
         <StageDetailOverlay

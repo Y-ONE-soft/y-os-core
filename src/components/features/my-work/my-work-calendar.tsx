@@ -1,10 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import { cn } from "@/lib/utils";
 import {
+  dayOffset,
   hexToRgba,
   shiftISO,
   type DragMode,
@@ -51,6 +52,10 @@ const BOX_GAP_PX = 4; // 위아래 프로젝트 박스 사이 간격
 const DRAG_THRESHOLD = 3;
 /** 막대 양 끝 리사이즈 손잡이 폭(px) */
 const HANDLE_PX = 8;
+/** 드래그 중 그리드 가장자리 이 폭(px) 안에 포인터가 들면 이전/다음 기간으로 넘긴다 */
+const EDGE_TURN_BAND_PX = 20;
+/** 가장자리에 머무는 동안 기간을 넘기는 간격(ms) — 너무 빠르면 오버슈트한다 */
+const EDGE_TURN_INTERVAL_MS = 550;
 
 export type StageDragPhase = "move" | "commit" | "cancel";
 
@@ -503,6 +508,7 @@ export function MyWorkCalendar({
   onDropTask,
   onReturnToBacklog,
   onAddTask,
+  onEdgeTurn,
 }: {
   grid: CalendarGrid;
   layouts: WeekLayout[];
@@ -529,6 +535,8 @@ export function MyWorkCalendar({
     date: string,
     name: string,
   ) => void;
+  /** 드래그 중 포인터가 그리드 가장자리에 닿았을 때 — 이전(-1)/다음(1) 기간으로 넘긴다 */
+  onEdgeTurn?: (direction: -1 | 1) => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   // 백로그에서 끌어온 할일이 놓일 날짜 칸 — 어디에 떨어지는지 보이게 한다
@@ -549,11 +557,22 @@ export function MyWorkCalendar({
   const dragRef = useRef<{
     target: DragTarget;
     pointerId: number;
-    startDay: number;
+    /** 누른 지점의 그리드 일자(연속) + 그때의 gridStart — 델타는 절대 날짜로 계산해
+     *  기간이 바뀌어도(가장자리 자동 전환) 끌던 항목이 끊기지 않게 한다. */
+    startPointerDay: number;
+    startGridStart: string;
     originX: number;
     originY: number;
+    /** 마지막 포인터 좌표 — 기간이 전환되면 이 좌표로 델타를 다시 계산해 미리보기를 갱신한다 */
+    lastX: number;
+    lastY: number;
     moved: boolean;
   } | null>(null);
+  // 가장자리 자동 전환 타이머와 현재 전환 방향(0=가장자리 아님).
+  const edgeTimerRef = useRef<number | null>(null);
+  const edgeDirRef = useRef<-1 | 0 | 1>(0);
+  // 기간이 바뀌면(gridStart 변경) 드래그 중 미리보기를 새 기간 기준으로 다시 그린다.
+  const prevGridStartRef = useRef(grid.gridStart);
 
   const columns = grid.columns;
 
@@ -584,6 +603,86 @@ export function MyWorkCalendar({
     return Math.min(lastDay, Math.max(0, weekIndex * columns + colFraction));
   }
 
+  /**
+   * 누른 시점 대비 이동 일수. 절대 날짜로 계산한다:
+   * (지금 gridStart − 누를 때 gridStart) + (지금 포인터 일자 − 누를 때 포인터 일자).
+   * 가운데 항이 기간 전환(가장자리 자동 넘김)으로 gridStart가 바뀐 만큼을 보정하므로,
+   * 달이 바뀌어도 끌던 항목이 끊기지 않고 이어진다. 반 칸을 넘겨야 하루가 바뀌도록 한 번만 반올림.
+   */
+  function dragDelta(
+    drag: NonNullable<typeof dragRef.current>,
+    clientX: number,
+    clientY: number,
+  ) {
+    return Math.round(
+      dayOffset(grid.gridStart, drag.startGridStart) +
+        pointerDay(clientX, clientY) -
+        drag.startPointerDay,
+    );
+  }
+
+  /**
+   * 포인터가 그리드 가장자리 밴드 안에 있으면 넘길 방향(-1 이전 / 1 다음), 아니면 0.
+   * 월 보기(여러 행)는 위/아래(세로 흐름), 주·일 보기(한 행)는 좌/우(가로 흐름) 가장자리다.
+   */
+  function edgeDirection(clientX: number, clientY: number): -1 | 0 | 1 {
+    const rows = weekRefs.current;
+    const first = rows[0]?.getBoundingClientRect();
+    const last = rows[rows.length - 1]?.getBoundingClientRect();
+    if (!first || !last) return 0;
+    if (grid.rowCount > 1) {
+      if (clientY < first.top + EDGE_TURN_BAND_PX) return -1;
+      if (clientY > last.bottom - EDGE_TURN_BAND_PX) return 1;
+    } else {
+      if (clientX < first.left + EDGE_TURN_BAND_PX) return -1;
+      if (clientX > last.right - EDGE_TURN_BAND_PX) return 1;
+    }
+    return 0;
+  }
+
+  function stopEdgeTurn() {
+    if (edgeTimerRef.current != null) {
+      window.clearInterval(edgeTimerRef.current);
+      edgeTimerRef.current = null;
+    }
+    edgeDirRef.current = 0;
+  }
+
+  /**
+   * 가장자리에 머무는 동안 일정 간격으로 기간을 넘긴다. 즉시 넘기지 않고 타이머의
+   * 첫 발화(간격만큼 뒤)로 넘겨, 마지막 줄에 그냥 놓으려다 스치는 것으로는 안 넘어가게 한다.
+   */
+  function updateEdgeTurn(clientX: number, clientY: number) {
+    if (!onEdgeTurn) return;
+    const dir = edgeDirection(clientX, clientY);
+    if (dir === edgeDirRef.current) return; // 상태 변화 없음 — 타이머 유지
+    stopEdgeTurn();
+    if (dir !== 0) {
+      edgeDirRef.current = dir;
+      edgeTimerRef.current = window.setInterval(
+        () => onEdgeTurn(dir),
+        EDGE_TURN_INTERVAL_MS,
+      );
+    }
+  }
+
+  // 기간이 전환되면(가장자리 자동 넘김 등) 드래그 중 미리보기를 새 gridStart 기준으로 다시 그린다.
+  useEffect(() => {
+    if (prevGridStartRef.current === grid.gridStart) return;
+    prevGridStartRef.current = grid.gridStart;
+    const drag = dragRef.current;
+    if (drag?.moved && onDrag) {
+      onDrag(drag.target, dragDelta(drag, drag.lastX, drag.lastY), "move");
+    }
+    // dragDelta는 ref만 읽어 stale이 없다 — gridStart 변화에만 반응하면 된다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [grid.gridStart]);
+
+  // 언마운트 시 타이머 정리
+  useEffect(() => {
+    return () => stopEdgeTurn();
+  }, []);
+
   function handleDragStart(event: React.PointerEvent, target: DragTarget) {
     if (!onDrag || event.button !== 0) return;
     event.stopPropagation();
@@ -592,9 +691,12 @@ export function MyWorkCalendar({
     dragRef.current = {
       target,
       pointerId: event.pointerId,
-      startDay: pointerDay(event.clientX, event.clientY),
+      startPointerDay: pointerDay(event.clientX, event.clientY),
+      startGridStart: grid.gridStart,
       originX: event.clientX,
       originY: event.clientY,
+      lastX: event.clientX,
+      lastY: event.clientY,
       moved: false,
     };
   }
@@ -612,19 +714,22 @@ export function MyWorkCalendar({
       rootRef.current?.setPointerCapture(drag.pointerId);
     }
     drag.moved = true;
+    drag.lastX = event.clientX;
+    drag.lastY = event.clientY;
     // 할일 칩을 백로그 패널 위로 끌면 드롭존을 강조한다 (놓으면 백로그로 되돌림).
     if (onReturnToBacklog && drag.target.kind === "task") {
       highlightBacklog(backlogDropzoneAt(event.clientX, event.clientY));
     }
-    // 이동량(지금 − 누른 위치)을 한 번만 반올림 → 대칭. 반 칸을 넘겨야 하루가 바뀐다.
-    const delta = Math.round(pointerDay(event.clientX, event.clientY) - drag.startDay);
-    onDrag(drag.target, delta, "move");
+    // 가장자리에 닿으면 이전/다음 기간으로 넘겨, 보이는 범위 밖으로도 끌 수 있게 한다.
+    updateEdgeTurn(event.clientX, event.clientY);
+    onDrag(drag.target, dragDelta(drag, event.clientX, event.clientY), "move");
   }
 
   function handlePointerUp(event: React.PointerEvent) {
     const drag = dragRef.current;
     if (!drag || !onDrag) return;
     dragRef.current = null;
+    stopEdgeTurn();
     highlightBacklog(null);
     if (!drag.moved) {
       // 움직이지 않았으면 클릭 — 미리보기를 되돌리고 버튼 onClick에 맡긴다
@@ -641,7 +746,7 @@ export function MyWorkCalendar({
       onReturnToBacklog(drag.target.taskId);
       return;
     }
-    const delta = Math.round(pointerDay(event.clientX, event.clientY) - drag.startDay);
+    const delta = dragDelta(drag, event.clientX, event.clientY);
     // 끌었다가 같은 날로 돌아오면(델타 0) 저장 없이 되돌린다.
     onDrag(drag.target, delta, delta === 0 ? "cancel" : "commit");
   }
