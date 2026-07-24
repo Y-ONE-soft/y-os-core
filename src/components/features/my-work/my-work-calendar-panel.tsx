@@ -11,11 +11,9 @@ import {
 } from "@/components/features/projects/board-store";
 import {
   addDays,
-  clampStageToTasks,
   dragStageDates,
   fromISO,
   shiftISO,
-  taskDateRange,
   toISO,
   type DragMode,
   type StageDates,
@@ -162,11 +160,9 @@ export function MyWorkCalendarPanel() {
         stage.endDate,
         deltaDays,
       );
-      const dates =
-        mode === "move"
-          ? dragged
-          : clampStageToTasks(dragged, taskDateRange(stage.tasks));
-      return { projectId: project.id, stage, dates };
+      // 단계 막대는 자유롭게 움직인다 — 할일을 덮어야 한다는 제약(clamp)을 두지 않는다.
+      // 할일은 제자리에 남고, 단계 밖으로 밀려나도 프로젝트 바 안에는 유지된다(레이아웃 합집합).
+      return { projectId: project.id, stage, dates: dragged };
     }
     return null;
   }
@@ -308,15 +304,11 @@ export function MyWorkCalendarPanel() {
         });
         return;
       }
-      // 할일이 단계 밖으로 나가면 단계가 늘어나 덮는다 (하위를 커버하는 규칙)
-      const stretched = clampStageToTasks(
-        { startDate: next.stage.startDate!, endDate: next.stage.endDate },
-        { min: next.scheduledDate, max: next.scheduledDate },
-      );
+      // 할일은 단계와 독립이다 — 단계 밖으로 나가도 단계를 늘리지 않는다.
+      // (프로젝트 바는 레이아웃에서 단계+할일 합집합으로 계산되므로 여전히 덮는다)
       if (phase === "move") {
         setPreview({
           task: { taskId: target.taskId, scheduledDate: next.scheduledDate },
-          stage: { stageId: next.stage.id, ...stretched },
         });
         return;
       }
@@ -324,12 +316,6 @@ export function MyWorkCalendarPanel() {
       boardActions.updateTask(next.projectId, next.stage.id, target.taskId, {
         scheduledDate: next.scheduledDate,
       });
-      if (
-        stretched.startDate !== next.stage.startDate ||
-        stretched.endDate !== next.stage.endDate
-      ) {
-        boardActions.updateStage(next.projectId, next.stage.id, stretched);
-      }
       return;
     }
 
