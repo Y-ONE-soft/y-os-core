@@ -37,6 +37,8 @@ import { isMyTask } from "@/components/features/my-work/my-work-scope";
 // 단, "내 작업"이므로 담당자가 나인 것만 — 남이 만든 백로그·미배정은 뺀다.
 // 여기서 만든 할일은 원칙적으로 "프로젝트 없음"(미배정)이며, 소속은 행의
 // 드롭다운 라벨이나 할일 티켓에서 정한다.
+// 백로그 = 예정일도 단계도 없는 할일. 예정일이 잡힌(=단계 없음) 할일은 캘린더에
+// 뜨므로 여기서는 뺀다. 캘린더 칩을 이 패널로 드래그하면(예정일 해제) 다시 돌아온다.
 export function MyWorkBacklog() {
   const { user } = useSession();
   const { groups } = useProjectStore();
@@ -53,7 +55,7 @@ export function MyWorkBacklog() {
     ...projects.flatMap((project) =>
       (boards[project.id]?.backlog ?? []).map((task) => ({ project, task })),
     ),
-  ].filter(({ task }) => isMyTask(task, user?.id));
+  ].filter(({ task }) => isMyTask(task, user?.id) && !task.scheduledDate);
 
   return (
     <aside
