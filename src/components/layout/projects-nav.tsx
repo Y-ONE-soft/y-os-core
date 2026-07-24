@@ -42,6 +42,11 @@ import {
   PROJECT_COLORS,
   useProjectStore,
 } from "@/components/features/projects/project-store";
+import {
+  getProjectDragData,
+  isProjectDrag,
+  setProjectDragData,
+} from "@/components/features/projects/project-drag";
 
 type WorkspaceItem = { label: string; href: string; icon: LucideIcon };
 
@@ -190,6 +195,7 @@ export function ProjectsNav() {
     setProjectColor,
     deleteGroup,
     deleteProject,
+    reorderProjects,
     resetData,
   } = useProjectStore();
   const [collapsedGroupIds, setCollapsedGroupIds] = useState<Set<string>>(
@@ -198,6 +204,11 @@ export function ProjectsNav() {
   const [adding, setAdding] = useState<AddingState>(null);
   // 프로젝트 추가 중 고른 색 — 추가 행을 열 때 팔레트 순번으로 초기화한다
   const [newColor, setNewColor] = useState<string>(PROJECT_COLORS[0]);
+  // 사이드바 프로젝트 순서 변경 드래그 — 끌고 있는 행과 놓일 자리(그 위에 끼움)
+  const [draggingProjectId, setDraggingProjectId] = useState<string | null>(
+    null,
+  );
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
 
   const { user } = useSession();
   const isMaster = user?.role === "MASTER";
@@ -229,6 +240,44 @@ export function ProjectsNav() {
       else next.add(groupId);
       return next;
     });
+
+  /** 끌어온 프로젝트를 대상 행 앞으로 끼운 새 순서로 재정렬한다 (같은 그룹 안에서만) */
+  const dropProjectBefore = (
+    event: React.DragEvent,
+    groupId: string,
+    targetProjectId: string,
+    /** 그 그룹에서 지금 보이는 프로젝트 id들(현재 순서) — 마스터=그룹 전체, 스탭=소유분 */
+    visibleIds: string[],
+  ) => {
+    const dragged = getProjectDragData(event);
+    setDropTargetId(null);
+    if (!dragged) return;
+    event.preventDefault();
+    // order는 그룹별이라 다른 그룹으로는 옮기지 않는다(제자리 드롭도 무시)
+    if (dragged.groupId !== groupId || dragged.projectId === targetProjectId) {
+      return;
+    }
+    const without = visibleIds.filter((id) => id !== dragged.projectId);
+    const at = without.indexOf(targetProjectId);
+    if (at === -1) return;
+    reorderProjects(groupId, [
+      ...without.slice(0, at),
+      dragged.projectId,
+      ...without.slice(at),
+    ]);
+  };
+
+  /** dragover 하이라이트 — 이 행 위에 끼워짐 표시 */
+  const onProjectDragOver = (event: React.DragEvent, targetProjectId: string) => {
+    if (!isProjectDrag(event)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+    setDropTargetId(targetProjectId);
+  };
+  const onProjectDragLeave = (event: React.DragEvent, targetProjectId: string) => {
+    if (event.currentTarget.contains(event.relatedTarget as Node)) return;
+    setDropTargetId((prev) => (prev === targetProjectId ? null : prev));
+  };
 
   return (
     <>
@@ -287,7 +336,26 @@ export function ProjectsNav() {
                   return (
                     <li
                       key={project.id}
-                      className="group relative flex items-center"
+                      onDragOver={(event) => onProjectDragOver(event, project.id)}
+                      onDragLeave={(event) =>
+                        onProjectDragLeave(event, project.id)
+                      }
+                      onDrop={(event) =>
+                        dropProjectBefore(
+                          event,
+                          groupId,
+                          project.id,
+                          staffProjects
+                            .filter((item) => item.groupId === groupId)
+                            .map((item) => item.project.id),
+                        )
+                      }
+                      className={cn(
+                        "group relative flex items-center rounded-[8px]",
+                        dropTargetId === project.id &&
+                          "ring-2 ring-inset ring-primary/50",
+                        draggingProjectId === project.id && "opacity-40",
+                      )}
                     >
                       {/* 스탭 목록은 자기가 작업자인 프로젝트만 담기므로(staffProjects)
                           여기 걸리는 행은 모두 삭제 권한이 있다. 서버도 ownerId로 재검증. */}
@@ -295,6 +363,15 @@ export function ProjectsNav() {
                         <ContextMenuTrigger asChild>
                           <Link
                             href={href}
+                            draggable
+                            onDragStart={(event) => {
+                              setProjectDragData(event, groupId, project.id);
+                              setDraggingProjectId(project.id);
+                            }}
+                            onDragEnd={() => {
+                              setDraggingProjectId(null);
+                              setDropTargetId(null);
+                            }}
                             aria-current={selected ? "page" : undefined}
                             className={cn(
                               // pr-9: 오른쪽 ⋮ 자리를 비워 긴 이름이 버튼 아래로 들어가지 않게
@@ -440,6 +517,15 @@ export function ProjectsNav() {
                             const projectRow = (
                               <Link
                                 href={href}
+                                draggable
+                                onDragStart={(event) => {
+                                  setProjectDragData(event, group.id, project.id);
+                                  setDraggingProjectId(project.id);
+                                }}
+                                onDragEnd={() => {
+                                  setDraggingProjectId(null);
+                                  setDropTargetId(null);
+                                }}
                                 aria-current={selected ? "page" : undefined}
                                 className={cn(
                                   // pr-9: 오른쪽 ⋮ 자리 (마스터만 보이지만 정렬은 통일)
@@ -460,7 +546,27 @@ export function ProjectsNav() {
                             return (
                               <li
                                 key={project.id}
-                                className="group relative flex items-center"
+                                onDragOver={(event) =>
+                                  onProjectDragOver(event, project.id)
+                                }
+                                onDragLeave={(event) =>
+                                  onProjectDragLeave(event, project.id)
+                                }
+                                onDrop={(event) =>
+                                  dropProjectBefore(
+                                    event,
+                                    group.id,
+                                    project.id,
+                                    group.projects.map((item) => item.id),
+                                  )
+                                }
+                                className={cn(
+                                  "group relative flex items-center rounded-[8px]",
+                                  dropTargetId === project.id &&
+                                    "ring-2 ring-inset ring-primary/50",
+                                  draggingProjectId === project.id &&
+                                    "opacity-40",
+                                )}
                               >
                                 {isMaster ? (
                                   <ContextMenu>

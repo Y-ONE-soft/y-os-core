@@ -25,6 +25,12 @@ export const patchProjectApi = (projectId: string, patch: { color: string }) =>
 export const deleteProjectApi = (projectId: string) =>
   api.del<{ ok: boolean }>(`/api/admin/projects/${projectId}`);
 
+/** 사이드바 프로젝트 순서 변경 — 그룹 안에서 새 순서대로 projectIds를 보낸다 */
+export const reorderProjectsApi = (groupId: string, projectIds: string[]) =>
+  api.patch<{ ok: boolean }>(`/api/admin/groups/${groupId}/projects/order`, {
+    projectIds,
+  });
+
 /**
  * 프리셋 적용 생성 — 프로젝트+단계+할일을 서버가 한 트랜잭션으로 만든다.
  * groupId는 마스터만 보낸다(스탭은 서버가 세션 그룹으로 강제).

@@ -318,6 +318,45 @@ export function updateProject(
 }
 
 /**
+ * 사이드바 프로젝트 순서 변경 — 그룹 안에서 projectIds 순서대로 다시 매긴다.
+ * Project.order는 유니크가 아니라 Stage처럼 음수 피신이 필요 없다.
+ *
+ * **대상들이 원래 차지하던 order 슬롯을 오름차순으로 모아 새 순서대로 재배정**한다.
+ * 그래서 마스터(그룹 전체 전달)는 0..N-1 전면 재배치가 되고, 스탭(자기 소유분만
+ * 전달)은 그 부분집합만 자기들 슬롯 안에서 재정렬돼 비소유 프로젝트의 상대 위치가
+ * 보존된다. opts.ownerId를 주면 그 작업자 소유 프로젝트만 대상이 된다(스탭 가드).
+ */
+export async function reorderProjects(
+  groupId: string,
+  projectIds: string[],
+  opts?: { ownerId?: string },
+): Promise<{ count: number }> {
+  const requested = new Set(projectIds);
+  if (requested.size !== projectIds.length) return { count: 0 }; // 중복 방지
+  return db.$transaction(async (tx) => {
+    const targets = await tx.project.findMany({
+      where: {
+        id: { in: projectIds },
+        groupId,
+        ...(opts?.ownerId ? { ownerId: opts.ownerId } : {}),
+      },
+      select: { id: true, order: true },
+    });
+    // 보낸 목록이 실제 대상(그룹·소유 조건 통과) 집합과 정확히 일치해야 한다
+    if (targets.length !== projectIds.length) return { count: 0 };
+
+    const slots = targets.map((project) => project.order).sort((a, b) => a - b);
+    for (const [index, id] of projectIds.entries()) {
+      await tx.project.updateMany({
+        where: { id, groupId },
+        data: { order: slots[index] },
+      });
+    }
+    return { count: projectIds.length };
+  });
+}
+
+/**
  * 프로젝트 삭제. ownerId를 주면 그 작업자의 프로젝트만 지운다 — 스탭이 남의
  * 프로젝트 id를 직접 호출해도 조건에서 걸러지도록 쿼리 레벨에서 막는다.
  * 반환값 count로 호출부가 "권한 없음/이미 없음"을 판별한다.
