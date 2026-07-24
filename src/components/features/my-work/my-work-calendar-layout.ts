@@ -95,15 +95,23 @@ const STAGE_LANES = 1;
  * (주마다 배정하면 주 경계에서 막대가 위아래로 튄다.)
  */
 function assignStageLanes(overlays: CalOverlay[], columns: number) {
-  // 단계별 전역 구간 [start, end) — 여러 주 조각을 하나로 합친다.
-  const byStage = new Map<string, { project: string; start: number; end: number }>();
+  // 단계별 전역 구간 [start, end)과 순번 — 여러 주 조각을 하나로 합친다.
+  const byStage = new Map<
+    string,
+    { project: string; start: number; end: number; stageNo: number }
+  >();
   for (const overlay of overlays) {
     if (overlay.kind !== "stage") continue;
     const start = dayStart(overlay, columns);
     const end = start + overlay.span;
     const current = byStage.get(overlay.stageId);
     if (!current) {
-      byStage.set(overlay.stageId, { project: overlay.project, start, end });
+      byStage.set(overlay.stageId, {
+        project: overlay.project,
+        start,
+        end,
+        stageNo: overlay.stageNo,
+      });
     } else {
       current.start = Math.min(current.start, start);
       current.end = Math.max(current.end, end);
@@ -112,30 +120,42 @@ function assignStageLanes(overlays: CalOverlay[], columns: number) {
 
   const byProject = new Map<
     string,
-    { stageId: string; start: number; end: number }[]
+    { stageId: string; start: number; end: number; stageNo: number }[]
   >();
   for (const [stageId, range] of byStage) {
     const list = byProject.get(range.project) ?? [];
-    list.push({ stageId, start: range.start, end: range.end });
+    list.push({
+      stageId,
+      start: range.start,
+      end: range.end,
+      stageNo: range.stageNo,
+    });
     byProject.set(range.project, list);
   }
 
   const laneOf = new Map<string, number>(); // stageId → 레인
   const laneCountOf = new Map<string, number>(); // project → 단계 레인 수(최소 1)
   for (const [project, list] of byProject) {
-    // 시작이 이른 것부터, 같으면 긴 것부터 — 그리디 구간 분할이 안정적이도록.
-    list.sort((a, b) => a.start - b.start || b.end - a.end);
-    const laneEnd: number[] = []; // 각 레인이 마지막으로 찬 지점(다음은 그 이후에만)
+    // 단계 번호 순으로 쌓는다 — 위에서부터 1·2·3…이 되게(프로젝트 우선, 단계 우선).
+    // 예전엔 시작일 순 그리디라, 늦은 번호가 먼저 시작하면 위 줄로 올라와 섞여 보였다.
+    list.sort((a, b) => a.stageNo - b.stageNo);
+    const laneRanges: { start: number; end: number }[][] = [];
     for (const stage of list) {
-      let lane = laneEnd.findIndex((end) => end <= stage.start);
-      if (lane === -1) {
-        lane = laneEnd.length;
-        laneEnd.push(0);
+      // 번호 순으로 훑으며, 기간이 겹치지 않는 첫 레인에 앉힌다. 겹치면 아래 줄로 내려
+      // 번호 순서를 지키고, 서로 안 겹치는 단계는 같은 줄을 나눠 써 박스가 불필요하게
+      // 두꺼워지지 않게 한다.
+      let lane = 0;
+      while (
+        laneRanges[lane]?.some(
+          (placed) => placed.start < stage.end && stage.start < placed.end,
+        )
+      ) {
+        lane += 1;
       }
-      laneEnd[lane] = stage.end;
+      (laneRanges[lane] ??= []).push({ start: stage.start, end: stage.end });
       laneOf.set(stage.stageId, lane);
     }
-    laneCountOf.set(project, Math.max(STAGE_LANES, laneEnd.length));
+    laneCountOf.set(project, Math.max(STAGE_LANES, laneRanges.length));
   }
   return { laneOf, laneCountOf };
 }
