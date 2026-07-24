@@ -118,3 +118,18 @@ export const patchTaskApi = (taskId: string, patch: Record<string, unknown>) =>
 
 export const deleteTaskApi = (taskId: string) =>
   api.del<{ ok: boolean }>(`/api/admin/tasks/${taskId}`);
+
+/**
+ * 컨테이너(프로젝트·단계) 안에서 할일 순서 변경 — 새 순서대로 taskIds를 보낸다.
+ * projectId·stageId는 null 가능(미배정/백로그).
+ */
+export const reorderTasksApi = (
+  projectId: string | null,
+  stageId: string | null,
+  taskIds: string[],
+) =>
+  api.patch<{ ok: boolean }>(`/api/admin/tasks/order`, {
+    projectId,
+    stageId,
+    taskIds,
+  });

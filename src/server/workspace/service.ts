@@ -661,6 +661,39 @@ export async function updateTask(id: string, patch: TaskPatch) {
 }
 
 /**
+ * 컨테이너(프로젝트·단계) 안에서 할일 순서를 taskIds 순서대로 바꾼다.
+ * reorderProjects와 같은 **슬롯 재배정** — 대상들이 차지한 order 값을 오름차순으로
+ * 모아 새 순서대로 다시 나눈다. 그래서 단계·프로젝트 백로그(전체 전달)는 전면
+ * 재배치가 되고, 내 할일(그 컨테이너의 내 담당분만 전달)은 부분 재정렬이 돼 다른
+ * 사람 할일 위치가 보존된다. projectId·stageId는 null(미배정/백로그)일 수 있다.
+ */
+export async function reorderTasks(
+  projectId: string | null,
+  stageId: string | null,
+  taskIds: string[],
+): Promise<{ count: number }> {
+  const requested = new Set(taskIds);
+  if (requested.size !== taskIds.length) return { count: 0 };
+  return db.$transaction(async (tx) => {
+    const targets = await tx.task.findMany({
+      where: { id: { in: taskIds }, projectId, stageId },
+      select: { id: true, order: true },
+    });
+    // 보낸 목록이 그 컨테이너의 실제 대상 집합과 정확히 일치해야 한다
+    if (targets.length !== taskIds.length) return { count: 0 };
+
+    const slots = targets.map((task) => task.order).sort((a, b) => a - b);
+    for (const [index, id] of taskIds.entries()) {
+      await tx.task.updateMany({
+        where: { id, projectId, stageId },
+        data: { order: slots[index] },
+      });
+    }
+    return { count: taskIds.length };
+  });
+}
+
+/**
  * 데이터 초기화 — 프로젝트·단계·할일을 모두 지우고 그룹 골격만 남긴다.
  * (User/Session은 무관. 그룹을 남기는 이유는 seed-data.ts 주석 참고)
  */

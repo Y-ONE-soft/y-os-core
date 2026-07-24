@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type Dispatch, type SetStateAction } from "react";
 
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -27,6 +27,7 @@ import {
   isStageDrag,
   setStageDragData,
 } from "@/components/features/projects/stage-drag";
+import { buildTaskReorderProps } from "@/components/features/projects/task-reorder";
 import type { BoardTask } from "@/types/workspace";
 
 /** 맨 뒤로 보내는 드롭 자리 — 단계 id와 겹치지 않는 표식 */
@@ -42,7 +43,10 @@ function BoardTaskCard({
   projectId,
   stageId,
   task,
+  siblingIds,
   dragging,
+  dropTarget,
+  setDropTargetId,
   onDragStart,
   onDragEnd,
   onOpen,
@@ -50,11 +54,23 @@ function BoardTaskCard({
   projectId: string;
   stageId: string | null;
   task: BoardTask;
+  /** 이 카드가 속한 컨테이너에서 지금 보이는 할일 id들(재정렬 계산용) */
+  siblingIds: string[];
   dragging: boolean;
+  dropTarget: boolean;
+  setDropTargetId: Dispatch<SetStateAction<string | null>>;
   onDragStart: () => void;
   onDragEnd: () => void;
   onOpen: () => void;
 }) {
+  const reorderProps = buildTaskReorderProps({
+    projectId,
+    stageId,
+    targetTaskId: task.id,
+    siblingIds,
+    setDropTargetId,
+    reorder: boardActions.reorderTasks,
+  });
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -68,6 +84,9 @@ function BoardTaskCard({
             onDragStart();
           }}
           onDragEnd={onDragEnd}
+          onDragOver={reorderProps.onDragOver}
+          onDragLeave={reorderProps.onDragLeave}
+          onDrop={reorderProps.onDrop}
           onClick={(event) => {
             event.stopPropagation();
             onOpen();
@@ -84,6 +103,8 @@ function BoardTaskCard({
             "hover:ring-2 hover:ring-primary/50 focus-visible:ring-2 focus-visible:ring-ring",
             task.done ? "bg-muted opacity-60" : "bg-background shadow-xs",
             dragging && "opacity-40",
+            // 같은 컨테이너 재정렬 드롭 대상 — 이 카드 앞으로 끼워짐
+            dropTarget && "ring-2 ring-inset ring-primary",
           )}
         >
           <span
@@ -147,6 +168,8 @@ export function ProjectBoard({
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   // 끌고 있는 할일 카드 — 원본을 흐려 어디서 끌려나왔는지 보이게 한다
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+  // 같은 컨테이너 재정렬 드롭 대상 카드 — 그 앞으로 끼워짐을 보여준다
+  const [dropTaskId, setDropTaskId] = useState<string | null>(null);
   // 드롭 대상으로 잡힌 컬럼 — 어디에 놓이는지 보이게 하이라이트한다
   const [dropStageId, setDropStageId] = useState<string | null>(null);
   // 단계 순서 변경 드래그 — 끌고 있는 컬럼과 끼워 넣을 자리
@@ -286,7 +309,10 @@ export function ProjectBoard({
                   projectId={projectId}
                   stageId={stage.id}
                   task={task}
+                  siblingIds={stage.tasks.map((item) => item.id)}
                   dragging={draggingTaskId === task.id}
+                  dropTarget={dropTaskId === task.id}
+                  setDropTargetId={setDropTaskId}
                   onDragStart={() => setDraggingTaskId(task.id)}
                   onDragEnd={() => setDraggingTaskId(null)}
                   onOpen={() => setDetailTaskId(task.id)}
@@ -372,7 +398,10 @@ export function ProjectBoard({
                 projectId={projectId}
                 stageId={null}
                 task={task}
+                siblingIds={stageless.map((item) => item.id)}
                 dragging={draggingTaskId === task.id}
+                dropTarget={dropTaskId === task.id}
+                setDropTargetId={setDropTaskId}
                 onDragStart={() => setDraggingTaskId(task.id)}
                 onDragEnd={() => setDraggingTaskId(null)}
                 onOpen={() => setDetailTaskId(task.id)}

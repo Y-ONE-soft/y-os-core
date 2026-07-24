@@ -17,6 +17,7 @@ import {
   patchStageApi,
   patchTaskApi,
   reorderStagesApi,
+  reorderTasksApi,
 } from "@/lib/api/workspace";
 import type {
   BoardStage,
@@ -42,6 +43,26 @@ function updateBoard(
       [projectId]: updater(prev.boards[projectId] ?? EMPTY_BOARD),
     },
   }));
+}
+
+/**
+ * 배열 안에서 taskIds가 차지한 위치(슬롯)를 새 순서대로 다시 채운다 — 서버
+ * reorderTasks와 같은 규칙. 부분집합(내 할일)만 넘겨도 나머지 항목은 제자리에 남는다.
+ */
+function reorderInArray(tasks: BoardTask[], taskIds: string[]): BoardTask[] {
+  const idSet = new Set(taskIds);
+  const slots: number[] = [];
+  tasks.forEach((task, index) => {
+    if (idSet.has(task.id)) slots.push(index);
+  });
+  if (slots.length !== taskIds.length) return tasks;
+  const byId = new Map(tasks.map((task) => [task.id, task]));
+  const next = [...tasks];
+  taskIds.forEach((id, k) => {
+    const task = byId.get(id);
+    if (task) next[slots[k]] = task;
+  });
+  return next;
 }
 
 export type NewStageInput = {
@@ -574,6 +595,37 @@ export const boardActions = {
         description: patch.description ?? undefined,
       }),
     );
+  },
+  /**
+   * 같은 컨테이너(프로젝트·단계) 안에서 할일 순서를 taskIds 순서대로 바꾼다.
+   * projectId=null=미배정, stageId=null=백로그. 컨테이너 배열에서 슬롯 재배정하고
+   * 서버에 저장한다(내 할일처럼 부분집합만 넘겨도 나머지는 제자리).
+   */
+  reorderTasks(
+    projectId: string | null,
+    stageId: string | null,
+    taskIds: string[],
+  ) {
+    if (projectId === null) {
+      cache.apply((prev) => ({
+        ...prev,
+        unassigned: reorderInArray(prev.unassigned, taskIds),
+      }));
+    } else {
+      updateBoard(projectId, (board) =>
+        stageId === null
+          ? { ...board, backlog: reorderInArray(board.backlog, taskIds) }
+          : {
+              ...board,
+              stages: board.stages.map((stage) =>
+                stage.id === stageId
+                  ? { ...stage, tasks: reorderInArray(stage.tasks, taskIds) }
+                  : stage,
+              ),
+            },
+      );
+    }
+    cache.persist(reorderTasksApi(projectId, stageId, taskIds));
   },
 };
 
