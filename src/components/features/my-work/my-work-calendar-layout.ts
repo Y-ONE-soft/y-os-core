@@ -287,13 +287,18 @@ function layoutWeek(
   return { boxes, overlays: placed, laneCount: lanes.length };
 }
 
-/** 행(주)별 배치 결과 — 캘린더는 이 값만 읽는다. columns는 한 행의 칸 수(일=1, 주·월=7). */
+/** 행(주)별 배치 결과 — 캘린더는 이 값만 읽는다. columns는 한 행의 칸 수(일=1, 주·월=7).
+ *  projectSpans는 소스가 준 **비클램프** 기간 — 넘기면 그리드 밖으로 이어지는지를 정확히
+ *  판정한다(마감 라벨이 그리드 끝에 잘못 뜨는 것을 막는다). 없으면 오버레이에서 유추한다. */
 export function buildWeekLayouts(
   overlays: CalOverlay[],
   rowCount: number,
   columns: number,
+  projectSpans?: Record<string, DayRange>,
 ): WeekLayout[] {
-  const projectRanges = collectProjectRanges(overlays, columns);
+  const projectRanges = projectSpans
+    ? new Map(Object.entries(projectSpans))
+    : collectProjectRanges(overlays, columns);
   const stageLanes = assignStageLanes(overlays, columns);
   return Array.from({ length: rowCount }, (_, weekIndex) =>
     layoutWeek(

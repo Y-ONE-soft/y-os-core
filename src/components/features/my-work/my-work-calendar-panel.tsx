@@ -366,8 +366,14 @@ export function MyWorkCalendarPanel() {
   }
 
   const layouts = useMemo(
-    () => buildWeekLayouts(source.overlays, grid.rowCount, grid.columns),
-    [source.overlays, grid.rowCount, grid.columns],
+    () =>
+      buildWeekLayouts(
+        source.overlays,
+        grid.rowCount,
+        grid.columns,
+        source.projectSpans,
+      ),
+    [source.overlays, grid.rowCount, grid.columns, source.projectSpans],
   );
 
   const [detailStage, setDetailStage] = useState<{
