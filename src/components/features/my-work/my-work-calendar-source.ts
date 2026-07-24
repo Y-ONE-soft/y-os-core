@@ -174,13 +174,25 @@ export function buildCalendarSource(
     }
   }
 
-  // 미배정 할일은 소속 프로젝트가 없다. 칩만 날짜 칸에 그린다 — UNASSIGNED_BOX 키를 가진
-  // 칩은 배치 모듈이 박스로 묶지 않고 그 날짜 열이 비는 첫 레인에 하나씩 앉히므로,
-  // 프로젝트 박스 아래 별도 영역이 생기지 않는다.
+  // "프로젝트 없음"(미배정) 할일 — 소속 프로젝트가 없다. UNASSIGNED_BOX 키로 칩을 만들면
+  // 배치 모듈이 프로젝트 박스처럼 하나의 그룹 박스(단계 없이 할일만)로 묶는다.
+  let hasUnassigned = false;
   for (const task of unassigned) {
     if (!isMyTask(task, viewerId)) continue;
     const chip = taskChip(grid, UNASSIGNED_BOX, UNASSIGNED_COLOR, task);
-    if (chip) overlays.push(chip);
+    if (chip) {
+      overlays.push(chip);
+      hasUnassigned = true;
+    }
+  }
+  // 그룹 박스에 이름표("프로젝트 없음")를 달기 위한 메타. 실제 프로젝트가 아니므로
+  // ProjectBoxItem은 이 키를 상세 링크 없이 이름만 그린다(단계 막대도 없다).
+  if (hasUnassigned) {
+    meta[UNASSIGNED_BOX] = {
+      id: UNASSIGNED_BOX,
+      name: "프로젝트 없음",
+      color: UNASSIGNED_COLOR,
+    };
   }
 
   return { overlays, projects: meta, stageCount };
