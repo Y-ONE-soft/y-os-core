@@ -25,12 +25,36 @@ export type CalendarProject = {
   color: string;
 };
 
+/** 그리드 첫 칸 기준 일자 범위. end는 배타적(start+span). 클램프하지 않아 음수·초과 가능. */
+export type DaySpan = { start: number; end: number };
+
 export type CalendarSource = {
   overlays: CalOverlay[];
   projects: Record<string, CalendarProject>;
   /** 이 달에 걸친 단계 수 — 헤더의 "이 달 N건" */
   stageCount: number;
+  /**
+   * 프로젝트(·미배정)별 **비클램프** 기간 — 배치 모듈이 박스의 continuesLeft/Right를
+   * 판정할 때 쓴다. 오버레이는 그리드에 클램프되므로, 그리드 밖으로 이어지는지는
+   * 클램프된 오버레이만으로는 알 수 없다(그래서 마감 라벨이 그리드 끝에 잘못 떴다).
+   */
+  projectSpans: Record<string, DaySpan>;
 };
+
+/** 단계의 그리드-일자 범위(비클램프). start=시작 오프셋, end=종료 다음 칸(배타적). */
+function rawStageSpan(grid: CalendarGrid, stage: { startDate?: string | null; endDate?: string | null }): DaySpan | null {
+  if (!stage.startDate) return null;
+  const start = gridDay(grid, stage.startDate);
+  const end = stage.endDate ? gridDay(grid, stage.endDate) : start + OPEN_ENDED_DAYS - 1;
+  return { start, end: end + 1 };
+}
+
+function extendSpan(spans: Record<string, DaySpan>, key: string, span: DaySpan) {
+  const current = spans[key];
+  spans[key] = current
+    ? { start: Math.min(current.start, span.start), end: Math.max(current.end, span.end) }
+    : span;
+}
 
 /**
  * 단계를 주 단위로 잘라 오버레이로 만든다.
@@ -131,7 +155,14 @@ export function buildCalendarSource(
 ): CalendarSource {
   const overlays: CalOverlay[] = [];
   const meta: Record<string, CalendarProject> = {};
+  // 프로젝트별 비클램프 기간 — 그리드에 들어온 오버레이가 하나라도 있는 프로젝트만 담긴다.
+  const projectSpans: Record<string, DaySpan> = {};
   let stageCount = 0;
+
+  const totalDays = gridDayCount(grid);
+  // 오버레이가 그리드에 실제로 걸치는(잘려서라도 보이는) 단계·할일만 span에 반영한다.
+  // 그리드에서 아예 벗어난 것은 박스도 만들지 않으므로 continues 판정에 넣을 필요가 없다.
+  const inGrid = (span: DaySpan) => span.start < totalDays && span.end > 0;
 
   for (const project of projects) {
     const board = boards[project.id];
@@ -143,6 +174,8 @@ export function buildCalendarSource(
         overlays.push(...segments);
         stageCount += 1;
         placed = true;
+        const raw = rawStageSpan(grid, stage);
+        if (raw && inGrid(raw)) extendSpan(projectSpans, project.id, raw);
       }
       // 할일 칩은 소속 단계 색을 한 톤 옅게 — 같은 계열이되 단계 막대와 구분된다
       const taskColor = taskTone(stage.color);
@@ -151,6 +184,8 @@ export function buildCalendarSource(
         if (chip) {
           overlays.push(chip);
           placed = true;
+          const day = gridDay(grid, task.scheduledDate!);
+          extendSpan(projectSpans, project.id, { start: day, end: day + 1 });
         }
       }
     });
@@ -163,6 +198,8 @@ export function buildCalendarSource(
       if (chip) {
         overlays.push(chip);
         placed = true;
+        const day = gridDay(grid, task.scheduledDate!);
+        extendSpan(projectSpans, project.id, { start: day, end: day + 1 });
       }
     }
     if (placed) {
@@ -183,6 +220,8 @@ export function buildCalendarSource(
     if (chip) {
       overlays.push(chip);
       hasUnassigned = true;
+      const day = gridDay(grid, task.scheduledDate!);
+      extendSpan(projectSpans, UNASSIGNED_BOX, { start: day, end: day + 1 });
     }
   }
   // 그룹 박스에 이름표("프로젝트 없음")를 달기 위한 메타. 실제 프로젝트가 아니므로
@@ -195,5 +234,5 @@ export function buildCalendarSource(
     };
   }
 
-  return { overlays, projects: meta, stageCount };
+  return { overlays, projects: meta, stageCount, projectSpans };
 }

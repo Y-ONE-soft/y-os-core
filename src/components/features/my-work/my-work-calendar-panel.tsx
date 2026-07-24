@@ -34,6 +34,10 @@ import {
   type CalendarView,
 } from "@/components/features/my-work/my-work-month";
 import { MyWorkCalendarToolbar } from "@/components/features/my-work/my-work-calendar-toolbar";
+import {
+  MyWorkDayHours,
+  type DayHourTask,
+} from "@/components/features/my-work/my-work-day-hours";
 import { buildCalendarSource } from "@/components/features/my-work/my-work-calendar-source";
 import {
   applyMyWorkFilter,
@@ -366,9 +370,71 @@ export function MyWorkCalendarPanel() {
   }
 
   const layouts = useMemo(
-    () => buildWeekLayouts(source.overlays, grid.rowCount, grid.columns),
-    [source.overlays, grid.rowCount, grid.columns],
+    () =>
+      buildWeekLayouts(
+        source.overlays,
+        grid.rowCount,
+        grid.columns,
+        source.projectSpans,
+      ),
+    [source.overlays, grid.rowCount, grid.columns, source.projectSpans],
   );
+
+  // 일 뷰(시간대 그리드)용 — 그 날 예정된 내 할일. 오버레이가 이미 "내 할일 + 그 날"
+  // 필터를 적용했으므로 재사용하고, 시각·소속(project/stage)만 보드에서 이어 붙인다.
+  const dayTasks = useMemo<DayHourTask[]>(() => {
+    if (view !== "day") return [];
+    const meta = new Map<
+      string,
+      { projectId: string | null; stageId: string | null; scheduledTime?: string }
+    >();
+    for (const project of myProjects) {
+      const board = previewBoards[project.id];
+      for (const stage of board?.stages ?? [])
+        for (const task of stage.tasks)
+          meta.set(task.id, {
+            projectId: project.id,
+            stageId: stage.id,
+            scheduledTime: task.scheduledTime,
+          });
+      for (const task of board?.backlog ?? [])
+        meta.set(task.id, {
+          projectId: project.id,
+          stageId: null,
+          scheduledTime: task.scheduledTime,
+        });
+    }
+    for (const task of unassigned)
+      meta.set(task.id, {
+        projectId: null,
+        stageId: null,
+        scheduledTime: task.scheduledTime,
+      });
+    return source.overlays
+      .filter((overlay) => overlay.kind === "task")
+      .map((overlay) => {
+        const located = meta.get(overlay.taskId) ?? {
+          projectId: null,
+          stageId: null,
+        };
+        return {
+          id: overlay.taskId,
+          name: overlay.label,
+          color: overlay.color,
+          done: overlay.done,
+          late: overlay.late,
+          ...located,
+        };
+      });
+  }, [view, source.overlays, previewBoards, myProjects, unassigned]);
+
+  function handleSetTaskTime(taskId: string, time: string | null) {
+    const located = dayTasks.find((task) => task.id === taskId);
+    if (!located) return;
+    boardActions.updateTask(located.projectId, located.stageId, taskId, {
+      scheduledTime: time,
+    });
+  }
 
   const [detailStage, setDetailStage] = useState<{
     projectId: string;
@@ -416,31 +482,42 @@ export function MyWorkCalendarPanel() {
           className="ml-auto"
         />
       </div>
-      <MyWorkCalendar
-        grid={grid}
-        layouts={layouts}
-        projects={source.projects}
-        onOpenStage={(projectId, stageId) =>
-          setDetailStage({ projectId, stageId })
-        }
-        onOpenTask={setDetailTaskId}
-        onToggleTask={handleToggleTask}
-        onDrag={handleDrag}
-        onDropTask={handleDropTask}
-        onReturnToBacklog={handleReturnToBacklog}
-        onAddTask={(projectId, stageId, date, name) =>
-          // 빈 칸(projectId=null) 클릭이면 내 공통 작업(기본 프로젝트)으로 — 아직 로드
-          // 전이면 null(미배정)로 폴백해 다음 로드에 이관된다.
-          boardActions.addScheduledTask(
-            projectId ?? defaultProjectIdOf(groups, user?.id),
-            name,
-            date,
-            user?.id,
-            stageId,
-          )
-        }
-        onEdgeTurn={shiftPeriod}
-      />
+      {view === "day" ? (
+        <MyWorkDayHours
+          dayISO={grid.gridStart}
+          isToday={grid.gridStart === grid.todayISO}
+          tasks={dayTasks}
+          onOpenTask={setDetailTaskId}
+          onToggleTask={handleToggleTask}
+          onSetTime={handleSetTaskTime}
+        />
+      ) : (
+        <MyWorkCalendar
+          grid={grid}
+          layouts={layouts}
+          projects={source.projects}
+          onOpenStage={(projectId, stageId) =>
+            setDetailStage({ projectId, stageId })
+          }
+          onOpenTask={setDetailTaskId}
+          onToggleTask={handleToggleTask}
+          onDrag={handleDrag}
+          onDropTask={handleDropTask}
+          onReturnToBacklog={handleReturnToBacklog}
+          onAddTask={(projectId, stageId, date, name) =>
+            // 빈 칸(projectId=null) 클릭이면 내 공통 작업(기본 프로젝트)으로 — 아직 로드
+            // 전이면 null(미배정)로 폴백해 다음 로드에 이관된다.
+            boardActions.addScheduledTask(
+              projectId ?? defaultProjectIdOf(groups, user?.id),
+              name,
+              date,
+              user?.id,
+              stageId,
+            )
+          }
+          onEdgeTurn={shiftPeriod}
+        />
+      )}
       {detailStage && (
         <StageDetailOverlay
           projectId={detailStage.projectId}
