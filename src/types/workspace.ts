@@ -16,6 +16,8 @@ export type Project = {
   ownerId: string | null;
   /** 작업자 표시용 — ownerId만으로는 이름을 알 수 없다 */
   owner?: WorkspaceMember;
+  /** 계정 기본 프로젝트("{name}의 공통 작업")면 true — 느슨한 할일의 기본 소속 판정용 */
+  isDefault?: boolean;
 };
 
 export type ProjectGroup = {

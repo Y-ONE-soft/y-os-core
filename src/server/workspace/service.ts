@@ -234,6 +234,7 @@ export async function getWorkspace(): Promise<Workspace> {
           color: project.color,
           ownerId: project.ownerId,
           owner: project.owner ? toMember(project.owner) : undefined,
+          isDefault: project.isDefault,
         })),
     })),
     boards,

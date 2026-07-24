@@ -40,6 +40,7 @@ import {
   useMyWorkFilter,
 } from "@/components/features/my-work/my-work-filter-store";
 import { buildWeekLayouts } from "@/components/features/my-work/my-work-calendar-layout";
+import { defaultProjectIdOf } from "@/components/features/my-work/my-work-scope";
 
 export function MyWorkCalendarPanel() {
   const { user } = useSession();
@@ -428,7 +429,15 @@ export function MyWorkCalendarPanel() {
         onDropTask={handleDropTask}
         onReturnToBacklog={handleReturnToBacklog}
         onAddTask={(projectId, stageId, date, name) =>
-          boardActions.addScheduledTask(projectId, name, date, user?.id, stageId)
+          // 빈 칸(projectId=null) 클릭이면 내 공통 작업(기본 프로젝트)으로 — 아직 로드
+          // 전이면 null(미배정)로 폴백해 다음 로드에 이관된다.
+          boardActions.addScheduledTask(
+            projectId ?? defaultProjectIdOf(groups, user?.id),
+            name,
+            date,
+            user?.id,
+            stageId,
+          )
         }
         onEdgeTurn={shiftPeriod}
       />
