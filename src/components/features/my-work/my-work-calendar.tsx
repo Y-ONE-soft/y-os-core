@@ -71,6 +71,24 @@ function colWidth(span: number, columns: number) {
   return `${(span / columns) * 100}%`;
 }
 
+/** 포인터 지점 아래의 백로그 드롭존 요소 (없으면 null). 칩을 백로그로 되돌릴 때 쓴다. */
+function backlogDropzoneAt(clientX: number, clientY: number): Element | null {
+  return (
+    document
+      .elementFromPoint(clientX, clientY)
+      ?.closest("[data-backlog-dropzone]") ?? null
+  );
+}
+
+/** 드래그 중 백로그 드롭존 강조를 토글 — 지금 지점의 드롭존만 활성으로 둔다. */
+function highlightBacklog(zone: Element | null) {
+  const prev = document.querySelector(
+    "[data-backlog-dropzone][data-drop-active]",
+  );
+  if (prev && prev !== zone) prev.removeAttribute("data-drop-active");
+  if (zone) zone.setAttribute("data-drop-active", "");
+}
+
 /** 막대 위 글자용 — 배경 틴트가 옅어 원색 그대로는 대비가 모자란다. */
 function shade(hex: string, factor: number) {
   const channel = (start: number) =>
@@ -411,6 +429,7 @@ export function MyWorkCalendar({
   onToggleTask,
   onDrag,
   onDropTask,
+  onReturnToBacklog,
   onAddTask,
 }: {
   grid: CalendarGrid;
@@ -428,6 +447,8 @@ export function MyWorkCalendar({
   ) => void;
   /** 백로그에서 끌어온 할일을 날짜 칸에 떨어뜨렸을 때 (HTML5 DnD) */
   onDropTask?: (taskId: string, date: string) => void;
+  /** 캘린더 칩(할일)을 백로그 패널 위에서 손을 떼 백로그로 되돌릴 때 */
+  onReturnToBacklog?: (taskId: string) => void;
   /** 빈 날짜 칸을 눌러 할일을 새로 만들 때. projectId=null이면 프로젝트 없음(미배정) */
   onAddTask?: (projectId: string | null, date: string, name: string) => void;
 }) {
@@ -511,6 +532,10 @@ export function MyWorkCalendar({
       rootRef.current?.setPointerCapture(drag.pointerId);
     }
     drag.moved = true;
+    // 할일 칩을 백로그 패널 위로 끌면 드롭존을 강조한다 (놓으면 백로그로 되돌림).
+    if (onReturnToBacklog && drag.target.kind === "task") {
+      highlightBacklog(backlogDropzoneAt(event.clientX, event.clientY));
+    }
     // 이동량(지금 − 누른 위치)을 한 번만 반올림 → 대칭. 반 칸을 넘겨야 하루가 바뀐다.
     const delta = Math.round(pointerDay(event.clientX, event.clientY) - drag.startDay);
     onDrag(drag.target, delta, "move");
@@ -520,9 +545,20 @@ export function MyWorkCalendar({
     const drag = dragRef.current;
     if (!drag || !onDrag) return;
     dragRef.current = null;
+    highlightBacklog(null);
     if (!drag.moved) {
       // 움직이지 않았으면 클릭 — 미리보기를 되돌리고 버튼 onClick에 맡긴다
       onDrag(drag.target, 0, "cancel");
+      return;
+    }
+    // 할일 칩을 백로그 패널 위에서 손을 뗐으면 날짜 이동 대신 백로그로 되돌린다.
+    if (
+      onReturnToBacklog &&
+      drag.target.kind === "task" &&
+      backlogDropzoneAt(event.clientX, event.clientY)
+    ) {
+      onDrag(drag.target, 0, "cancel"); // 날짜 미리보기 되돌림
+      onReturnToBacklog(drag.target.taskId);
       return;
     }
     const delta = Math.round(pointerDay(event.clientX, event.clientY) - drag.startDay);

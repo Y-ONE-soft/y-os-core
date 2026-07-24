@@ -12,7 +12,10 @@ import {
   gridDayCount,
   type CalendarGrid,
 } from "@/components/features/my-work/my-work-month";
-import type { CalOverlay } from "@/components/features/my-work/my-work-calendar-layout";
+import {
+  UNASSIGNED_BOX,
+  type CalOverlay,
+} from "@/components/features/my-work/my-work-calendar-layout";
 import { isMyTask } from "@/components/features/my-work/my-work-scope";
 
 export type CalendarProject = {
@@ -81,11 +84,9 @@ function stageSegments(
   return segments;
 }
 
-/**
- * 프로젝트 없는(미배정) 할일을 묶는 가짜 프로젝트 키.
- * 캘린더 박스는 `project` 문자열로 묶이므로, 미배정도 같은 방식으로 한 묶음이 된다.
- */
-export const UNASSIGNED_BOX = "__unassigned__";
+// 미배정 배치 키는 배치 모듈(my-work-calendar-layout)이 소유한다 — 이 키를 가진 칩은
+// 박스로 묶이지 않고 빈 레인에 자유 배치된다. 기존 import 경로 호환을 위해 재노출한다.
+export { UNASSIGNED_BOX };
 const UNASSIGNED_COLOR = "#71717a";
 
 /** 예정일이 잡힌 할일을 그 날짜 칸의 칩으로 만든다 (하루 = span 1) */
@@ -173,9 +174,9 @@ export function buildCalendarSource(
     }
   }
 
-  // 미배정 할일은 소속 프로젝트가 없다. 칩만 날짜 칸에 그리고, 프로젝트처럼 박스(배경)로
-  // 묶지 않는다 — meta에 등록하지 않으므로 렌더러가 이 묶음의 박스를 그리지 않는다.
-  // (칩은 UNASSIGNED_BOX 키로 레이아웃에 배치돼 위치만 잡힌다.)
+  // 미배정 할일은 소속 프로젝트가 없다. 칩만 날짜 칸에 그린다 — UNASSIGNED_BOX 키를 가진
+  // 칩은 배치 모듈이 박스로 묶지 않고 그 날짜 열이 비는 첫 레인에 하나씩 앉히므로,
+  // 프로젝트 박스 아래 별도 영역이 생기지 않는다.
   for (const task of unassigned) {
     if (!isMyTask(task, viewerId)) continue;
     const chip = taskChip(grid, UNASSIGNED_BOX, UNASSIGNED_COLOR, task);
