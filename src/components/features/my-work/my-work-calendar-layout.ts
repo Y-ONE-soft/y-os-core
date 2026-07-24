@@ -5,9 +5,11 @@
 //  1. 프로젝트 하나가 박스 하나 — 그 프로젝트의 단계와 할일을 모두 감싼다.
 //  2. 박스 범위는 그리드 전체 기준으로 첫 항목 시작 ~ 마지막 항목 끝. 주 경계를 넘으면
 //     잘라서 다음 주로 이어 그린다 (캘린더 앱의 여러 날짜 일정과 같은 방식).
-//  3. 단계 줄은 단계 유무와 무관하게 항상 1줄 확보한다. 할일이 단계 자리로 올라오지 않는다.
-//  4. 단계 막대는 그 한 줄로만 표현한다. 기간이 겹쳐도 나누지 않고 겹쳐 그린다.
-//  5. 할일 칩은 단계 줄 아래에 붙고, 서로 겹칠 때만 줄을 나눈다.
+//  3. 단계 줄은 단계 유무와 무관하게 항상 최소 1줄 확보한다. 할일이 단계 자리로 올라오지 않는다.
+//  4. 단계 막대도 기간이 겹치면 줄을 나눠 쌓는다(할일과 같은 규칙). 한 줄에 겹쳐 그리면
+//     뒤 단계가 앞 단계를 가려, 가려진 단계를 클릭·드래그할 수 없다. 레인은 그리드 전체
+//     기준으로 배정해 한 단계가 여러 주에 걸쳐도 같은 줄에 머문다.
+//  5. 할일 칩은 단계 줄들 아래에 붙고, 서로 겹칠 때만 줄을 나눈다.
 //  6. 박스는 최소 2줄 — 단계 막대 두 개 두께. 할일이 2줄 이상이면 그만큼 두꺼워진다.
 //  7. 레인은 주마다 채워지는 대로 쌓는다. 빈 레인을 예약하지 않는다.
 
@@ -84,8 +86,59 @@ function dayStart(overlay: CalOverlay, columns: number) {
   return overlay.week * columns + overlay.col;
 }
 
-/** 단계 줄은 단계가 없어도 자리를 잡는다 — 할일이 단계 자리로 올라오지 않게. */
+/** 단계 줄 최소 수 — 단계가 없어도 1줄은 잡아 할일이 단계 자리로 올라오지 않게. */
 const STAGE_LANES = 1;
+
+/**
+ * 프로젝트별 단계 레인 배정. 겹치는 단계는 서로 다른 줄에 두어 가려지지 않게 한다.
+ * 레인은 **그리드 전체 구간** 기준으로 배정하므로, 한 단계가 여러 주에 걸쳐도 같은 줄에 머문다.
+ * (주마다 배정하면 주 경계에서 막대가 위아래로 튄다.)
+ */
+function assignStageLanes(overlays: CalOverlay[], columns: number) {
+  // 단계별 전역 구간 [start, end) — 여러 주 조각을 하나로 합친다.
+  const byStage = new Map<string, { project: string; start: number; end: number }>();
+  for (const overlay of overlays) {
+    if (overlay.kind !== "stage") continue;
+    const start = dayStart(overlay, columns);
+    const end = start + overlay.span;
+    const current = byStage.get(overlay.stageId);
+    if (!current) {
+      byStage.set(overlay.stageId, { project: overlay.project, start, end });
+    } else {
+      current.start = Math.min(current.start, start);
+      current.end = Math.max(current.end, end);
+    }
+  }
+
+  const byProject = new Map<
+    string,
+    { stageId: string; start: number; end: number }[]
+  >();
+  for (const [stageId, range] of byStage) {
+    const list = byProject.get(range.project) ?? [];
+    list.push({ stageId, start: range.start, end: range.end });
+    byProject.set(range.project, list);
+  }
+
+  const laneOf = new Map<string, number>(); // stageId → 레인
+  const laneCountOf = new Map<string, number>(); // project → 단계 레인 수(최소 1)
+  for (const [project, list] of byProject) {
+    // 시작이 이른 것부터, 같으면 긴 것부터 — 그리디 구간 분할이 안정적이도록.
+    list.sort((a, b) => a.start - b.start || b.end - a.end);
+    const laneEnd: number[] = []; // 각 레인이 마지막으로 찬 지점(다음은 그 이후에만)
+    for (const stage of list) {
+      let lane = laneEnd.findIndex((end) => end <= stage.start);
+      if (lane === -1) {
+        lane = laneEnd.length;
+        laneEnd.push(0);
+      }
+      laneEnd[lane] = stage.end;
+      laneOf.set(stage.stageId, lane);
+    }
+    laneCountOf.set(project, Math.max(STAGE_LANES, laneEnd.length));
+  }
+  return { laneOf, laneCountOf };
+}
 
 /** 박스 최소 높이 — 단계 막대 두 개 두께. */
 const MIN_BOX_LANES = 2;
@@ -114,6 +167,7 @@ function layoutWeek(
   weekIndex: number,
   overlays: CalOverlay[],
   projectRanges: Map<string, DayRange>,
+  stageLanes: ReturnType<typeof assignStageLanes>,
   columns: number,
 ): WeekLayout {
   const weekStart = weekIndex * columns;
@@ -177,8 +231,9 @@ function layoutWeek(
       span: clippedEnd - clippedStart,
     };
 
-    // 단계 줄 1 + 할일 줄, 단 단계 막대 두 개 두께(2줄)보다 얇아지지 않는다.
-    const height = Math.max(MIN_BOX_LANES, STAGE_LANES + taskLanes.length);
+    // 겹치는 단계만큼 단계 줄 수가 늘어난다(전역 배정). 그 아래 할일 줄, 최소 2줄.
+    const stageLaneCount = stageLanes.laneCountOf.get(project) ?? STAGE_LANES;
+    const height = Math.max(MIN_BOX_LANES, stageLaneCount + taskLanes.length);
     const lane = placeBlock(range, height);
 
     boxes.push({
@@ -191,9 +246,15 @@ function layoutWeek(
       continuesRight: projectRange.end > weekEnd,
     });
 
-    for (const stage of stages) overlayLane.set(stage, lane);
+    // 단계는 전역 배정된 줄에(겹치면 서로 다른 줄), 할일은 단계 줄들 아래에 놓는다.
+    for (const stage of stages) {
+      overlayLane.set(
+        stage,
+        lane + (stageLanes.laneOf.get(stage.stageId) ?? 0),
+      );
+    }
     for (const task of tasks) {
-      overlayLane.set(task, lane + STAGE_LANES + taskLaneOf.get(task)!);
+      overlayLane.set(task, lane + stageLaneCount + taskLaneOf.get(task)!);
     }
   }
 
@@ -223,11 +284,13 @@ export function buildWeekLayouts(
   columns: number,
 ): WeekLayout[] {
   const projectRanges = collectProjectRanges(overlays, columns);
+  const stageLanes = assignStageLanes(overlays, columns);
   return Array.from({ length: rowCount }, (_, weekIndex) =>
     layoutWeek(
       weekIndex,
       overlays.filter((overlay) => overlay.week === weekIndex),
       projectRanges,
+      stageLanes,
       columns,
     ),
   );
