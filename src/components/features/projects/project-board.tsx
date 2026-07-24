@@ -27,9 +27,109 @@ import {
   isStageDrag,
   setStageDragData,
 } from "@/components/features/projects/stage-drag";
+import type { BoardTask } from "@/types/workspace";
 
 /** 맨 뒤로 보내는 드롭 자리 — 단계 id와 겹치지 않는 표식 */
 const END_SLOT = "__end__";
+/** '단계 없음' 컬럼 드롭 대상 표식 — 실제 단계 id가 아니다 */
+const STAGELESS_SLOT = "__stageless__";
+
+/**
+ * 보드 컬럼 안의 할일 카드 한 장. 단계 컬럼과 '단계 없음' 컬럼이 공유한다.
+ * 단계 없음 컬럼은 stageId를 null로 넘긴다(토글·소속 판정이 백로그와 같은 규칙).
+ */
+function BoardTaskCard({
+  projectId,
+  stageId,
+  task,
+  dragging,
+  onDragStart,
+  onDragEnd,
+  onOpen,
+}: {
+  projectId: string;
+  stageId: string | null;
+  task: BoardTask;
+  dragging: boolean;
+  onDragStart: () => void;
+  onDragEnd: () => void;
+  onOpen: () => void;
+}) {
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger asChild>
+        <div
+          data-column-child
+          role="button"
+          tabIndex={0}
+          draggable
+          onDragStart={(event) => {
+            setTaskDragData(event, task.id);
+            onDragStart();
+          }}
+          onDragEnd={onDragEnd}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen();
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              event.stopPropagation();
+              onOpen();
+            }
+          }}
+          className={cn(
+            "group flex w-full shrink-0 cursor-grab items-center gap-2 rounded-[8px] px-2.5 py-2 transition-shadow outline-none active:cursor-grabbing",
+            "hover:ring-2 hover:ring-primary/50 focus-visible:ring-2 focus-visible:ring-ring",
+            task.done ? "bg-muted opacity-60" : "bg-background shadow-xs",
+            dragging && "opacity-40",
+          )}
+        >
+          <span
+            onClick={(event) => event.stopPropagation()}
+            className="flex shrink-0 items-center"
+          >
+            <Checkbox
+              aria-label={`${task.name} 완료`}
+              checked={task.done}
+              onCheckedChange={() =>
+                boardActions.toggleTask(projectId, stageId, task.id)
+              }
+              className="rounded-[4px] border-primary"
+            />
+          </span>
+          <span
+            className={cn(
+              "min-w-0 flex-1 truncate text-left text-[13px] font-medium leading-[18px]",
+              task.done && "text-muted-foreground line-through",
+            )}
+          >
+            {task.name}
+          </span>
+          <RowActions
+            label={task.name}
+            actions={[
+              {
+                label: "할일 삭제",
+                destructive: true,
+                onSelect: () => boardActions.deleteTask(projectId, task.id),
+              },
+            ]}
+          />
+        </div>
+      </ContextMenuTrigger>
+      <ContextMenuContent className="w-44">
+        <ContextMenuItem
+          variant="destructive"
+          onSelect={() => boardActions.deleteTask(projectId, task.id)}
+        >
+          할일 삭제
+        </ContextMenuItem>
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
 
 export function ProjectBoard({
   projectId,
@@ -40,7 +140,10 @@ export function ProjectBoard({
   onAddStage: () => void;
   onOpenStage: (stageId: string) => void;
 }) {
-  const { stages } = useProjectBoard(projectId);
+  const { stages, backlog } = useProjectBoard(projectId);
+  // '단계 없음' = 단계에 안 들었지만 예정일이 있어 캘린더에 뜨는 할일.
+  // 예정일도 없는 백로그(우측 패널)와 구분해 보드에 별도 컬럼으로 보여준다.
+  const stageless = backlog.filter((task) => task.scheduledDate);
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   // 끌고 있는 할일 카드 — 원본을 흐려 어디서 끌려나왔는지 보이게 한다
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
@@ -178,95 +281,16 @@ export function ProjectBoard({
             {/* 카드 영역만 스크롤 — 컬럼 자체는 보드 높이를 꽉 채운다 (Figma 260×448) */}
             <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto">
               {stage.tasks.map((task) => (
-                <ContextMenu key={task.id}>
-                  <ContextMenuTrigger asChild>
-                    {/* 카드 자체가 하나의 '할일' 컴포넌트 — 호버하면 선택된 것처럼
-                        보이고 어디를 눌러도 상세가 열린다(체크박스만 예외).
-                        완료 카드는 컬럼 배경에 잠기고 그림자를 잃어 뒤로 물러난다 —
-                        글자 취소선만으로는 한눈에 구분되지 않았다 */}
-                    <div
-                      data-column-child
-                      role="button"
-                      tabIndex={0}
-                      draggable
-                      // 백로그 카드와 같은 규약 — 단계 컬럼(또는 백로그)에 놓으면 편입된다
-                      onDragStart={(event) => {
-                        setTaskDragData(event, task.id);
-                        setDraggingTaskId(task.id);
-                      }}
-                      onDragEnd={() => setDraggingTaskId(null)}
-                      onClick={(event) => {
-                        // 막지 않으면 컬럼까지 올라가 단계 상세가 같이 열린다
-                        event.stopPropagation();
-                        setDetailTaskId(task.id);
-                      }}
-                      onKeyDown={(event) => {
-                        // div라 기본 동작이 없으니 버튼 규약을 직접 지킨다
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          setDetailTaskId(task.id);
-                        }
-                      }}
-                      className={cn(
-                        "group flex w-full shrink-0 cursor-grab items-center gap-2 rounded-[8px] px-2.5 py-2 transition-shadow outline-none active:cursor-grabbing",
-                        "hover:ring-2 hover:ring-primary/50 focus-visible:ring-2 focus-visible:ring-ring",
-                        task.done
-                          ? "bg-muted opacity-60"
-                          : "bg-background shadow-xs",
-                        // 끌고 있는 원본 카드는 흐린다 (단계 순서 변경 드래그와 같은 규칙)
-                        draggingTaskId === task.id && "opacity-40",
-                      )}
-                    >
-                      <span
-                        onClick={(event) => event.stopPropagation()}
-                        className="flex shrink-0 items-center"
-                      >
-                        <Checkbox
-                          aria-label={`${task.name} 완료`}
-                          checked={task.done}
-                          onCheckedChange={() =>
-                            boardActions.toggleTask(
-                              projectId,
-                              stage.id,
-                              task.id,
-                            )
-                          }
-                          className="rounded-[4px] border-primary"
-                        />
-                      </span>
-                      <span
-                        className={cn(
-                          "min-w-0 flex-1 truncate text-left text-[13px] font-medium leading-[18px]",
-                          task.done && "text-muted-foreground line-through",
-                        )}
-                      >
-                        {task.name}
-                      </span>
-                      <RowActions
-                        label={task.name}
-                        actions={[
-                          {
-                            label: "할일 삭제",
-                            destructive: true,
-                            onSelect: () =>
-                              boardActions.deleteTask(projectId, task.id),
-                          },
-                        ]}
-                      />
-                    </div>
-                  </ContextMenuTrigger>
-                  <ContextMenuContent className="w-44">
-                    <ContextMenuItem
-                      variant="destructive"
-                      onSelect={() =>
-                        boardActions.deleteTask(projectId, task.id)
-                      }
-                    >
-                      할일 삭제
-                    </ContextMenuItem>
-                  </ContextMenuContent>
-                </ContextMenu>
+                <BoardTaskCard
+                  key={task.id}
+                  projectId={projectId}
+                  stageId={stage.id}
+                  task={task}
+                  dragging={draggingTaskId === task.id}
+                  onDragStart={() => setDraggingTaskId(task.id)}
+                  onDragEnd={() => setDraggingTaskId(null)}
+                  onOpen={() => setDetailTaskId(task.id)}
+                />
               ))}
               {/* 버튼을 눌러 여는 대신 항상 보이는 입력 — 바로 쳐서 Enter로 추가한다.
                   컬럼 전체가 클릭 대상(단계 상세 열기)이라 입력 클릭은 stopPropagation 한다. */}
@@ -297,6 +321,66 @@ export function ProjectBoard({
           </section>
         );
       })}
+      {/* '단계 없음' 컬럼 — 단계들 뒤, '단계 추가' 앞. 진짜 단계가 아니므로 순서
+          변경·삭제는 없고 할일 편입만 받는다. 여기 놓으면 예정일은 유지된다. */}
+      <section
+        onDragOver={(event) => {
+          // 할일만 받는다 — 단계 순서 변경 드래그는 무시(진짜 단계가 아니다)
+          if (!isTaskDrag(event)) return;
+          event.preventDefault();
+          event.dataTransfer.dropEffect = "move";
+          setDropStageId(STAGELESS_SLOT);
+        }}
+        onDragLeave={(event) => {
+          if (event.currentTarget.contains(event.relatedTarget as Node)) return;
+          setDropStageId((prev) => (prev === STAGELESS_SLOT ? null : prev));
+        }}
+        onDrop={(event) => {
+          setDropStageId(null);
+          const taskId = getTaskDragData(event);
+          if (!taskId) return;
+          event.preventDefault();
+          boardActions.moveToStageless(projectId, taskId);
+        }}
+        className={cn(
+          "relative flex min-h-0 w-[260px] shrink-0 flex-col gap-1.5 rounded-[8px] bg-border p-2 transition-shadow",
+          dropStageId === STAGELESS_SLOT && "ring-2 ring-primary ring-offset-1",
+        )}
+      >
+        <header className="flex shrink-0 items-center gap-[7px] py-0.5 pl-1 pr-0.5">
+          <span
+            aria-hidden
+            className="size-2 shrink-0 rounded-full bg-muted-foreground/40"
+          />
+          <h3 className="min-w-0 flex-1 truncate text-[13px] font-semibold text-muted-foreground">
+            단계 없음
+          </h3>
+          <span className="rounded-full bg-background px-[7px] py-0.5 text-[10.5px] text-muted-foreground">
+            {stageless.length}
+          </span>
+        </header>
+        <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto">
+          {stageless.length === 0 ? (
+            <p className="px-1 py-2 text-[11.5px] leading-[17px] text-muted-foreground">
+              단계에 넣지 않은 할일이 여기 모입니다. 할일을 끌어다 놓으면 단계에서
+              빠지되 예정일은 남습니다.
+            </p>
+          ) : (
+            stageless.map((task) => (
+              <BoardTaskCard
+                key={task.id}
+                projectId={projectId}
+                stageId={null}
+                task={task}
+                dragging={draggingTaskId === task.id}
+                onDragStart={() => setDraggingTaskId(task.id)}
+                onDragEnd={() => setDraggingTaskId(null)}
+                onOpen={() => setDetailTaskId(task.id)}
+              />
+            ))
+          )}
+        </div>
+      </section>
       {/* Figma 113:452 "단계 추가 (대기)" — 마지막 컬럼 자리의 점선 진입점.
           맨 뒤로 보내는 드롭 자리도 겸한다 */}
       <button
