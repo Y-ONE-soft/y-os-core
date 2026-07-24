@@ -536,15 +536,17 @@ export const boardActions = {
     patch: Partial<Pick<BoardTask, "name" | "description" | "scheduledDate">> & {
       /** null = 담당자 해제. 키가 없으면 담당자를 건드리지 않는다 */
       assigneeId?: string | null;
+      /** HH:mm — 예정 시각. null = 시각 해제. 키가 없으면 건드리지 않는다 */
+      scheduledTime?: string | null;
     },
   ) {
-    // 로컬 상태는 BoardTask 규격(미배정 = undefined)이라 null을 맞춰 준다.
+    // 로컬 상태는 BoardTask 규격(미배정·미정 = undefined)이라 null을 맞춰 준다.
     // 서버로는 null 그대로 보내야 한다 — undefined는 JSON에서 사라져
     // 라우트의 `key in body` 검사를 통과하지 못하고 해제가 무시된다.
-    const localPatch: Partial<BoardTask> =
-      "assigneeId" in patch
-        ? { ...patch, assigneeId: patch.assigneeId ?? undefined }
-        : (patch as Partial<BoardTask>);
+    const localPatch: Partial<BoardTask> = { ...(patch as Partial<BoardTask>) };
+    if ("assigneeId" in patch) localPatch.assigneeId = patch.assigneeId ?? undefined;
+    if ("scheduledTime" in patch)
+      localPatch.scheduledTime = patch.scheduledTime ?? undefined;
     const apply = (task: BoardTask) =>
       task.id === taskId ? { ...task, ...localPatch } : task;
     if (projectId === null) {

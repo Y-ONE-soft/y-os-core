@@ -47,6 +47,7 @@ function toTask(
     done: task.done,
     description: task.description ?? undefined,
     scheduledDate: task.scheduledDate ?? undefined,
+    scheduledTime: task.scheduledTime ?? undefined,
     deadline: task.deadline ?? undefined,
     completedDate: task.completedDate ?? undefined,
     assigneeId: task.assigneeId ?? undefined,
@@ -487,6 +488,8 @@ export async function createTask(input: {
   assigneeId?: string | null;
   /** 단계에 속해 생성될 때 잡히는 예정일(YYYY-MM-DD). 없으면 일정 미정으로 만든다. */
   scheduledDate?: string;
+  /** HH:mm — 예정 시각. scheduledDate가 있을 때만 의미가 있다. */
+  scheduledTime?: string;
   /** 기본값의 최후 후보 — 요청한 사용자 */
   createdById: string;
 }) {
@@ -517,6 +520,8 @@ export type TaskPatch = Partial<{
   stageId: string | null;
   projectId: string | null;
   scheduledDate: string | null;
+  /** HH:mm — 예정 시각. null = 시각 미정으로 되돌린다 */
+  scheduledTime: string | null;
   /** null = 미배정으로 되돌린다 */
   assigneeId: string | null;
   /** 서버가 done 전환에 맞춰 채운다 — 클라이언트가 직접 보내는 값은 무시된다 */
@@ -566,6 +571,8 @@ function withDeadline(patch: TaskPatch): TaskPatch {
 export async function updateTask(id: string, patch: TaskPatch) {
   patch = withCompletedDate(patch);
   patch = withDeadline(patch);
+  // 시각은 예정일 없이 존재할 수 없다 — 예정일을 지우면(백로그·미배정으로 이동) 시각도 지운다.
+  if (patch.scheduledDate === null) patch = { ...patch, scheduledTime: null };
   if (patch.projectId === undefined) {
     return db.task.updateMany({ where: { id }, data: patch });
   }

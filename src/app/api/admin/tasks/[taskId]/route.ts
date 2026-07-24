@@ -16,6 +16,7 @@ const PATCHABLE = [
   "stageId",
   "projectId",
   "scheduledDate",
+  "scheduledTime",
   "assigneeId",
 ] as const;
 
