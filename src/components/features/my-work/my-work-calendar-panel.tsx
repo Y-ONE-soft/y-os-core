@@ -253,6 +253,30 @@ export function MyWorkCalendarPanel() {
     }
   }
 
+  /**
+   * 캘린더 칩을 백로그 패널로 끌어다 놓았을 때 — 예정일을 비워 캘린더에서 내리고
+   * 백로그 목록으로 되돌린다. 미배정은 미배정인 채로, 프로젝트 소속(단계·백로그)이면
+   * 그 프로젝트 백로그로.
+   */
+  function handleReturnToBacklog(taskId: string) {
+    if (unassigned.some((task) => task.id === taskId)) {
+      boardActions.returnToBacklog(null, taskId);
+      return;
+    }
+    for (const project of myProjects) {
+      const board = boards[project.id];
+      if (!board) continue;
+      const found =
+        board.stages.some((stage) =>
+          stage.tasks.some((task) => task.id === taskId),
+        ) || board.backlog.some((task) => task.id === taskId);
+      if (found) {
+        boardActions.returnToBacklog(project.id, taskId);
+        return;
+      }
+    }
+  }
+
   function handleDrag(
     target: DragTarget,
     deltaDays: number,
@@ -402,6 +426,7 @@ export function MyWorkCalendarPanel() {
         onToggleTask={handleToggleTask}
         onDrag={handleDrag}
         onDropTask={handleDropTask}
+        onReturnToBacklog={handleReturnToBacklog}
         onAddTask={(projectId, date, name) =>
           boardActions.addScheduledTask(projectId, name, date, user?.id)
         }

@@ -449,6 +449,39 @@ export const boardActions = {
     }
     cache.persist(patchTaskApi(taskId, { done }));
   },
+  /**
+   * 캘린더 칩을 백로그로 되돌린다. 예정일(·마감일)을 비워 캘린더에서 내리고,
+   * 단계에 속해 있었다면 그 프로젝트 백로그로 옮긴다. 미배정은 미배정인 채로 남는다.
+   * 어느 경우든 결과적으로 백로그 목록(미배정 or 프로젝트 백로그)에 나타난다.
+   */
+  returnToBacklog(projectId: string | null, taskId: string) {
+    const snapshot = cache.getSnapshot();
+    // 단계 소속이면 assignTask로 백로그 이동 — toStageId=null이라 예정일·마감일도 함께 비워진다.
+    if (projectId !== null) {
+      const inStage = snapshot.boards[projectId]?.stages.some((stage) =>
+        stage.tasks.some((task) => task.id === taskId),
+      );
+      if (inStage) {
+        boardActions.assignTask(projectId, taskId, projectId, null);
+        return;
+      }
+    }
+    // 이미 백로그·미배정 — 예정일만 지운다. 서버 withDeadline이 scheduledDate:null을
+    // 마감일까지 비우므로, 낙관적 캐시도 둘 다 비워 새로고침과 어긋나지 않게 한다.
+    const clear = (task: BoardTask): BoardTask =>
+      task.id === taskId
+        ? { ...task, scheduledDate: undefined, deadline: undefined }
+        : task;
+    if (projectId === null) {
+      cache.apply((prev) => ({ ...prev, unassigned: prev.unassigned.map(clear) }));
+    } else {
+      updateBoard(projectId, (board) => ({
+        ...board,
+        backlog: board.backlog.map(clear),
+      }));
+    }
+    cache.persist(patchTaskApi(taskId, { scheduledDate: null }));
+  },
   /** 할일 이름·내용·예정일·담당자 수정 (할일 상세 오버레이, 캘린더 드래그) */
   updateTask(
     projectId: string | null,

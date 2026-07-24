@@ -56,7 +56,13 @@ export function MyWorkBacklog() {
   ].filter(({ task }) => isMyTask(task, user?.id));
 
   return (
-    <aside className="flex w-[300px] shrink-0 flex-col gap-2 self-stretch overflow-y-auto rounded-[8px] border bg-background p-3.5 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.05)]">
+    <aside
+      // 캘린더 칩을 여기로 끌어다 놓으면 백로그로 되돌린다(예정일 해제). 캘린더의
+      // 포인터 드래그가 이 영역 위에서 손을 뗐는지를 elementFromPoint로 판정하고,
+      // 드래그 중 이 속성을 토글해 강조한다(data-drop-active).
+      data-backlog-dropzone
+      className="flex w-[300px] shrink-0 flex-col gap-2 self-stretch overflow-y-auto rounded-[8px] border bg-background p-3.5 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.05)] transition-shadow [&[data-drop-active]]:ring-2 [&[data-drop-active]]:ring-inset [&[data-drop-active]]:ring-primary"
+    >
       <div className="flex items-center gap-1.5">
         <h2 className="text-[13.5px] font-semibold">백로그</h2>
         <span className="text-xs font-medium text-muted-foreground">
