@@ -67,6 +67,9 @@ model Project {
   id        String       @id
   name      String
   color     String
+  // 계정마다 자동 생성되는 개인 기본 프로젝트("{name}의 공통 작업") 마커.
+  // 사용자당 isDefault=true 프로젝트는 하나 — 서버가 없으면 만들어 보장한다.
+  isDefault Boolean      @default(false)
   createdAt DateTime     @default(now())
   groupId   String
   group     ProjectGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)

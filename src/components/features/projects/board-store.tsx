@@ -245,17 +245,29 @@ export const boardActions = {
     }));
     cache.persistAndSync(createTaskApi({ id, projectId, stageId: null, name }));
   },
-  /** 프로젝트 없이 할일을 만든다 — 내 할일 백로그의 기본 생성 경로 */
-  // assigneeId = 만든 사람. 서버도 같은 기본값을 넣지만(createdById), 낙관적
-  // 항목에 미리 박아야 "내 작업" 담당자 필터에서 방금 만든 할일이 깜빡이지 않는다.
-  addUnassignedTask(name: string, assigneeId?: string) {
+  /**
+   * 느슨한 할일을 만든다 — 내 할일 백로그의 기본 생성 경로.
+   * projectId(=본인 공통 작업)를 주면 그 프로젝트의 백로그로, 없으면(로드 전 폴백)
+   * 미배정으로 만든다. 미배정은 다음 워크스페이스 로드에 공통 작업으로 이관된다.
+   * assigneeId = 만든 사람. 서버도 같은 기본값을 넣지만(createdById), 낙관적
+   * 항목에 미리 박아야 "내 작업" 담당자 필터에서 방금 만든 할일이 깜빡이지 않는다.
+   */
+  addUnassignedTask(name: string, assigneeId?: string, projectId?: string) {
     const id = `tk-${crypto.randomUUID()}`;
-    cache.apply((prev) => ({
-      ...prev,
-      unassigned: [...prev.unassigned, { id, name, done: false, assigneeId }],
-    }));
+    const task: BoardTask = { id, name, done: false, assigneeId };
+    if (projectId) {
+      updateBoard(projectId, (board) => ({
+        ...board,
+        backlog: [...board.backlog, task],
+      }));
+    } else {
+      cache.apply((prev) => ({
+        ...prev,
+        unassigned: [...prev.unassigned, task],
+      }));
+    }
     cache.persistAndSync(
-      createTaskApi({ id, projectId: null, stageId: null, name }),
+      createTaskApi({ id, projectId: projectId ?? null, stageId: null, name }),
     );
   },
   /**

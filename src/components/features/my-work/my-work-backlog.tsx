@@ -30,7 +30,10 @@ import {
 } from "@/components/features/projects/board-store";
 import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
 import { setTaskDragData } from "@/components/features/projects/task-drag";
-import { isMyTask } from "@/components/features/my-work/my-work-scope";
+import {
+  defaultProjectIdOf,
+  isMyTask,
+} from "@/components/features/my-work/my-work-scope";
 
 // 내 할일 페이지는 프로젝트 스코프가 없으므로 미배정 할일과 전 프로젝트 백로그를
 // 함께 보여준다. 데이터 원본은 프로젝트 상세의 백로그와 동일한 보드 스토어(DB).
@@ -56,6 +59,9 @@ export function MyWorkBacklog() {
       (boards[project.id]?.backlog ?? []).map((task) => ({ project, task })),
     ),
   ].filter(({ task }) => isMyTask(task, user?.id) && !task.scheduledDate);
+
+  // 여기서 만드는 느슨한 할일은 내 "공통 작업"(기본 프로젝트)의 백로그로 들어간다.
+  const defaultProjectId = defaultProjectIdOf(groups, user?.id);
 
   return (
     <aside
@@ -83,9 +89,13 @@ export function MyWorkBacklog() {
             if (event.key === "Enter") {
               const name = event.currentTarget.value.trim();
               if (name) {
-                // 프로젝트 없음이 기본 — 소속은 나중에 라벨·티켓에서 정한다.
+                // 내 공통 작업(기본 프로젝트) 백로그로 — 아직 로드 전이면 미배정 폴백.
                 // 담당자는 나 — 안 넣으면 방금 만든 할일이 내 작업 필터에서 깜빡인다.
-                boardActions.addUnassignedTask(name, user?.id);
+                boardActions.addUnassignedTask(
+                  name,
+                  user?.id,
+                  defaultProjectId ?? undefined,
+                );
                 event.currentTarget.value = "";
               }
             }
