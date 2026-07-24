@@ -31,6 +31,12 @@ npm run build             # 성공 — Compiled successfully
 
 **미검증** — 화면 렌더·세그먼트 전환은 프리뷰에서 확인해야 한다. 브라우저 자동화 도구가 없다.
 
+## 사후 검증 결과 (추록)
+
+- **PR**: [#142](https://github.com/Y-ONE-soft/y-os-core/pull/142)
+- **프리뷰 배포**: `● Ready` — https://y-os-core-pr3u42yh6-project-hosting-center.vercel.app
+- **PR 체크**: `Vercel` pass, `Vercel Preview Comments` pass
+
 ## 병렬 작업 메모
 
 착수 시점 main = `0d58205`. `task-status-calendar.tsx`를 만지는 다른 세션이 없음을 확인하고 진행했다. 문서 번호는 152까지 사용되어 153으로 잡았다.
