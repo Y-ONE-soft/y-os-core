@@ -161,52 +161,112 @@ function ProjectBoxItem({
   );
 }
 
-/** 날짜 칸을 눌렀을 때 뜨는 인라인 입력창 — Enter로 추가, Esc·포커스 이탈로 취소. */
+/** 날짜 칸을 눌렀을 때 뜨는 인라인 입력창 — Enter로 추가, Esc·포커스 이탈로 취소.
+ *  그 날짜를 덮는 단계가 있으면 그 단계로, 없으면 프로젝트 백로그/미배정으로 만든다. */
 function AddTaskInput({
-  color,
   projectName,
+  stages,
+  fallbackColor,
   style,
   onSubmit,
   onCancel,
 }: {
-  color: string;
   /** 붙을 프로젝트 이름 — 없으면(미배정) 플레이스홀더가 "프로젝트 없음" */
   projectName: string | null;
+  /** 그 날짜를 덮는 단계들(겹치면 여러 개). 비면 단계 없음(백로그/미배정). */
+  stages: { stageId: string; label: string; color: string }[];
+  /** 단계가 없을 때 점 색 — 프로젝트 색(미배정이면 회색) */
+  fallbackColor: string;
   style: React.CSSProperties;
-  onSubmit: (name: string) => void;
+  onSubmit: (name: string, stageId: string | null) => void;
   onCancel: () => void;
 }) {
   const [value, setValue] = useState("");
+  // 덮는 단계 중 선택된 것 — 기본은 최상단(첫) 단계. 여러 개면 아래 칩으로 바꾼다.
+  const [stageId, setStageId] = useState<string | null>(
+    stages[0]?.stageId ?? null,
+  );
+  const stage = stages.find((item) => item.stageId === stageId) ?? null;
+  const dotColor = stage?.color ?? fallbackColor;
+  const placeholder = stage
+    ? `${stage.label}에 추가`
+    : projectName
+      ? `${projectName}에 추가`
+      : "프로젝트 없음";
+  // 그 날짜를 덮는 단계가 둘 이상이면 어디에 넣을지 고르게 한다.
+  const choosable = stages.length >= 2;
   return (
     <div
       // 이 위 클릭이 주 행의 추가 핸들러로 다시 흘러가 입력창이 재생성되지 않게 막는다
       data-add-input
       onClick={(event) => event.stopPropagation()}
-      className="absolute z-30 flex items-center gap-1 rounded-[4px] border bg-popover px-1.5 py-1 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.12)]"
+      className="absolute z-30 flex flex-col gap-1 rounded-[4px] border bg-popover px-1.5 py-1 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.12)]"
       style={style}
     >
-      <span
-        aria-hidden
-        className="size-[8px] shrink-0 rounded-full"
-        style={{ backgroundColor: color }}
-      />
-      <input
-        autoFocus
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            const name = value.trim();
-            if (name) onSubmit(name);
-          } else if (event.key === "Escape") {
-            onCancel();
-          }
-        }}
-        // 다른 곳을 누르면 취소 — Enter로 추가하면 그 전에 언마운트되므로 blur가 안 겹친다
-        onBlur={onCancel}
-        placeholder={projectName ? `${projectName}에 추가` : "프로젝트 없음"}
-        className="w-full min-w-0 bg-transparent text-[11px] outline-none placeholder:text-muted-foreground"
-      />
+      <div className="flex items-center gap-1">
+        <span
+          aria-hidden
+          className="size-[8px] shrink-0 rounded-full"
+          style={{ backgroundColor: dotColor }}
+        />
+        <input
+          autoFocus
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              const name = value.trim();
+              if (name) onSubmit(name, stageId);
+            } else if (event.key === "Escape") {
+              onCancel();
+            }
+          }}
+          // 다른 곳을 누르면 취소 — Enter로 추가하면 그 전에 언마운트되므로 blur가 안 겹친다.
+          // 아래 단계 칩은 onMouseDown에서 기본 포커스 이동을 막아 여기 blur가 안 난다.
+          onBlur={onCancel}
+          placeholder={placeholder}
+          className="w-full min-w-0 bg-transparent text-[11px] outline-none placeholder:text-muted-foreground"
+        />
+      </div>
+      {/* 겹친 단계가 여럿이면 어느 단계에 넣을지 칩으로 고른다. 입력창 포커스를
+          유지하려고 onMouseDown에서 기본 동작(포커스 이동)을 막고 선택만 바꾼다. */}
+      {choosable && (
+        <div className="flex flex-wrap gap-1">
+          {stages.map((item) => {
+            const selected = item.stageId === stageId;
+            return (
+              <button
+                key={item.stageId}
+                type="button"
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  setStageId(item.stageId);
+                }}
+                className={cn(
+                  "flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] transition-colors",
+                  selected ? "font-medium" : "text-muted-foreground",
+                )}
+                style={
+                  selected
+                    ? {
+                        borderColor: hexToRgba(item.color, 0.5),
+                        backgroundColor: hexToRgba(item.color, 0.12),
+                        color: shade(item.color, 0.6),
+                      }
+                    : undefined
+                }
+              >
+                <span
+                  aria-hidden
+                  className="size-[7px] shrink-0 rounded-full"
+                  style={{ backgroundColor: item.color }}
+                />
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -449,8 +509,14 @@ export function MyWorkCalendar({
   onDropTask?: (taskId: string, date: string) => void;
   /** 캘린더 칩(할일)을 백로그 패널 위에서 손을 떼 백로그로 되돌릴 때 */
   onReturnToBacklog?: (taskId: string) => void;
-  /** 빈 날짜 칸을 눌러 할일을 새로 만들 때. projectId=null이면 프로젝트 없음(미배정) */
-  onAddTask?: (projectId: string | null, date: string, name: string) => void;
+  /** 빈 날짜 칸을 눌러 할일을 새로 만들 때. projectId=null이면 프로젝트 없음(미배정),
+   *  stageId는 그 날짜를 덮는 단계(없으면 null=백로그/미배정). */
+  onAddTask?: (
+    projectId: string | null,
+    stageId: string | null,
+    date: string,
+    name: string,
+  ) => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   // 백로그에서 끌어온 할일이 놓일 날짜 칸 — 어디에 떨어지는지 보이게 한다
@@ -462,6 +528,8 @@ export function MyWorkCalendar({
     lane: number;
     date: string;
     projectId: string | null;
+    /** 그 날짜(열)를 덮는 단계들(겹치면 여러 개). 비어 있으면 백로그/미배정. */
+    stages: { stageId: string; label: string; color: string }[];
   } | null>(null);
   const weekRefs = useRef<(HTMLDivElement | null)[]>([]);
   // 주 경계로 잘린 단계 조각을 하나로 묶어 강조한다 (CSS :hover는 조각 단위)
@@ -598,12 +666,30 @@ export function MyWorkCalendar({
     );
     const projectId =
       !box || box.project === UNASSIGNED_BOX ? null : box.project;
+    // 그 날짜(열)를 덮는 단계들 — 이 프로젝트의 단계 오버레이 중 클릭 열을 품은 것.
+    // 겹쳐 그려진 단계가 여러 개면 모두 모은다(선택은 입력창에서).
+    const stages: { stageId: string; label: string; color: string }[] = [];
+    if (projectId) {
+      const seen = new Set<string>();
+      for (const overlay of layouts[week].overlays) {
+        if (overlay.kind !== "stage" || overlay.project !== projectId) continue;
+        if (col < overlay.col || col >= overlay.col + overlay.span) continue;
+        if (seen.has(overlay.stageId)) continue;
+        seen.add(overlay.stageId);
+        stages.push({
+          stageId: overlay.stageId,
+          label: overlay.label,
+          color: overlay.color,
+        });
+      }
+    }
     setAdding({
       week,
       col,
       lane: Math.max(0, lane),
       date: shiftISO(grid.gridStart, week * columns + col),
       projectId,
+      stages,
     });
   }
 
@@ -747,15 +833,16 @@ export function MyWorkCalendar({
             ))}
             {adding?.week === weekIndex && onAddTask && (
               <AddTaskInput
-                color={
-                  adding.projectId
-                    ? (projects[adding.projectId]?.color ?? "#71717a")
-                    : "#71717a"
-                }
                 projectName={
                   adding.projectId
                     ? (projects[adding.projectId]?.name ?? null)
                     : null
+                }
+                stages={adding.stages}
+                fallbackColor={
+                  adding.projectId
+                    ? (projects[adding.projectId]?.color ?? "#71717a")
+                    : "#71717a"
                 }
                 style={{
                   left: colLeft(adding.col, columns),
@@ -763,8 +850,8 @@ export function MyWorkCalendar({
                   // 오른쪽으로 넘치지 않게 최대 3칸까지만 넓힌다
                   width: colWidth(Math.min(3, columns - adding.col), columns),
                 }}
-                onSubmit={(name) => {
-                  onAddTask(adding.projectId, adding.date, name);
+                onSubmit={(name, stageId) => {
+                  onAddTask(adding.projectId, stageId, adding.date, name);
                   setAdding(null);
                 }}
                 onCancel={() => setAdding(null)}

@@ -427,8 +427,8 @@ export function MyWorkCalendarPanel() {
         onDrag={handleDrag}
         onDropTask={handleDropTask}
         onReturnToBacklog={handleReturnToBacklog}
-        onAddTask={(projectId, date, name) =>
-          boardActions.addScheduledTask(projectId, name, date, user?.id)
+        onAddTask={(projectId, stageId, date, name) =>
+          boardActions.addScheduledTask(projectId, name, date, user?.id, stageId)
         }
       />
       {detailStage && (

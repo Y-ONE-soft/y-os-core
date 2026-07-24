@@ -260,7 +260,9 @@ export const boardActions = {
   },
   /**
    * 예정일이 잡힌 할일을 만든다 — 캘린더에서 날짜 칸을 눌러 추가하는 경로.
-   * projectId=null이면 미배정, 값이 있으면 그 프로젝트의 백로그(단계 없음)로 넣는다.
+   * - projectId=null → 미배정(단계도 없음).
+   * - projectId 있고 stageId 있으면 → 그 날짜를 덮는 그 단계로 편입.
+   * - projectId 있고 stageId 없으면 → 그 프로젝트의 백로그(단계 없음).
    * 어느 쪽이든 예정일이 있어 캘린더의 그 날짜 칸에 바로 칩으로 뜬다.
    * assigneeId=만든 사람 — addUnassignedTask와 같은 이유로 낙관적 항목에 미리 박는다.
    */
@@ -269,6 +271,7 @@ export const boardActions = {
     name: string,
     scheduledDate: string,
     assigneeId?: string,
+    stageId?: string | null,
   ) {
     const id = `tk-${crypto.randomUUID()}`;
     // 새로 잡은 예정일이 곧 마감일 — 서버 withDeadline 규칙을 낙관적 캐시에도 맞춘다.
@@ -281,11 +284,23 @@ export const boardActions = {
       assigneeId,
     };
     if (projectId === null) {
+      // 프로젝트가 없으면 단계도 없다 — 미배정으로.
       cache.apply((prev) => ({
         ...prev,
         unassigned: [...prev.unassigned, task],
       }));
+    } else if (stageId) {
+      // 그 날짜를 덮는 단계로 편입. 클릭 날짜가 이미 단계 범위 안이라 단계를 늘릴 필요 없다.
+      updateBoard(projectId, (board) => ({
+        ...board,
+        stages: board.stages.map((stage) =>
+          stage.id === stageId
+            ? { ...stage, tasks: [...stage.tasks, task] }
+            : stage,
+        ),
+      }));
     } else {
+      // 덮는 단계가 없으면 백로그(단계 없음).
       updateBoard(projectId, (board) => ({
         ...board,
         backlog: [...board.backlog, task],
@@ -293,7 +308,13 @@ export const boardActions = {
     }
     // 담당자 기본값은 서버가 채운다 — 응답 후 서버 값으로 맞춘다
     cache.persistAndSync(
-      createTaskApi({ id, projectId, stageId: null, name, scheduledDate }),
+      createTaskApi({
+        id,
+        projectId,
+        stageId: stageId ?? null,
+        name,
+        scheduledDate,
+      }),
     );
   },
   /**
