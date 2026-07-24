@@ -15,17 +15,14 @@ const KIND_COLUMNS: { kind: WorkRequest["kind"]; label: string }[] = [
 
 export function MyWorkRequests() {
   const { requests, loading } = useRequests();
-  // 이 띠는 "나한테 온 것"만 보여준다 — 내가 보낸 요청은 여기서 할 일이 없다.
-  // 보낸 요청 확인·취소는 전체 보기(알림 페이지)가 담당한다.
-  const received = requests.filter((item) => item.direction === "received");
-  // 대기 중인 요청이 먼저 — 처리가 끝난 건 뒤로 밀어둔다
-  const sorted = [...received].sort(
-    (a, b) =>
-      (a.status === "PENDING" ? 0 : 1) - (b.status === "PENDING" ? 0 : 1),
+  // 이 띠는 "나한테 온, 아직 처리 안 한 요청"만 보여준다.
+  //  - 내가 보낸 요청은 여기서 할 일이 없다 (전체 보기가 담당).
+  //  - 수락·거절·취소로 의사결정이 끝난 요청은 알림 띠에서 사라진다.
+  //    처리 이력(수락됨·거절됨·취소됨)은 전체 보기(알림 페이지)가 담당한다.
+  const pending = requests.filter(
+    (item) => item.direction === "received" && item.status === "PENDING",
   );
-  const pendingCount = received.filter(
-    (item) => item.status === "PENDING",
-  ).length;
+  const pendingCount = pending.length;
 
   return (
     <section className="flex w-full shrink-0 flex-col gap-2.5">
@@ -42,12 +39,12 @@ export function MyWorkRequests() {
       </div>
       {loading ? (
         <p className="text-xs text-muted-foreground">불러오는 중…</p>
-      ) : sorted.length === 0 ? (
-        <p className="text-xs text-muted-foreground">받은 요청이 없습니다.</p>
+      ) : pending.length === 0 ? (
+        <p className="text-xs text-muted-foreground">대기 중인 요청이 없습니다.</p>
       ) : (
         <div className="flex w-full items-start gap-3">
           {KIND_COLUMNS.map(({ kind, label }) => {
-            const items = sorted.filter((item) => item.kind === kind);
+            const items = pending.filter((item) => item.kind === kind);
             return (
               // 비어 있어도 열은 남긴다 — 한쪽이 비었다고 폭이 출렁이면 훑기 나쁘다
               <div
