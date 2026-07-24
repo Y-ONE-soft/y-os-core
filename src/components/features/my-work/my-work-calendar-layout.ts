@@ -11,6 +11,13 @@
 //  6. 박스는 최소 2줄 — 단계 막대 두 개 두께. 할일이 2줄 이상이면 그만큼 두꺼워진다.
 //  7. 레인은 주마다 채워지는 대로 쌓는다. 빈 레인을 예약하지 않는다.
 
+/**
+ * 프로젝트 없는(미배정) 할일 칩을 표시하는 배치 키.
+ * 실제 프로젝트가 아니므로 박스로 묶지 않는다 — 이 키를 가진 칩은 박스 배치에서
+ * 빠지고, 그 날짜 열이 비는 첫 레인에 하나씩 자유 배치된다(별도 영역을 만들지 않음).
+ */
+export const UNASSIGNED_BOX = "__unassigned__";
+
 type ColRange = { col: number; span: number };
 
 /** 그리드 전체 기준 절대 일자 구간 [start, end) — `주 × 7 + 열` */
@@ -114,7 +121,9 @@ function layoutWeek(
 
   // 이 주에 걸치는 프로젝트 — 항목이 이 주에 없어도 기간이 지나가면 박스가 이어진다.
   // 시작이 이른 것부터, 같으면 긴 것부터 앉힌다 (데이터 순서와 무관하게 결과가 안정적이도록).
+  // 미배정 칩은 박스로 묶지 않는다 — 박스 배치 뒤 빈 레인에 하나씩 따로 앉힌다.
   const active = [...projectRanges.entries()]
+    .filter(([project]) => project !== UNASSIGNED_BOX)
     .filter(([, range]) => range.start < weekEnd && weekStart < range.end)
     .sort(
       ([, a], [, b]) => a.start - b.start || b.end - b.start - (a.end - a.start),
@@ -186,6 +195,18 @@ function layoutWeek(
     for (const task of tasks) {
       overlayLane.set(task, lane + STAGE_LANES + taskLaneOf.get(task)!);
     }
+  }
+
+  // 미배정 칩 — 박스 없이, 그 날짜 열이 비는 첫 레인에 하나씩 앉힌다. 프로젝트 박스가
+  // 이미 레인을 잡았으므로 그 아래 빈 레인으로 자연히 채워지고, 프로젝트가 없는 날은
+  // 맨 위 레인부터 쓴다. 별도로 예약된 영역(빈 단계줄·최소 높이)을 만들지 않는다.
+  for (const chip of overlays) {
+    if (chip.project !== UNASSIGNED_BOX) continue;
+    const range: ColRange = { col: chip.col, span: chip.span };
+    let lane = 0;
+    while (lanes[lane]?.some((placed) => overlaps(placed, range))) lane += 1;
+    (lanes[lane] ??= []).push(range);
+    overlayLane.set(chip, lane);
   }
 
   const placed = overlays
