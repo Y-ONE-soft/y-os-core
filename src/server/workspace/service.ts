@@ -130,7 +130,58 @@ async function rollOverOverdueTasks(): Promise<void> {
   });
 }
 
+/** "{이름}의 공통 작업" 기본 프로젝트 색 — 옛 미배정과 같은 회색으로 개인 공간임을 나타낸다 */
+const COMMON_PROJECT_COLOR = "#71717a";
+
+/**
+ * 계정별 기본 프로젝트 "{이름}의 공통 작업"을 보장하고, 옛 미배정 할일을 이관한다.
+ * 앱에 계정 생성 훅이 없어(시드로만 생성) 워크스페이스 로드 시점에 자가치유로 처리한다 —
+ * 백필(기존 계정)·신규 계정 자동 보장·미배정 이관을 한 번에.
+ *  1. 기본 프로젝트가 없는 사용자(그룹 있는)에게 생성. id를 결정적(p-default-<userId>)으로
+ *     두고 createMany skipDuplicates로 동시 로드 시 중복 생성을 막는다.
+ *  2. 미배정(projectId=null) 할일을 그 할일 담당자의 공통 작업으로 이관(담당자 없는 건 유지).
+ *     정상 상태에선 대상이 없어(신규 느슨한 할일은 처음부터 공통 작업에 생성) 매번 값싸게 끝난다.
+ */
+export async function ensureDefaultProjects(): Promise<void> {
+  const missing = await db.user.findMany({
+    where: { groupId: { not: null }, ownedProjects: { none: { isDefault: true } } },
+    select: { id: true, name: true, groupId: true },
+  });
+  if (missing.length > 0) {
+    await db.project.createMany({
+      data: missing.map((user) => ({
+        id: `p-default-${user.id}`,
+        name: `${user.name}의 공통 작업`,
+        color: COMMON_PROJECT_COLOR,
+        groupId: user.groupId as string,
+        ownerId: user.id,
+        isDefault: true,
+      })),
+      skipDuplicates: true,
+    });
+  }
+
+  // 담당자 있는 미배정 할일이 있을 때만 이관한다 — 정상 상태에선 0건이라 count로 건너뛴다.
+  const orphanCount = await db.task.count({
+    where: { projectId: null, assigneeId: { not: null } },
+  });
+  if (orphanCount > 0) {
+    const defaults = await db.project.findMany({
+      where: { isDefault: true, ownerId: { not: null } },
+      select: { id: true, ownerId: true },
+    });
+    for (const project of defaults) {
+      await db.task.updateMany({
+        where: { projectId: null, assigneeId: project.ownerId },
+        data: { projectId: project.id },
+      });
+    }
+  }
+}
+
 export async function getWorkspace(): Promise<Workspace> {
+  // 읽기 전에 (1) 계정별 공통 작업 보장·미배정 이관, (2) 지난 예정일 이월을 먼저 반영한다.
+  await ensureDefaultProjects();
   // 워크스페이스 스냅샷을 읽기 전에 이월을 먼저 반영해, 조회 결과가 곧 오늘 기준이 되게 한다.
   await rollOverOverdueTasks();
   const [groups, projects, stages, backlogTasks, collaborators] =
