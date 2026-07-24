@@ -21,6 +21,21 @@ const ORDER = [{ createdAt: "asc" as const }, { id: "asc" as const }];
  * 화면의 단계 번호(1, 2, 3…)가 곧 이 배열의 순서다.
  */
 const STAGE_ORDER = [{ order: "asc" as const }, { id: "asc" as const }];
+/**
+ * 프로젝트·할일은 드래그로 순서를 바꾸므로 명시적 order를 우선으로 정렬한다.
+ * order가 같으면(백필/동시 생성) createdAt·id로 안정적으로 갈린다.
+ * 프로젝트는 그룹 안에서, 할일은 컨테이너(단계·백로그·미배정) 안에서 이 순서로 표시된다.
+ */
+const PROJECT_ORDER = [
+  { order: "asc" as const },
+  { createdAt: "asc" as const },
+  { id: "asc" as const },
+];
+const TASK_ORDER = [
+  { order: "asc" as const },
+  { createdAt: "asc" as const },
+  { id: "asc" as const },
+];
 
 /**
  * 화면에 사람을 그리는 데 필요한 최소 정보만 추린다.
@@ -189,14 +204,14 @@ export async function getWorkspace(): Promise<Workspace> {
     await Promise.all([
       db.projectGroup.findMany({ orderBy: ORDER }),
       db.project.findMany({
-        orderBy: ORDER,
+        orderBy: PROJECT_ORDER,
         include: { owner: { select: MEMBER_SELECT } },
       }),
       db.stage.findMany({
         orderBy: STAGE_ORDER,
         include: {
           tasks: {
-            orderBy: ORDER,
+            orderBy: TASK_ORDER,
             include: { assignee: { select: MEMBER_SELECT } },
           },
           comments: { orderBy: ORDER },
@@ -204,7 +219,7 @@ export async function getWorkspace(): Promise<Workspace> {
       }),
       db.task.findMany({
         where: { stageId: null },
-        orderBy: ORDER,
+        orderBy: TASK_ORDER,
         include: { assignee: { select: MEMBER_SELECT } },
       }),
       acceptedCollaborators(),
@@ -269,7 +284,9 @@ export async function createProject(input: {
   // 날짜는 서버 기준 — 클라이언트 시계를 신뢰하지 않는다(completedDate와 동일 규약).
   const start = todayISO();
   return db.$transaction(async (tx) => {
-    const project = await tx.project.create({ data: input });
+    // 새 프로젝트는 그 그룹의 사이드바 맨 아래로 — order = 그룹 내 현재 개수
+    const order = await tx.project.count({ where: { groupId: input.groupId } });
+    const project = await tx.project.create({ data: { ...input, order } });
     await tx.stage.create({
       data: {
         id: `st-${crypto.randomUUID()}`,
@@ -499,8 +516,13 @@ export async function createTask(input: {
   const data = scheduledDate
     ? { ...rest, scheduledDate, deadline: scheduledDate }
     : rest;
+  // 새 할일은 그 컨테이너(프로젝트·단계) 맨 끝으로 간다 — order = 현재 개수.
+  // (null projectId·stageId는 미배정/백로그를 각각 하나의 컨테이너로 센다)
+  const order = await db.task.count({
+    where: { projectId: data.projectId, stageId: data.stageId },
+  });
   if (data.assigneeId !== undefined) {
-    return db.task.create({ data });
+    return db.task.create({ data: { ...data, order } });
   }
   const owner = data.projectId
     ? (
@@ -510,7 +532,9 @@ export async function createTask(input: {
         })
       )?.ownerId
     : null;
-  return db.task.create({ data: { ...data, assigneeId: owner ?? createdById } });
+  return db.task.create({
+    data: { ...data, order, assigneeId: owner ?? createdById },
+  });
 }
 
 export type TaskPatch = Partial<{
@@ -586,7 +610,15 @@ export async function updateTask(id: string, patch: TaskPatch) {
     });
     if (stage?.projectId === patch.projectId) stageId = patch.stageId;
   }
-  return db.task.updateMany({ where: { id }, data: { ...patch, stageId } });
+  // 컨테이너를 옮기면 대상 컨테이너 맨 끝으로 간다 — order = 대상의 현재 개수.
+  // 옮기는 할일은 아직 대상 컨테이너에 없으므로 개수가 곧 끝자리 인덱스다.
+  const order = await db.task.count({
+    where: { projectId: patch.projectId, stageId },
+  });
+  return db.task.updateMany({
+    where: { id },
+    data: { ...patch, stageId, order },
+  });
 }
 
 /**
