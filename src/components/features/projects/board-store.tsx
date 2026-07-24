@@ -330,6 +330,19 @@ export const boardActions = {
     );
   },
   /**
+   * '단계 없음'으로 옮긴다 — 단계에서 빼되 예정일은 남긴다.
+   * 백로그(예정일도 단계도 없음)와 달리 '단계 없음'은 예정일이 있어 캘린더에 뜬다.
+   * 기존 예정일이 있으면 유지하고, 없으면(백로그에서 끌어온 경우) 오늘로 잡는다.
+   */
+  moveToStageless(projectId: string, taskId: string) {
+    const board = cache.getSnapshot().boards[projectId];
+    const task =
+      board?.stages.flatMap((stage) => stage.tasks).find((t) => t.id === taskId) ??
+      board?.backlog.find((t) => t.id === taskId);
+    const keep = task?.scheduledDate ?? todayISO();
+    boardActions.assignTask(projectId, taskId, projectId, null, keep);
+  },
+  /**
    * 할일의 소속(프로젝트·단계)을 한 번에 지정한다. 프로젝트 `null`은 미배정,
    * 단계 `null`은 백로그를 뜻하며 단계 이동·프로젝트 이동·미배정 전환을 모두 다룬다.
    */
