@@ -182,8 +182,10 @@ function AddTaskInput({
   onCancel: () => void;
 }) {
   const [value, setValue] = useState("");
-  // 덮는 단계가 여럿이면 일단 최상단(첫) 단계를 기본으로 한다. (선택 UI는 후속 태스크)
-  const [stageId] = useState<string | null>(stages[0]?.stageId ?? null);
+  // 덮는 단계 중 선택된 것 — 기본은 최상단(첫) 단계. 여러 개면 아래 칩으로 바꾼다.
+  const [stageId, setStageId] = useState<string | null>(
+    stages[0]?.stageId ?? null,
+  );
   const stage = stages.find((item) => item.stageId === stageId) ?? null;
   const dotColor = stage?.color ?? fallbackColor;
   const placeholder = stage
@@ -191,36 +193,80 @@ function AddTaskInput({
     : projectName
       ? `${projectName}에 추가`
       : "프로젝트 없음";
+  // 그 날짜를 덮는 단계가 둘 이상이면 어디에 넣을지 고르게 한다.
+  const choosable = stages.length >= 2;
   return (
     <div
       // 이 위 클릭이 주 행의 추가 핸들러로 다시 흘러가 입력창이 재생성되지 않게 막는다
       data-add-input
       onClick={(event) => event.stopPropagation()}
-      className="absolute z-30 flex items-center gap-1 rounded-[4px] border bg-popover px-1.5 py-1 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.12)]"
+      className="absolute z-30 flex flex-col gap-1 rounded-[4px] border bg-popover px-1.5 py-1 shadow-[0px_1px_3px_0px_rgba(0,0,0,0.12)]"
       style={style}
     >
-      <span
-        aria-hidden
-        className="size-[8px] shrink-0 rounded-full"
-        style={{ backgroundColor: dotColor }}
-      />
-      <input
-        autoFocus
-        value={value}
-        onChange={(event) => setValue(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            const name = value.trim();
-            if (name) onSubmit(name, stageId);
-          } else if (event.key === "Escape") {
-            onCancel();
-          }
-        }}
-        // 다른 곳을 누르면 취소 — Enter로 추가하면 그 전에 언마운트되므로 blur가 안 겹친다
-        onBlur={onCancel}
-        placeholder={placeholder}
-        className="w-full min-w-0 bg-transparent text-[11px] outline-none placeholder:text-muted-foreground"
-      />
+      <div className="flex items-center gap-1">
+        <span
+          aria-hidden
+          className="size-[8px] shrink-0 rounded-full"
+          style={{ backgroundColor: dotColor }}
+        />
+        <input
+          autoFocus
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              const name = value.trim();
+              if (name) onSubmit(name, stageId);
+            } else if (event.key === "Escape") {
+              onCancel();
+            }
+          }}
+          // 다른 곳을 누르면 취소 — Enter로 추가하면 그 전에 언마운트되므로 blur가 안 겹친다.
+          // 아래 단계 칩은 onMouseDown에서 기본 포커스 이동을 막아 여기 blur가 안 난다.
+          onBlur={onCancel}
+          placeholder={placeholder}
+          className="w-full min-w-0 bg-transparent text-[11px] outline-none placeholder:text-muted-foreground"
+        />
+      </div>
+      {/* 겹친 단계가 여럿이면 어느 단계에 넣을지 칩으로 고른다. 입력창 포커스를
+          유지하려고 onMouseDown에서 기본 동작(포커스 이동)을 막고 선택만 바꾼다. */}
+      {choosable && (
+        <div className="flex flex-wrap gap-1">
+          {stages.map((item) => {
+            const selected = item.stageId === stageId;
+            return (
+              <button
+                key={item.stageId}
+                type="button"
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  setStageId(item.stageId);
+                }}
+                className={cn(
+                  "flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] transition-colors",
+                  selected ? "font-medium" : "text-muted-foreground",
+                )}
+                style={
+                  selected
+                    ? {
+                        borderColor: hexToRgba(item.color, 0.5),
+                        backgroundColor: hexToRgba(item.color, 0.12),
+                        color: shade(item.color, 0.6),
+                      }
+                    : undefined
+                }
+              >
+                <span
+                  aria-hidden
+                  className="size-[7px] shrink-0 rounded-full"
+                  style={{ backgroundColor: item.color }}
+                />
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
