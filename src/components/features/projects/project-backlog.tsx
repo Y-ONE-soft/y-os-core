@@ -1,6 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import {
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { Check } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -30,6 +35,7 @@ import {
   isTaskDrag,
   setTaskDragData,
 } from "@/components/features/projects/task-drag";
+import { buildTaskReorderProps } from "@/components/features/projects/task-reorder";
 import type { BoardStage, BoardTask } from "@/types/workspace";
 
 // 백로그 패널의 한 줄(할일 티켓). 단계 없음·백로그 두 섹션이 같은 티켓을 쓴다.
@@ -38,13 +44,28 @@ function BacklogRow({
   projectId,
   stages,
   item,
+  siblingIds,
+  dropTarget,
+  setDropTargetId,
   onOpenDetail,
 }: {
   projectId: string;
   stages: BoardStage[];
   item: BoardTask;
+  /** 백로그 패널에 지금 보이는 할일 id들(재정렬 계산용) */
+  siblingIds: string[];
+  dropTarget: boolean;
+  setDropTargetId: Dispatch<SetStateAction<string | null>>;
   onOpenDetail: (taskId: string) => void;
 }) {
+  const reorderProps = buildTaskReorderProps({
+    projectId,
+    stageId: null,
+    targetTaskId: item.id,
+    siblingIds,
+    setDropTargetId,
+    reorder: boardActions.reorderTasks,
+  });
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>
@@ -55,6 +76,9 @@ function BacklogRow({
           role="button"
           tabIndex={0}
           onDragStart={(event) => setTaskDragData(event, item.id)}
+          onDragOver={reorderProps.onDragOver}
+          onDragLeave={reorderProps.onDragLeave}
+          onDrop={reorderProps.onDrop}
           onClick={() => onOpenDetail(item.id)}
           onKeyDown={(event) => {
             if (event.key === "Enter" || event.key === " ") {
@@ -68,6 +92,8 @@ function BacklogRow({
             "hover:ring-2 hover:ring-primary/50 focus-visible:ring-2 focus-visible:ring-ring",
             // 완료 항목은 행 전체를 흐린다 — 보드 카드·내 할일 백로그와 같은 규칙
             item.done && "opacity-60",
+            // 같은 백로그 안 재정렬 드롭 대상 — 이 행 앞으로 끼워짐
+            dropTarget && "ring-2 ring-inset ring-primary",
           )}
         >
           <span
@@ -173,6 +199,8 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
   // 보드(단계) 카드를 끌어와 놓으면 백로그로 되돌린다 — 놓일 자리를 하이라이트한다
   const [dropActive, setDropActive] = useState(false);
+  // 같은 백로그 안 재정렬 드롭 대상 행
+  const [dropTaskId, setDropTaskId] = useState<string | null>(null);
   // 화면 어디서든 타이핑하면 이 입력으로 캡처한다
   const addInputRef = useRef<HTMLInputElement>(null);
   useTypeToFocus(addInputRef);
@@ -241,6 +269,9 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
             projectId={projectId}
             stages={stages}
             item={item}
+            siblingIds={parked.map((task) => task.id)}
+            dropTarget={dropTaskId === item.id}
+            setDropTargetId={setDropTaskId}
             onOpenDetail={setDetailTaskId}
           />
         ))}

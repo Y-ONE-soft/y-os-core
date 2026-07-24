@@ -48,6 +48,10 @@ export async function createProjectFromPreset(
   const preset = await getPreset(input.ownerId, input.presetId);
 
   await db.$transaction(async (tx) => {
+    // 새 프로젝트는 그 그룹 사이드바 맨 아래로 — order = 그룹 내 현재 개수
+    const projectOrder = await tx.project.count({
+      where: { groupId: input.groupId },
+    });
     await tx.project.create({
       data: {
         id: input.projectId,
@@ -55,6 +59,7 @@ export async function createProjectFromPreset(
         name: input.name,
         color: input.color,
         ownerId: input.ownerId,
+        order: projectOrder,
       },
     });
 
@@ -181,6 +186,10 @@ export async function createProjectWithStages(
   const spans = input.spans;
 
   await db.$transaction(async (tx) => {
+    // 새 프로젝트는 그 그룹 사이드바 맨 아래로 — order = 그룹 내 현재 개수
+    const projectOrder = await tx.project.count({
+      where: { groupId: input.groupId },
+    });
     await tx.project.create({
       data: {
         id: input.projectId,
@@ -188,6 +197,7 @@ export async function createProjectWithStages(
         name: input.name,
         color: input.color,
         ownerId: input.ownerId,
+        order: projectOrder,
       },
     });
 

@@ -30,6 +30,7 @@ import {
 } from "@/components/features/projects/board-store";
 import { TaskDetailOverlay } from "@/components/features/projects/task-detail-overlay";
 import { setTaskDragData } from "@/components/features/projects/task-drag";
+import { buildTaskReorderProps } from "@/components/features/projects/task-reorder";
 import {
   defaultProjectIdOf,
   isMyTask,
@@ -48,6 +49,8 @@ export function MyWorkBacklog() {
   const boards = useBoardState();
   const unassigned = useUnassignedTasks();
   const [detailTaskId, setDetailTaskId] = useState<string | null>(null);
+  // 같은 컨테이너(같은 소속) 안 재정렬 드롭 대상 행
+  const [dropTaskId, setDropTaskId] = useState<string | null>(null);
   // 화면 어디서든 타이핑하면 이 입력으로 캡처한다
   const addInputRef = useRef<HTMLInputElement>(null);
   useTypeToFocus(addInputRef);
@@ -102,7 +105,20 @@ export function MyWorkBacklog() {
           }}
         />
       </div>
-      {items.map(({ project, task }) => (
+      {items.map(({ project, task }) => {
+        const containerId = project?.id ?? null;
+        // 재정렬은 같은 소속(컨테이너) 안에서만 — siblingIds는 그 컨테이너의 내 항목들
+        const reorderProps = buildTaskReorderProps({
+          projectId: containerId,
+          stageId: null,
+          targetTaskId: task.id,
+          siblingIds: items
+            .filter((entry) => (entry.project?.id ?? null) === containerId)
+            .map((entry) => entry.task.id),
+          setDropTargetId: setDropTaskId,
+          reorder: boardActions.reorderTasks,
+        });
+        return (
         <ContextMenu key={task.id}>
           <ContextMenuTrigger asChild>
             {/* 완료 항목은 행 전체를 흐려 목록에서 뒤로 물러나게 한다 —
@@ -110,10 +126,14 @@ export function MyWorkBacklog() {
             <div
               draggable
               onDragStart={(event) => setTaskDragData(event, task.id)}
+              onDragOver={reorderProps.onDragOver}
+              onDragLeave={reorderProps.onDragLeave}
+              onDrop={reorderProps.onDrop}
               title="캘린더 날짜 칸으로 끌어다 놓으면 일정이 잡힙니다"
               className={cn(
                 "group flex shrink-0 cursor-grab items-center gap-2 rounded-[8px] bg-muted px-2.5 py-2 active:cursor-grabbing",
                 task.done && "opacity-60",
+                dropTaskId === task.id && "ring-2 ring-inset ring-primary",
               )}
             >
               <Checkbox
@@ -237,7 +257,8 @@ export function MyWorkBacklog() {
             </ContextMenuItem>
           </ContextMenuContent>
         </ContextMenu>
-      ))}
+        );
+      })}
       <p className="text-[11px] leading-normal text-muted-foreground">
         백로그를 날짜 칸으로 드래그하면 일정이 잡힙니다.
       </p>

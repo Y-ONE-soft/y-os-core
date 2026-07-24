@@ -21,6 +21,21 @@ const ORDER = [{ createdAt: "asc" as const }, { id: "asc" as const }];
  * 화면의 단계 번호(1, 2, 3…)가 곧 이 배열의 순서다.
  */
 const STAGE_ORDER = [{ order: "asc" as const }, { id: "asc" as const }];
+/**
+ * 프로젝트·할일은 드래그로 순서를 바꾸므로 명시적 order를 우선으로 정렬한다.
+ * order가 같으면(백필/동시 생성) createdAt·id로 안정적으로 갈린다.
+ * 프로젝트는 그룹 안에서, 할일은 컨테이너(단계·백로그·미배정) 안에서 이 순서로 표시된다.
+ */
+const PROJECT_ORDER = [
+  { order: "asc" as const },
+  { createdAt: "asc" as const },
+  { id: "asc" as const },
+];
+const TASK_ORDER = [
+  { order: "asc" as const },
+  { createdAt: "asc" as const },
+  { id: "asc" as const },
+];
 
 /**
  * 화면에 사람을 그리는 데 필요한 최소 정보만 추린다.
@@ -189,14 +204,14 @@ export async function getWorkspace(): Promise<Workspace> {
     await Promise.all([
       db.projectGroup.findMany({ orderBy: ORDER }),
       db.project.findMany({
-        orderBy: ORDER,
+        orderBy: PROJECT_ORDER,
         include: { owner: { select: MEMBER_SELECT } },
       }),
       db.stage.findMany({
         orderBy: STAGE_ORDER,
         include: {
           tasks: {
-            orderBy: ORDER,
+            orderBy: TASK_ORDER,
             include: { assignee: { select: MEMBER_SELECT } },
           },
           comments: { orderBy: ORDER },
@@ -204,7 +219,7 @@ export async function getWorkspace(): Promise<Workspace> {
       }),
       db.task.findMany({
         where: { stageId: null },
-        orderBy: ORDER,
+        orderBy: TASK_ORDER,
         include: { assignee: { select: MEMBER_SELECT } },
       }),
       acceptedCollaborators(),
@@ -269,7 +284,9 @@ export async function createProject(input: {
   // 날짜는 서버 기준 — 클라이언트 시계를 신뢰하지 않는다(completedDate와 동일 규약).
   const start = todayISO();
   return db.$transaction(async (tx) => {
-    const project = await tx.project.create({ data: input });
+    // 새 프로젝트는 그 그룹의 사이드바 맨 아래로 — order = 그룹 내 현재 개수
+    const order = await tx.project.count({ where: { groupId: input.groupId } });
+    const project = await tx.project.create({ data: { ...input, order } });
     await tx.stage.create({
       data: {
         id: `st-${crypto.randomUUID()}`,
@@ -297,6 +314,45 @@ export function updateProject(
   return db.project.updateMany({
     where: { id, ...(opts?.ownerId ? { ownerId: opts.ownerId } : {}) },
     data: patch,
+  });
+}
+
+/**
+ * 사이드바 프로젝트 순서 변경 — 그룹 안에서 projectIds 순서대로 다시 매긴다.
+ * Project.order는 유니크가 아니라 Stage처럼 음수 피신이 필요 없다.
+ *
+ * **대상들이 원래 차지하던 order 슬롯을 오름차순으로 모아 새 순서대로 재배정**한다.
+ * 그래서 마스터(그룹 전체 전달)는 0..N-1 전면 재배치가 되고, 스탭(자기 소유분만
+ * 전달)은 그 부분집합만 자기들 슬롯 안에서 재정렬돼 비소유 프로젝트의 상대 위치가
+ * 보존된다. opts.ownerId를 주면 그 작업자 소유 프로젝트만 대상이 된다(스탭 가드).
+ */
+export async function reorderProjects(
+  groupId: string,
+  projectIds: string[],
+  opts?: { ownerId?: string },
+): Promise<{ count: number }> {
+  const requested = new Set(projectIds);
+  if (requested.size !== projectIds.length) return { count: 0 }; // 중복 방지
+  return db.$transaction(async (tx) => {
+    const targets = await tx.project.findMany({
+      where: {
+        id: { in: projectIds },
+        groupId,
+        ...(opts?.ownerId ? { ownerId: opts.ownerId } : {}),
+      },
+      select: { id: true, order: true },
+    });
+    // 보낸 목록이 실제 대상(그룹·소유 조건 통과) 집합과 정확히 일치해야 한다
+    if (targets.length !== projectIds.length) return { count: 0 };
+
+    const slots = targets.map((project) => project.order).sort((a, b) => a - b);
+    for (const [index, id] of projectIds.entries()) {
+      await tx.project.updateMany({
+        where: { id, groupId },
+        data: { order: slots[index] },
+      });
+    }
+    return { count: projectIds.length };
   });
 }
 
@@ -499,8 +555,13 @@ export async function createTask(input: {
   const data = scheduledDate
     ? { ...rest, scheduledDate, deadline: scheduledDate }
     : rest;
+  // 새 할일은 그 컨테이너(프로젝트·단계) 맨 끝으로 간다 — order = 현재 개수.
+  // (null projectId·stageId는 미배정/백로그를 각각 하나의 컨테이너로 센다)
+  const order = await db.task.count({
+    where: { projectId: data.projectId, stageId: data.stageId },
+  });
   if (data.assigneeId !== undefined) {
-    return db.task.create({ data });
+    return db.task.create({ data: { ...data, order } });
   }
   const owner = data.projectId
     ? (
@@ -510,7 +571,9 @@ export async function createTask(input: {
         })
       )?.ownerId
     : null;
-  return db.task.create({ data: { ...data, assigneeId: owner ?? createdById } });
+  return db.task.create({
+    data: { ...data, order, assigneeId: owner ?? createdById },
+  });
 }
 
 export type TaskPatch = Partial<{
@@ -586,7 +649,48 @@ export async function updateTask(id: string, patch: TaskPatch) {
     });
     if (stage?.projectId === patch.projectId) stageId = patch.stageId;
   }
-  return db.task.updateMany({ where: { id }, data: { ...patch, stageId } });
+  // 컨테이너를 옮기면 대상 컨테이너 맨 끝으로 간다 — order = 대상의 현재 개수.
+  // 옮기는 할일은 아직 대상 컨테이너에 없으므로 개수가 곧 끝자리 인덱스다.
+  const order = await db.task.count({
+    where: { projectId: patch.projectId, stageId },
+  });
+  return db.task.updateMany({
+    where: { id },
+    data: { ...patch, stageId, order },
+  });
+}
+
+/**
+ * 컨테이너(프로젝트·단계) 안에서 할일 순서를 taskIds 순서대로 바꾼다.
+ * reorderProjects와 같은 **슬롯 재배정** — 대상들이 차지한 order 값을 오름차순으로
+ * 모아 새 순서대로 다시 나눈다. 그래서 단계·프로젝트 백로그(전체 전달)는 전면
+ * 재배치가 되고, 내 할일(그 컨테이너의 내 담당분만 전달)은 부분 재정렬이 돼 다른
+ * 사람 할일 위치가 보존된다. projectId·stageId는 null(미배정/백로그)일 수 있다.
+ */
+export async function reorderTasks(
+  projectId: string | null,
+  stageId: string | null,
+  taskIds: string[],
+): Promise<{ count: number }> {
+  const requested = new Set(taskIds);
+  if (requested.size !== taskIds.length) return { count: 0 };
+  return db.$transaction(async (tx) => {
+    const targets = await tx.task.findMany({
+      where: { id: { in: taskIds }, projectId, stageId },
+      select: { id: true, order: true },
+    });
+    // 보낸 목록이 그 컨테이너의 실제 대상 집합과 정확히 일치해야 한다
+    if (targets.length !== taskIds.length) return { count: 0 };
+
+    const slots = targets.map((task) => task.order).sort((a, b) => a - b);
+    for (const [index, id] of taskIds.entries()) {
+      await tx.task.updateMany({
+        where: { id, projectId, stageId },
+        data: { order: slots[index] },
+      });
+    }
+    return { count: taskIds.length };
+  });
 }
 
 /**

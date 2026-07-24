@@ -14,6 +14,7 @@ import {
   deleteGroupApi,
   deleteProjectApi,
   patchProjectApi,
+  reorderProjectsApi,
   resetWorkspaceApi,
 } from "@/lib/api/workspace";
 import * as cache from "@/components/features/projects/workspace-cache";
@@ -47,6 +48,8 @@ type ProjectStoreValue = {
   setProjectColor: (projectId: string, color: string) => void;
   deleteGroup: (groupId: string) => void;
   deleteProject: (groupId: string, projectId: string) => void;
+  /** 그룹 안에서 프로젝트 순서를 projectIds 순서대로 바꾼다 (사이드바 드래그) */
+  reorderProjects: (groupId: string, projectIds: string[]) => void;
   resetData: () => void;
 };
 
@@ -174,6 +177,30 @@ export function ProjectStoreProvider({
         };
       });
       cache.persist(deleteProjectApi(projectId));
+    },
+    reorderProjects: (groupId, projectIds) => {
+      cache.apply((prev) => ({
+        ...prev,
+        groups: prev.groups.map((group) => {
+          if (group.id !== groupId) return group;
+          // 대상들이 차지한 배열 위치(슬롯)를 순서대로 모아 새 순서로 재배정한다 —
+          // 서버 reorderProjects와 같은 규칙(스탭이 소유분만 옮겨도 비소유는 제자리).
+          const idSet = new Set(projectIds);
+          const slots: number[] = [];
+          group.projects.forEach((project, index) => {
+            if (idSet.has(project.id)) slots.push(index);
+          });
+          if (slots.length !== projectIds.length) return group;
+          const byId = new Map(group.projects.map((p) => [p.id, p]));
+          const next = [...group.projects];
+          projectIds.forEach((id, k) => {
+            const project = byId.get(id);
+            if (project) next[slots[k]] = project;
+          });
+          return { ...group, projects: next };
+        }),
+      }));
+      cache.persist(reorderProjectsApi(groupId, projectIds));
     },
     resetData: () => {
       setSelectedProjectId(null);
