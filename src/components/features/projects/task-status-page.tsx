@@ -76,7 +76,7 @@ function toggleId(set: Set<string>, id: string) {
 }
 
 export function TaskStatusPage() {
-  const { user, loading } = useSession();
+  const { loading } = useSession();
   const { groups } = useProjectStore();
   const boardState = useBoardState();
   const [excludedGroupIds, setExcludedGroupIds] = useState<Set<string>>(
@@ -102,34 +102,20 @@ export function TaskStatusPage() {
     );
   }
 
-  const isMaster = user?.role === "MASTER";
-
+  // 작업 현황은 권한과 무관하게 누구나 전체를 본다 (예전엔 스탭은 자기 소유
+  // 프로젝트·자기 담당자 컬럼만 봤다). 서버는 원래 전체 데이터를 모두에게 내려준다.
   const includedGroups = groups.filter(
     (group) => !excludedGroupIds.has(group.id),
   );
-  const projectChipPool = isMaster
-    ? includedGroups.flatMap((group) => group.projects)
-    : groups
-        .flatMap((group) => group.projects)
-        .filter((project) => !!user && project.ownerId === user.id);
+  const projectChipPool = includedGroups.flatMap((group) => group.projects);
 
-  const sections: RoadmapSection[] = isMaster
-    ? includedGroups.map((group) => ({
-        key: group.id,
-        groupName: group.name,
-        projects: group.projects.filter(
-          (project) => !excludedProjectIds.has(project.id),
-        ),
-      }))
-    : [
-        {
-          key: "assigned",
-          groupName: null,
-          projects: projectChipPool.filter(
-            (project) => !excludedProjectIds.has(project.id),
-          ),
-        },
-      ];
+  const sections: RoadmapSection[] = includedGroups.map((group) => ({
+    key: group.id,
+    groupName: group.name,
+    projects: group.projects.filter(
+      (project) => !excludedProjectIds.has(project.id),
+    ),
+  }));
 
   const visibleProjects = sections.flatMap((section) => section.projects);
   const taskCount = visibleProjects.reduce(
@@ -154,26 +140,24 @@ export function TaskStatusPage() {
         aria-label="선택 필터"
         className="flex shrink-0 flex-col gap-2.5 rounded-[12px] border bg-background px-[18px] py-3.5"
       >
-        {isMaster && (
-          <div className="flex items-center gap-3">
-            <span className="w-[52px] shrink-0 text-[13px] text-muted-foreground">
-              그룹
-            </span>
-            <div className="flex flex-wrap items-center gap-2">
-              {groups.map((group) => (
-                <FilterChip
-                  key={group.id}
-                  checked={!excludedGroupIds.has(group.id)}
-                  onToggle={() =>
-                    setExcludedGroupIds((prev) => toggleId(prev, group.id))
-                  }
-                  label={group.name}
-                  count={group.projects.length}
-                />
-              ))}
-            </div>
+        <div className="flex items-center gap-3">
+          <span className="w-[52px] shrink-0 text-[13px] text-muted-foreground">
+            그룹
+          </span>
+          <div className="flex flex-wrap items-center gap-2">
+            {groups.map((group) => (
+              <FilterChip
+                key={group.id}
+                checked={!excludedGroupIds.has(group.id)}
+                onToggle={() =>
+                  setExcludedGroupIds((prev) => toggleId(prev, group.id))
+                }
+                label={group.name}
+                count={group.projects.length}
+              />
+            ))}
           </div>
-        )}
+        </div>
         <div className="flex items-center gap-3">
           <span className="w-[52px] shrink-0 text-[13px] text-muted-foreground">
             프로젝트
@@ -223,11 +207,7 @@ export function TaskStatusPage() {
         </div>
       </div>
       {activeView === "담당자" ? (
-        <TaskStatusAssignees
-          projects={visibleProjects}
-          isMaster={isMaster}
-          currentUserId={user?.id ?? null}
-        />
+        <TaskStatusAssignees projects={visibleProjects} />
       ) : activeView === "캘린더" ? (
         <TaskStatusCalendar
           projects={visibleProjects}

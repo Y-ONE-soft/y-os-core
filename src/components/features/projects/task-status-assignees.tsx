@@ -107,13 +107,8 @@ function ColumnHead({ column }: { column: AssigneeColumn }) {
 
 export function TaskStatusAssignees({
   projects,
-  isMaster,
-  currentUserId,
 }: {
   projects: Project[];
-  isMaster: boolean;
-  /** 스탭이면 이 사람의 컬럼만 만든다 */
-  currentUserId: string | null;
 }) {
   const boards = useBoardState();
   const { users, loading } = useUsers();
@@ -182,13 +177,7 @@ export function TaskStatusAssignees({
         member.name.slice(0, 1),
       );
 
-    // 스탭은 자기 컬럼만 본다 — 남의 할일은 보이지 않아야 한다
-    if (!isMaster) {
-      const me = users.find((member) => member.id === currentUserId);
-      return me ? [forUser(me)] : [];
-    }
-
-    // 마스터는 전체 직원 + 미배정(맨 뒤)
+    // 작업 현황은 권한과 무관하게 전 직원 + 미배정(맨 뒤)을 모두 보여준다
     return [
       ...users.map(forUser),
       build(
@@ -199,7 +188,7 @@ export function TaskStatusAssignees({
         "—",
       ),
     ];
-  }, [boards, projects, users, isMaster, currentUserId, today]);
+  }, [boards, projects, users, today]);
 
   if (loading) {
     return (
