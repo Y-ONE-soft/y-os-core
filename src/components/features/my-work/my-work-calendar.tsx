@@ -134,6 +134,17 @@ function ProjectBoxItem({
         borderColor: hexToRgba(color, 0.3),
       }}
     >
+      {/* 프로젝트 마감 라벨 — 범위가 끝나는 조각(더 이어지지 않는 조각)의 오른쪽
+          아래에 붙인다. 그 조각의 마지막 날이 곧 프로젝트 마지막일이다.
+          미배정 묶음은 프로젝트가 아니라 마감 개념이 없으므로 제외한다. */}
+      {!box.continuesRight && isProject && (
+        <span
+          className="absolute bottom-0.5 right-1 rounded-[3px] px-1 py-px text-[8px] font-medium text-white"
+          style={{ backgroundColor: hexToRgba(color, 0.75) }}
+        >
+          마감
+        </span>
+      )}
       {/* 프로젝트 이름은 범위가 시작하는 주에만 — 주마다 반복하지 않는다.
           라벨만 클릭을 받아(pointer-events-auto) 상세로 이동한다. */}
       {!box.continuesLeft &&
@@ -358,6 +369,7 @@ function OverlayItem({
               </span>
             </>
           )}
+          {/* 데드라인 표시가 켜진 단계의 마감 라벨 */}
           {overlay.deadline && (
             <span
               className="ml-auto shrink-0 rounded-[3px] px-1.5 py-px text-[9px] font-medium text-white"

@@ -25,7 +25,7 @@ import {
   type StageDates,
 } from "@/components/features/projects/roadmap-utils";
 import { RoadmapBar } from "@/components/features/projects/roadmap-bar";
-import { DeadlineFlag } from "@/components/features/projects/deadline-flag";
+import { DeadlineMarker } from "@/components/features/projects/deadline-marker";
 import {
   RANGE_OPTIONS,
   boundsOfStages,
@@ -369,7 +369,7 @@ export function MyWorkTimelinePanel() {
                     )}
                     {/* 프로젝트 마감 = 가장 늦은 단계 종료일(marks의 끝). 항상 표시. */}
                     {marks.length > 0 && (
-                      <DeadlineFlag
+                      <DeadlineMarker
                         timeline={timeline}
                         date={marks[marks.length - 1]}
                         color={project.color}
@@ -429,7 +429,7 @@ export function MyWorkTimelinePanel() {
                               종료일이 없으면 시작일을 마감으로 본다(막대가 하루짜리). */}
                           {stage.showDeadline &&
                             (stage.endDate ?? stage.startDate) && (
-                              <DeadlineFlag
+                              <DeadlineMarker
                                 timeline={timeline}
                                 date={(stage.endDate ?? stage.startDate)!}
                                 color={stage.color}
