@@ -128,6 +128,9 @@ model Task {
   done          Boolean  @default(false)
   description   String?
   scheduledDate String? // YYYY-MM-DD (Stage와 동일 표기 규격 — TZ 이슈 회피). null = 일정 미정
+  // HH:mm — 예정 시각. 일 뷰 시간대 그리드가 쓴다. 날짜와 같은 문자열 규격(로컬 시각,
+  // TZ 이슈 회피). null = 시각 미정(하루 종일). scheduledDate 없이 시각만 있을 수는 없다.
+  scheduledTime String? // HH:mm
   // 마감일 = 처음 잡은 목표일. scheduledDate를 지정/변경할 때 함께 세팅된다(재계획).
   // 미완료 할일은 하루가 지나면 scheduledDate가 오늘로 이월되지만 deadline은 고정이라,
   // 둘의 차이가 "며칠 미뤄졌는가"가 된다. null = 일정을 잡은 적 없음.

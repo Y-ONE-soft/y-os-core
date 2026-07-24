@@ -330,6 +330,19 @@ export const boardActions = {
     );
   },
   /**
+   * '단계 없음'으로 옮긴다 — 단계에서 빼되 예정일은 남긴다.
+   * 백로그(예정일도 단계도 없음)와 달리 '단계 없음'은 예정일이 있어 캘린더에 뜬다.
+   * 기존 예정일이 있으면 유지하고, 없으면(백로그에서 끌어온 경우) 오늘로 잡는다.
+   */
+  moveToStageless(projectId: string, taskId: string) {
+    const board = cache.getSnapshot().boards[projectId];
+    const task =
+      board?.stages.flatMap((stage) => stage.tasks).find((t) => t.id === taskId) ??
+      board?.backlog.find((t) => t.id === taskId);
+    const keep = task?.scheduledDate ?? todayISO();
+    boardActions.assignTask(projectId, taskId, projectId, null, keep);
+  },
+  /**
    * 할일의 소속(프로젝트·단계)을 한 번에 지정한다. 프로젝트 `null`은 미배정,
    * 단계 `null`은 백로그를 뜻하며 단계 이동·프로젝트 이동·미배정 전환을 모두 다룬다.
    */
@@ -523,15 +536,17 @@ export const boardActions = {
     patch: Partial<Pick<BoardTask, "name" | "description" | "scheduledDate">> & {
       /** null = 담당자 해제. 키가 없으면 담당자를 건드리지 않는다 */
       assigneeId?: string | null;
+      /** HH:mm — 예정 시각. null = 시각 해제. 키가 없으면 건드리지 않는다 */
+      scheduledTime?: string | null;
     },
   ) {
-    // 로컬 상태는 BoardTask 규격(미배정 = undefined)이라 null을 맞춰 준다.
+    // 로컬 상태는 BoardTask 규격(미배정·미정 = undefined)이라 null을 맞춰 준다.
     // 서버로는 null 그대로 보내야 한다 — undefined는 JSON에서 사라져
     // 라우트의 `key in body` 검사를 통과하지 못하고 해제가 무시된다.
-    const localPatch: Partial<BoardTask> =
-      "assigneeId" in patch
-        ? { ...patch, assigneeId: patch.assigneeId ?? undefined }
-        : (patch as Partial<BoardTask>);
+    const localPatch: Partial<BoardTask> = { ...(patch as Partial<BoardTask>) };
+    if ("assigneeId" in patch) localPatch.assigneeId = patch.assigneeId ?? undefined;
+    if ("scheduledTime" in patch)
+      localPatch.scheduledTime = patch.scheduledTime ?? undefined;
     const apply = (task: BoardTask) =>
       task.id === taskId ? { ...task, ...localPatch } : task;
     if (projectId === null) {

@@ -20,6 +20,10 @@ export const isName = (value: unknown): value is string =>
 export const isISODate = (value: unknown): value is string =>
   typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
 
+/** HH:mm (24시간) — Task의 예정 시각 표기 규격 */
+export const isTimeOfDay = (value: unknown): value is string =>
+  typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value);
+
 /**
  * 프로젝트를 만들 그룹 결정 — 스탭은 클라이언트가 보낸 groupId를 신뢰하지 않고 세션
  * 사용자의 소속 그룹으로 강제한다(남의 그룹에 생성하는 우회 차단). 마스터는 전체

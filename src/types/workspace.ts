@@ -35,6 +35,8 @@ export type BoardTask = {
   /** YYYY-MM-DD — 캘린더에 놓일 예정일(화면 표기 "할일날짜"). 없으면 일정 미정.
    *  미완료면 하루가 지날 때마다 서버가 오늘로 이월한다. */
   scheduledDate?: string;
+  /** HH:mm — 예정 시각(일 뷰 시간대 그리드용). 없으면 시각 미정. scheduledDate 없이는 없다. */
+  scheduledTime?: string;
   /** YYYY-MM-DD — 마감일(처음 잡은 목표일). scheduledDate와 함께 세팅되고 이월돼도 고정.
    *  scheduledDate와의 차이가 "며칠 미뤄졌는가"다. */
   deadline?: string;

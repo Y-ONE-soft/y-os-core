@@ -165,9 +165,8 @@ function BacklogRow({
   );
 }
 
-// 프로젝트 상세의 우측 패널. stageId=null 할일을 예정일로 갈라 두 섹션으로 보여준다.
-//  - 단계 없음: 예정일은 있으나 단계에 안 든 할일 (캘린더에 이 항목들이 뜬다)
-//  - 백로그: 예정일도 단계도 없는 할일
+// 프로젝트 상세의 우측 패널 — 예정일도 단계도 없는 '백로그' 할일만 보여준다.
+// '단계 없음'(예정일은 있으나 단계에 안 든 할일)은 보드의 별도 컬럼으로 옮겼다.
 // 이 패널로 드래그해 놓으면(단계에서 빼기) 예정일이 해제돼 백로그로 간다.
 export function ProjectBacklog({ projectId }: { projectId: string }) {
   const { backlog, stages } = useProjectBoard(projectId);
@@ -178,9 +177,8 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
   const addInputRef = useRef<HTMLInputElement>(null);
   useTypeToFocus(addInputRef);
 
-  // stageId=null(백로그) 할일을 예정일 유무로 가른다.
-  const stageless = backlog.filter((task) => task.scheduledDate); // 단계 없음
-  const parked = backlog.filter((task) => !task.scheduledDate); // 백로그
+  // 예정일도 단계도 없는 할일만 이 패널에 남긴다.
+  const parked = backlog.filter((task) => !task.scheduledDate);
 
   return (
     <aside
@@ -209,32 +207,8 @@ export function ProjectBacklog({ projectId }: { projectId: string }) {
         dropActive && "ring-2 ring-primary ring-offset-1",
       )}
     >
-      {/* 단계 없음 — 예정일은 있으나 단계에 안 든 할일 */}
-      <section className="flex shrink-0 flex-col gap-2">
-        <div className="flex items-center gap-1.5">
-          <h2 className="text-[13.5px] font-semibold">단계 없음</h2>
-          <span className="text-xs font-medium text-muted-foreground">
-            {stageless.length}
-          </span>
-        </div>
-        {stageless.length === 0 ? (
-          <p className="text-[11px] leading-normal text-muted-foreground">
-            예정일은 있으나 단계에 안 든 할일이 여기 모입니다.
-          </p>
-        ) : (
-          stageless.map((item) => (
-            <BacklogRow
-              key={item.id}
-              projectId={projectId}
-              stages={stages}
-              item={item}
-              onOpenDetail={setDetailTaskId}
-            />
-          ))
-        )}
-      </section>
-
-      {/* 백로그 — 예정일도 단계도 없는 할일 */}
+      {/* 백로그 — 예정일도 단계도 없는 할일.
+          '단계 없음'(예정일 있음)은 보드의 별도 컬럼으로 옮겼다(project-board). */}
       <section className="flex shrink-0 flex-col gap-2">
         <div className="flex items-center gap-1.5">
           <h2 className="text-[13.5px] font-semibold">백로그</h2>
